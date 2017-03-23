@@ -1,0 +1,3 @@
+EXEC = fib
+
+all: EXEC
