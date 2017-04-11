@@ -1,0 +1,34 @@
+__cilkrts_worker:
+  __cilkrts_stack_frame
+  global_state
+  local_state
+
+__cilkrts_stack_frame:
+  __cilkrts_stack_frame
+  __cilkrts_worker
+  __CILK_JUMP_BUFFER (np)
+
+global_state:
+  Cilk_options
+  ReadyDeque
+  __cilkrts_worker
+  Closure
+
+local_state:
+  CilkShadowStack (__cilkrts_stack_frame **, np)
+
+Cilk_options:
+  -----
+
+ReadyDeque:
+  Cilk_mutex (np)
+  Closure
+
+Closure:
+  Cilk_mutex (np)
+  ClosureStatus (np)
+  Closure
+  __cilkrts_stack_frame
+  AddrType (uint64_t, np)
+  AbortStatus (np)
+  
