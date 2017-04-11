@@ -2,9 +2,11 @@
 #define _STACK_FRAME_H
 
 // Includes
-
+#include "worker.h"
+#include "jmpbuf.h"
 
 // Forward declaration
+typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 
 /**
