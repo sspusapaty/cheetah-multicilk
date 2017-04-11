@@ -2,6 +2,7 @@
 #define _WORKER_H
 
 // Includes
+#include <stdint.h>
 #include "stack_frame.h"
 #include "global_state.h"
 #include "local_state.h"

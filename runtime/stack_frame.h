@@ -2,6 +2,7 @@
 #define _STACK_FRAME_H
 
 // Includes
+#include <stdint.h>
 #include "worker.h"
 #include "jmpbuf.h"
 

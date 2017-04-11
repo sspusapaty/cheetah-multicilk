@@ -4,6 +4,7 @@
 // Includes
 #include "stack_frame.h"
 #include "cilk_mutex.h"
+#include "types.h"
 
 // Forward declaration
 typedef struct Closure Closure;
