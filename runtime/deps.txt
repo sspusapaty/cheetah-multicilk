@@ -1,3 +1,5 @@
+# np = non-pointer--can't be opaque
+
 __cilkrts_worker:
   __cilkrts_stack_frame
   global_state
@@ -32,3 +34,14 @@ Closure:
   AddrType (uint64_t, np)
   AbortStatus (np)
   
+cilk_fiber_pool:
+  Cilk_mutex (np?)
+  cilk_fiber_pool
+  cilk_fiber
+
+cilk_fiber:
+  __cilkrts_worker
+  __cilkrts_stack_frame
+  cilk_fiber_proc (void (*cilk_fiber_proc)(cilk_fiber*), np)
+  cilk_fiber
+  cilk_fiber_pool
