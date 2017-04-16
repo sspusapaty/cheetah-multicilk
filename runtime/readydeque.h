@@ -1,13 +1,12 @@
 #ifndef _READYDEQUE_H
 #define _READYDEQUE_H
 
+// Forward declaration
+typedef struct ReadyDeque ReadyDeque;
+
 // Includes
 #include "cilk_mutex.h"
 #include "closure.h"
-
-// Forward declaration
-typedef struct ReadyDeque ReadyDeque;
-typedef struct Closure Closure;
 
 // Actual declaration
 struct ReadyDeque {

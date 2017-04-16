@@ -1,10 +1,10 @@
 #ifndef _CILK_OPTIONS_H
 #define _CILK_OPTIONS_H
 
-// Includes
-
 // Forward declaration
 typedef struct Cilk_options Cilk_options;
+
+// Includes
 
 
 // Actual declaration

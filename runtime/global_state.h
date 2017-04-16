@@ -1,18 +1,14 @@
 #ifndef _GLOBAL_STATE_H
 #define _GLOBAL_STATE_H
 
+// Forward declaration
+typedef struct global_state global_state;
+
 // Includes
 #include "cilk_options.h"
 #include "readydeque.h"
 #include "worker.h"
 #include "closure.h"
-
-// Forward declaration
-typedef struct global_state global_state;
-typedef struct Cilk_options Cilk_options;
-typedef struct ReadyDeque ReadyDeque;
-typedef struct __cilkrts_worker __cilkrts_worker;
-typedef struct Closure Closure;
 
 // Actual declaration
 struct global_state {

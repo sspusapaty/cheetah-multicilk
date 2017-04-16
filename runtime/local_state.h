@@ -1,13 +1,12 @@
 #ifndef _LOCAL_STATE_H
 #define _LOCAL_STATE_H
 
-// Includes
-#include "stack_frame.h"
-
 // Forward declaration
 typedef struct local_state local_state;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 typedef struct __cilkrts_stack_frame **CilkShadowStack;
+
+// Includes
+#include "stack_frame.h"
 
 // Actual declaration
 struct local_state {

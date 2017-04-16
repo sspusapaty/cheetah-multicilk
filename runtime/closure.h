@@ -1,21 +1,17 @@
 #ifndef _CLOSURE_H
 #define _CLOSURE_H
 
+// Forward declaration
+typedef struct Closure Closure;
+enum ClosureStatus { CLOSURE_RUNNING = 42, CLOSURE_SUSPENDED,
+                     CLOSURE_RETURNING, CLOSURE_READY };
+/* The order is important here. */
+enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
+
 // Includes
 #include "stack_frame.h"
 #include "cilk_mutex.h"
 #include "types.h"
-
-// Forward declaration
-typedef struct Closure Closure;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
-
-// Actual declaration
-enum ClosureStatus { CLOSURE_RUNNING = 42, CLOSURE_SUSPENDED,
-                     CLOSURE_RETURNING, CLOSURE_READY };
-
-/* The order is important here. */
-enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 
 /* 
  * the list of children is not distributed among

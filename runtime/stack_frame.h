@@ -1,14 +1,14 @@
 #ifndef _STACK_FRAME_H
 #define _STACK_FRAME_H
 
+// Forward declaration
+typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
+
 // Includes
 #include <stdint.h>
 #include "worker.h"
 #include "jmpbuf.h"
 
-// Forward declaration
-typedef struct __cilkrts_worker __cilkrts_worker;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 
 /**
  * Every spawning function has a frame descriptor.  A spawning function

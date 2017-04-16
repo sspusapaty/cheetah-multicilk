@@ -1,17 +1,14 @@
 #ifndef _WORKER_H
 #define _WORKER_H
 
+// Forward declaration
+typedef struct __cilkrts_worker __cilkrts_worker;
+
 // Includes
 #include <stdint.h>
 #include "stack_frame.h"
 #include "global_state.h"
 #include "local_state.h"
-
-// Forward declaration
-typedef struct __cilkrts_worker __cilkrts_worker;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
-typedef struct global_state global_state;
-typedef struct local_state local_state;
 
 // Actual definitions
 struct __cilkrts_worker {
