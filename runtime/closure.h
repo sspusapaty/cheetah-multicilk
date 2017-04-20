@@ -12,7 +12,7 @@ enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 #include "stack_frame.h"
 #include "cilk_mutex.h"
 #include "types.h"
-
+#include "common.h"
 /* 
  * the list of children is not distributed among
  * the children themselves, in order to avoid extra protocols
@@ -20,8 +20,8 @@ enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
  */
 struct Closure {
     Cilk_mutex mutex;          /* mutual exclusion lock */
-    WHEN_DEBUG_VERBOSE(int mutex_action;)
-    WHEN_CILK_DEBUG(int mutex_owner;)
+  //WHEN_DEBUG_VERBOSE(int mutex_action;)
+  //WHEN_CILK_DEBUG(int mutex_owner;)
 
     int join_counter; /* number of spawned outstanding children */
     int has_cilk_callee; /* has called outstanding cilk child */

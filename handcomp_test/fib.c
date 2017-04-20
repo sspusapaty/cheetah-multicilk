@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "../runtime/cilk.h"
 #include "ktiming.h"
 
 #ifndef TIMES_TO_RUN
@@ -13,7 +13,8 @@
  * fib 41: 165580141 
  * fib 42: 267914296
  */
-   
+
+
 int fib(int n) {
     int x, y, _tmp;
 
@@ -26,6 +27,7 @@ int fib(int n) {
     return x+y;
 }
 
+/*
 int fib(int n) {
     int x, y, _tmp;
 
@@ -66,8 +68,9 @@ static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n) {
     __cilkrts_pop_frame(sf);
     __cilkrts_leave_frame(sf); 
 }
+*/
 
-int main(int argc, char * args[]) {
+int cilk_main(int argc, char * args[]) {
     int i;
     int n, res;
     clockmark_t begin, end; 

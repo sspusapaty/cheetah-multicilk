@@ -4,7 +4,7 @@
 
 static pthread_key_t worker_key, fiber_key;
 
-void __cilkrts_init_tls_variables(void)
+void __cilkrts_init_tls_variables()
 {
     int status;
     status = pthread_key_create(&worker_key, NULL);
@@ -13,7 +13,7 @@ void __cilkrts_init_tls_variables(void)
     CILK_ASSERT (status == 0);
 }
 
-void * __cilkrts_get_current_thread_id(void)
+void * __cilkrts_get_current_thread_id()
 {
     return (void *)pthread_self();
 }
@@ -25,7 +25,7 @@ __cilkrts_worker * __cilkrts_get_tls_worker()
     
 }
 
-cilk_fiber * __cilkrts_get_tls_cilk_fiber(void)
+cilk_fiber * __cilkrts_get_tls_cilk_fiber()
 {
     return (cilk_fiber *)pthread_getspecific(fiber_key);
 }

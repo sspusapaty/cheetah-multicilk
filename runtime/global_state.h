@@ -23,12 +23,13 @@ struct global_state {
     const char *stack_overflow_msg;
 
     /* Number of processors Cilk is running on */
-    __CILKSAFE__ int active_size;
-    __CILKSAFE__ int pthread_stacksize;
+    int active_size;
+    int pthread_stacksize;
 
     /* dynamically-allocated array of deques, one per processor */
     ReadyDeque *deques;
     __cilkrts_worker **workers;
+    pthread_t * threads;
 
     Closure *invoke_main;
 

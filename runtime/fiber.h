@@ -1,6 +1,9 @@
 #ifndef _FIBER_H
 #define _FIBER_H
 
+typedef struct cilk_fiber cilk_fiber;
+
+#include "worker.h"
 
 // Boolean flags capturing the status of the fiber.
 // Each one can be set independently.
@@ -10,7 +13,7 @@ static const int ALLOCATED_FROM_THREAD = 0x02;  ///< True if fiber was allocated
 
 typedef void (*cilk_fiber_proc)(cilk_fiber*);
 
-
+/*
 struct cilk_fiber_pool
 {
     Cilk_mutex*      lock;       ///< Mutual exclusion for pool operations 
@@ -30,6 +33,7 @@ struct cilk_fiber_pool
     int              high_water; ///< High water mark of total fibers
     int              alloc_max;  ///< Limit on number of fibers allocated from the heap/OS
 };
+*/
 
 struct cilk_fiber
 {
@@ -42,12 +46,18 @@ struct cilk_fiber
     cilk_fiber_proc  m_post_switch_proc;  ///< Function that executes when we first switch to a new fiber from a different one.
 
     cilk_fiber*      m_pending_remove_ref;///< Fiber to possibly delete on start up or resume
-    cilk_fiber_pool* m_pending_pool;      ///< Pool where m_pending_remove_ref should go if it is deleted.
+  //cilk_fiber_pool* m_pending_pool;      ///< Pool where m_pending_remove_ref should go if it is deleted.
     unsigned         m_flags;             ///< Captures the status of this fiber. 
 
 #if NEED_FIBER_REF_COUNTS
     volatile long    m_outstanding_references;  ///< Counts references to this fiber.
 #endif
-}
-  
+};
+
+
+cilk_fiber * cilk_fiber_allocate_from_thread();
+
+int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber);
+
+void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * owner) ;
 #endif

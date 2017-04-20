@@ -1,16 +1,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "cilk.h"
+
 #undef main
 
-extern int cilk_main(int argc, char* argv[]);
-
 int main(int argc, char* argv[]) {
-    int ret;
+  int ret;
 
-    fprintf(stderr, "Running the real main()\n"); 
+  fprintf(stderr, "Running the real main()\n"); 
 
-    ret = cilk_main(argc, argv);
+  global_state * g = __cilkrts_init(argc, argv);
 
-    return ret;
+  __cilkrts_run(g);
+
+  __cilkrts_exit(g);
+  
+  ret = g->cilk_main_return;
+
+  return ret;
 }
