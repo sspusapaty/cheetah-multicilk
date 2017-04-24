@@ -15,6 +15,7 @@ struct __cilkrts_worker {
     // T and H pointers in the THE protocol
     __cilkrts_stack_frame * volatile * volatile tail;
     __cilkrts_stack_frame * volatile * volatile head;
+    __cilkrts_stack_frame * volatile * volatile exc;
 
     // Limit of the Lazy Task Queue, to detect queue overflow
     __cilkrts_stack_frame * volatile *ltq_limit;

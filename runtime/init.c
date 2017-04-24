@@ -37,6 +37,7 @@ void workers_init(global_state * g) {
     g->workers[i] = w;
     w->tail = w->l->shadow_stack + 1;
     w->head = w->l->shadow_stack + 1;
+    w->exc = w->head;
   }
 }
 
