@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 global_state * global_state_init(int argc, char* argv[]) {
+  __cilkrts_alert("Initializing global state.\n");
+  
   global_state * g = (global_state *) malloc(sizeof(global_state));
 
   g->active_size = 2;
@@ -17,12 +19,24 @@ global_state * global_state_init(int argc, char* argv[]) {
   return g;
 }
 
+local_state * worker_local_init() {
+  local_state * l = (local_state *) malloc(sizeof(local_state));
+  l->deque_depth = 10000;
+  l->shadow_stack = (CilkShadowStack) malloc(l->deque_depth * sizeof(struct __cilkrts_stack_frame *));
+  return l;
+}
+
 void workers_init(global_state * g) {
+  __cilkrts_alert("Initializing workers.\n");
   for (int i = 0; i < g->active_size; i++) {
-    g->workers[i] = (__cilkrts_worker *) malloc(sizeof(__cilkrts_worker));
-    g->workers[i]->self = i; // i + 1?
-    g->workers[i]->g = g;
-    g->workers[i]->l = (local_state *) malloc(sizeof(local_state));
+    __cilkrts_worker * w = (__cilkrts_worker *) malloc(sizeof(__cilkrts_worker));
+    w->self = i; // i + 1?
+    w->g = g;
+    w->l = worker_local_init();
+    w->ltq_limit = w->l->shadow_stack + w->l->deque_depth;
+    g->workers[i] = w;
+    w->tail = w->l->shadow_stack + 1;
+    w->head = w->l->shadow_stack + 1;
   }
 }
 

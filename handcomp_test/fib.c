@@ -15,19 +15,21 @@
  */
 
 
-int fib(int n) {
+int fib2(int n) {
     int x, y, _tmp;
 
     if(n < 2) {
         return n;
     }
     
-    x = fib(n - 1);
-    y = fib(n - 2);
+    x = fib2(n - 1);
+    y = fib2(n - 2);
     return x+y;
 }
 
-/*
+
+static void fib_spawn_helper(int *x, int n);
+
 int fib(int n) {
     int x, y, _tmp;
 
@@ -38,28 +40,28 @@ int fib(int n) {
     PREAMBLE
     __cilkrts_enter_frame(sf);
 
-    if(!__builtin_setjmp(sf->ctx)) {
+    if(!setjmp(sf->ctx)) {
         fib_spawn_helper(&x, n-1);
     }
 
     y = fib(n - 2);
 
-    if(__cilkrts_unsynched(sf)) {
-        if(!__builtin_setjmp(sf->ctx)) {
+    //if(__cilkrts_unsynched(sf)) {
+        if(!setjmp(sf->ctx)) {
             __cilkrts_sync(sf);
         }
-    }
+	//}
     _tmp = x + y;
 
     __cilkrts_pop_frame(sf);
     // ANGE: the Intel CC will put a flag here 
     __cilkrts_leave_frame(sf);
 
-    hwmark_dec(&hwmark);
+    //hwmark_dec(&hwmark);
     return _tmp;
 }
 
-static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n) {
+static void fib_spawn_helper(int *x, int n) {
 
     HELPER_PREAMBLE
     __cilkrts_enter_frame_fast(sf);
@@ -68,7 +70,7 @@ static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n) {
     __cilkrts_pop_frame(sf);
     __cilkrts_leave_frame(sf); 
 }
-*/
+
 
 int cilk_main(int argc, char * args[]) {
     int i;

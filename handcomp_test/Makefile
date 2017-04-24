@@ -9,7 +9,7 @@ fib: fib.o ktiming.o ../runtime/libcilkr.a
 	gcc fib.o ktiming.o ../runtime/libcilkr.a -lpthread -o fib
 
 %.o: %.c
-	gcc -c -Wall $<
+	gcc -O0 -g -c -Wall $<
 
 clean:
 	rm -f *.o *~ fib

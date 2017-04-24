@@ -5,6 +5,13 @@
 *.o
 *.a
 
+# Scratch
+runtime/cilk_types.h
+*.t
+
+# Exes
+handcomp_test/fib
+
 # Future proofing
 *.so
 *.so.*

@@ -14,9 +14,9 @@ typedef struct __cilkrts_stack_frame **CilkShadowStack;
 struct local_state {
     CilkShadowStack shadow_stack;
   
-    size_t stackdepth;
+    size_t deque_depth;
 
-    __CILK_JUMP_BUFFER rts_env;  // the jmp_buf associated with runtime context
+    jmp_buf rts_env;  // the jmp_buf associated with runtime context
                       // this should be on worker's private stack (i.e. the
                       // one assigned during pthread_create)
 

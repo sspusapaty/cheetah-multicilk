@@ -7,7 +7,7 @@ $(MAIN).a: $(OBJS)
 	ar rcs $@ $^
 
 %.o: %.c $(HDRS)
-	gcc -c -Wall -fpic $<
+	gcc -O0 -g -c -Wall -fpic $<
 
 clean:
 	rm -f *.o *.a

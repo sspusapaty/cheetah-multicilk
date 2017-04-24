@@ -1,13 +1,15 @@
 #include "cilk.h"
 #include "tls.h"
+#include "sched.h"
+
 #include <stdio.h>
 
 
-extern int cilk_main(int argc, char* argv[]);
+extern int cilk_main(int argc, char * argv[]);
 
-void* scheduler_thread_proc(void *arg)
+void* scheduler_thread_proc(void * arg)
 {
-  __cilkrts_worker *w = (__cilkrts_worker *)arg;
+  __cilkrts_worker * w = (__cilkrts_worker *)arg;
 
     
   __cilkrts_set_tls_worker(w);
@@ -16,8 +18,7 @@ void* scheduler_thread_proc(void *arg)
   w->l->runtime_fiber = cilk_fiber_allocate_from_thread();
   cilk_fiber_set_owner(w->l->runtime_fiber, w);
     
-  // internal_run_scheduler_with_exceptions(w);
-  fprintf(stderr, "Thread of worker %d\n", w->self);
+  worker_scheduler(w);
   
   // Deallocate the scheduling fiber.  This operation reverses the
   // effect cilk_fiber_allocate_from_thread() and must be done in this
@@ -32,7 +33,21 @@ void* scheduler_thread_proc(void *arg)
   return 0;
 }
 
+void main_thread_init(global_state * g) {
+  __cilkrts_alert("Setting up main thread.\n");
+  __cilkrts_worker * w = g->workers[0];
+  __cilkrts_set_tls_worker(w);
+
+  w->l->runtime_fiber = NULL;
+
+  g->cilk_main_return = cilk_main(g->cilk_main_argc,
+				  g->cilk_main_args);
+
+  longjmp_to_runtime(w);
+}
+
 void threads_init(global_state * g) {
+  __cilkrts_alert("Setting up system threads.\n");
   for (int i = 0; i < g->active_size - 1; i++) {
     int status = pthread_create(&g->threads[i],
                                 NULL,
@@ -46,9 +61,5 @@ void threads_init(global_state * g) {
 void __cilkrts_run(global_state * g) {
   threads_init(g);
 
-  __cilkrts_set_tls_worker(g->workers[0]);
-
-  g->cilk_main_return = cilk_main(g->cilk_main_argc,
-				  g->cilk_main_args);
-
+  main_thread_init(g);
 }

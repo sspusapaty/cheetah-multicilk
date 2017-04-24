@@ -21,3 +21,12 @@ void __cilkrts_bug(const char *fmt,...) {
 
     exit(1);
 }
+void __cilkrts_alert(const char *fmt,...) {
+
+    /* To reduce user confusion, write all user-generated output
+       before the system-generated error message. */
+    va_list l;
+    va_start(l, fmt);
+    vfprintf(stderr, fmt, l);
+    va_end(l);
+}

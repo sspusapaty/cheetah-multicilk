@@ -3,6 +3,7 @@
 
 typedef struct cilk_fiber cilk_fiber;
 
+#include "jmpbuf.h"
 #include "worker.h"
 
 // Boolean flags capturing the status of the fiber.
@@ -37,27 +38,35 @@ struct cilk_fiber_pool
 
 struct cilk_fiber
 {
-    size_t          stack_size;       /**< Size of stack for fiber    */
-    __cilkrts_worker*       owner;            /**< Worker using this fiber    */
-    __cilkrts_stack_frame*  resume_sf;        /**< Stack frame to resume      */
-    void*                   client_data;      /**< Data managed by client     */
+  size_t          stack_size;       /**< Size of stack for fiber    */
+  char * m_stack;
+  char * m_stack_base;
+  jmp_buf ctx;
   
-    cilk_fiber_proc  m_start_proc;        ///< Function to run on start up/reset
-    cilk_fiber_proc  m_post_switch_proc;  ///< Function that executes when we first switch to a new fiber from a different one.
+  __cilkrts_worker*       owner;            /**< Worker using this fiber    */
+  __cilkrts_stack_frame*  resume_sf;        /**< Stack frame to resume      */
+  void*                   client_data;      /**< Data managed by client     */
+  
+  cilk_fiber_proc  m_start_proc;        ///< Function to run on start up/reset
+  cilk_fiber_proc  m_post_switch_proc;  ///< Function that executes when we first switch to a new fiber from a different one.
 
-    cilk_fiber*      m_pending_remove_ref;///< Fiber to possibly delete on start up or resume
+  cilk_fiber*      m_pending_remove_ref;///< Fiber to possibly delete on start up or resume
   //cilk_fiber_pool* m_pending_pool;      ///< Pool where m_pending_remove_ref should go if it is deleted.
-    unsigned         m_flags;             ///< Captures the status of this fiber. 
+  unsigned         m_flags;             ///< Captures the status of this fiber. 
 
 #if NEED_FIBER_REF_COUNTS
-    volatile long    m_outstanding_references;  ///< Counts references to this fiber.
+  volatile long    m_outstanding_references;  ///< Counts references to this fiber.
 #endif
 };
 
 
 cilk_fiber * cilk_fiber_allocate_from_thread();
 
+cilk_fiber * cilk_fiber_allocate_from_heap();
+
 int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber);
+
+int cilk_fiber_deallocate_from_heap(cilk_fiber * fiber);
 
 void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * owner) ;
 #endif
