@@ -10,4 +10,4 @@ $(MAIN).a: $(OBJS)
 	gcc -O0 -g -c -Wall -fpic $<
 
 clean:
-	rm -f *.o *.a
+	rm -f *.o *.a *~
