@@ -19,15 +19,33 @@
 
 
 #if defined JB_RSP
- #define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_RSP]
- #define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_RBP]
- #define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
+
+#define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_RSP]
+#define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_RBP]
+#define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
+
 #elif  defined JB_SP
- #define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_SP]
- #define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_BP]
- #define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
+#define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_SP]
+#define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_BP]
+#define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
+
 #endif
 
+
+/**
+ * @brief Get frame pointer from jump buffer in__cilkrts_stack_frame.
+ */
+#define FP(SF) JMPBUF_FP((SF)->ctx)
+
+/**
+ * @brief Get program counter from jump buffer in__cilkrts_stack_frame.
+ */
+#define PC(SF) JMPBUF_PC((SF)->ctx)
+
+/**
+ * @brief Get stack pointer from jump buffer in__cilkrts_stack_frame.
+ */
+#define SP(SF) JMPBUF_SP((SF)->ctx)
 //typedef void *__CILK_JUMP_BUFFER[8];
 
 #define ASM_GET_SP(osp) asm volatile ("movq %%rsp, %0": "=r" (osp))
