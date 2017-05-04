@@ -46,11 +46,11 @@ int fib(int n) {
 
     y = fib(n - 2);
 
-    //if(__cilkrts_unsynched(sf)) {
-        if(!setjmp(sf->ctx)) {
-            __cilkrts_sync(sf);
-        }
-	//}
+    if(__cilkrts_unsynched(sf)) {
+      if(!setjmp(sf->ctx)) {
+	__cilkrts_sync(sf);
+      }
+    }
     _tmp = x + y;
 
     __cilkrts_pop_frame(sf);

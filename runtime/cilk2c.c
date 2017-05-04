@@ -112,16 +112,15 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     ws->tail--;
     Cilk_membar_StoreLoad();
 
-    /* MK: Not yet
     if( ws->exc > ws->tail ) {
       // this may not return if last work item has been stolen
-      Cilk_exception_handler(); 
+      __cilkrts_alert("ws->exc > ws->tail\n");
+      //Cilk_exception_handler(); 
     }
-    */
     
     CILK_ASSERT(*(ws->tail) == ws->current_stack_frame);
 
-  } /* MK: Not yet else {
+  } else {
     // We use else instead of if here, because a detached frame 
     // would never need to call Cilk_set_return, which performs the 
     // return protocol of a full frame back to its parent frame 
@@ -134,8 +133,8 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     if(sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
       // leaving a full frame, need to get the full frame for its call
       // parent back onto the deque
-      Cilk_set_return(ws); 
+      __cilkrts_alert("sf->flags & CILK_FRAME_STOLEN\n");
+      //Cilk_set_return(ws); 
     }
   }
-    */
 }
