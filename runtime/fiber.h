@@ -38,28 +38,57 @@ struct cilk_fiber_pool
 
 struct cilk_fiber
 {
-  size_t          stack_size;       /**< Size of stack for fiber    */
+  size_t stack_size;       /**< Size of stack for fiber    */
+  
   char * m_stack;
   char * m_stack_base;
+  
   jmp_buf ctx;
   
-  __cilkrts_worker*       owner;            /**< Worker using this fiber    */
-  __cilkrts_stack_frame*  resume_sf;        /**< Stack frame to resume      */
-  void*                   client_data;      /**< Data managed by client     */
+  __cilkrts_worker * owner;            /**< Worker using this fiber    */
+  __cilkrts_stack_frame * resume_sf;        /**< Stack frame to resume      */
   
-  cilk_fiber_proc  m_start_proc;        ///< Function to run on start up/reset
-  cilk_fiber_proc  m_post_switch_proc;  ///< Function that executes when we first switch to a new fiber from a different one.
+  cilk_fiber_proc m_start_proc;        ///< Function to run on start up/reset
+  cilk_fiber_proc m_post_switch_proc;  ///< Function that executes when we first switch to a new fiber from a different one.
 
-  cilk_fiber*      m_pending_remove_ref;///< Fiber to possibly delete on start up or resume
+  //cilk_fiber*      m_pending_remove_ref;///< Fiber to possibly delete on start up or resume
   //cilk_fiber_pool* m_pending_pool;      ///< Pool where m_pending_remove_ref should go if it is deleted.
-  unsigned         m_flags;             ///< Captures the status of this fiber. 
+  unsigned m_flags;             ///< Captures the status of this fiber. 
 
 #if NEED_FIBER_REF_COUNTS
   volatile long    m_outstanding_references;  ///< Counts references to this fiber.
 #endif
 };
 
+/** @brief Returns true if this fiber is resumable.
+ *
+ * A fiber is considered resumable when it is not currently being
+ * executed.
+ */
+static inline int cilk_fiber_is_resumable(cilk_fiber * fiber) {
+  return (fiber->m_flags & RESUMABLE);
+}
+    
+/** @brief Returns true if fiber was allocated from a thread. */   
+static inline int cilk_fiber_is_allocated_from_thread(cilk_fiber * fiber) {
+  return (fiber->m_flags & ALLOCATED_FROM_THREAD);
+}
 
+static inline void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * owner)  {
+  fiber->owner = owner;
+}
+
+/** @brief Set the proc method to execute immediately after a switch
+ * to this fiber.
+ */
+static inline void cilk_fiber_set_post_switch_proc(cilk_fiber * fiber, cilk_fiber_proc post_switch_proc) {
+  fiber->m_post_switch_proc = post_switch_proc;
+}
+
+static inline void cilk_fiber_reset_state(cilk_fiber * fiber, cilk_fiber_proc start_proc) {
+  // Setup the fiber and return.
+  fiber->m_start_proc = start_proc;
+}
 cilk_fiber * cilk_fiber_allocate_from_thread();
 
 cilk_fiber * cilk_fiber_allocate_from_heap();
@@ -68,5 +97,9 @@ int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber);
 
 int cilk_fiber_deallocate_from_heap(cilk_fiber * fiber);
 
-void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * owner) ;
+void cilk_fiber_run(cilk_fiber * fiber);
+
+void cilk_fiber_do_post_switch_actions(cilk_fiber * self);
+
+void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * other);
 #endif
