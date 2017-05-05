@@ -13,9 +13,7 @@ typedef struct ReadyDeque ReadyDeque;
 // Actual declaration
 struct ReadyDeque {
   Cilk_mutex mutex;
-  Cilk_mutex steal_mutex;
   int mutex_owner; // WHEN_CILK_DEBUG
-  int steal_mutex_owner; // WHEN_CILK_DEBUG
   Closure *top, *bottom;
   CILK_CACHE_LINE_PAD;
 };

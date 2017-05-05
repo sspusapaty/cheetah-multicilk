@@ -50,7 +50,10 @@
 //typedef void *__CILK_JUMP_BUFFER[8];
 
 #define ASM_GET_SP(osp) asm volatile ("movq %%rsp, %0": "=r" (osp))
-#define ASM_SET_SP(nsp) asm volatile ("movq %0, %%rsp": : "r" (nsp))
+#define ASM_SET_SP(nsp) asm volatile ("movq %0, %%rsp": : "r" (nsp) : "rsp")
+
+#define ASM_GET_FP(ofp) asm volatile ("movq %%rbp, %0": "=r" (ofp))
+#define ASM_SET_FP(nfp) asm volatile ("movq %0, %%rbp": : "r" (nfp) : "rbp")
 
 
 #endif

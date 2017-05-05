@@ -36,6 +36,7 @@ void deques_init(global_state * g) {
   for (int i = 0; i < g->active_size; i++) {
     g->deques[i].top = NULL;
     g->deques[i].bottom = NULL;
+    g->deques[i].mutex_owner = NOBODY;
     Cilk_mutex_init(&(g->deques[i].mutex));
   }
 }

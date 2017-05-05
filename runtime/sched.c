@@ -26,6 +26,7 @@ static inline void reset_exception_pointer(__cilkrts_worker * ws, Closure *cl) {
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
+  __cilkrts_alert("Thread of worker %d: Preparing closure %p\n", ws->self, t);
   t->frame->worker = ws;
   t->status = CLOSURE_RUNNING;
 
@@ -44,7 +45,9 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
 
   Closure *res = NULL;
   __cilkrts_stack_frame *f;
- 
+
+  
+  __cilkrts_alert("Thread of worker %d: do_what_it_says closure %p\n", ws->self, t);
   Closure_lock(ws, t);
 
   switch (t->status) {
@@ -81,9 +84,10 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
 
 void worker_scheduler(__cilkrts_worker * w, Closure * t) {
   CILK_ASSERT(w == __cilkrts_get_tls_worker());
+  __cilkrts_alert("Thread of worker %d: worker_scheduler\n", w->self);
   while (!w->g->done) {
     if (!t) {
-      __cilkrts_alert("Thread of worker %d: worker_scheduler\n", w->self);
+      __cilkrts_alert("Thread of worker %d: no work!\n", w->self);
       return;
     }
 

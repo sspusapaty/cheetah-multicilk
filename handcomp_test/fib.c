@@ -46,7 +46,7 @@ int fib(int n) {
 
     y = fib(n - 2);
 
-    if(__cilkrts_unsynched(sf)) {
+    if(__cilkrts_unsynced(sf)) {
       if(!setjmp(sf->ctx)) {
 	__cilkrts_sync(sf);
       }
