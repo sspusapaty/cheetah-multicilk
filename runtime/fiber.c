@@ -61,16 +61,16 @@ void free_stack(cilk_fiber * f)
   }
 }
 
-inline void cilk_fiber_set_resumable(cilk_fiber * fiber, bool state) {
+void cilk_fiber_set_resumable(cilk_fiber * fiber, int state) {
   fiber->m_flags = state ?  (fiber->m_flags | RESUMABLE) : (fiber->m_flags & (~RESUMABLE));
 }
 
-inline void cilk_fiber_set_allocated_from_thread(cilk_fiber * fiber, bool state) {
+void cilk_fiber_set_allocated_from_thread(cilk_fiber * fiber, int state) {
   fiber->m_flags = state ?  (fiber->m_flags | ALLOCATED_FROM_THREAD) : (fiber->m_flags & (~ALLOCATED_FROM_THREAD));
 }
 
 // Jump to resume other fiber.  We may or may not come back.
-inline void cilk_fiber_resume_other(cilk_fiber * other)
+void cilk_fiber_resume_other(cilk_fiber * other)
 {
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
@@ -84,12 +84,12 @@ inline void cilk_fiber_resume_other(cilk_fiber * other)
   }
 }
 
-inline void cilk_fiber_init(cilk_fiber * fiber) {
+void cilk_fiber_init(cilk_fiber * fiber) {
   fiber->m_stack = NULL;
   fiber->m_stack_base = NULL;
   
   fiber->owner = NULL;
-  fiber->resume->sf = NULL;
+  fiber->resume_sf = NULL;
   
   fiber->m_start_proc = NULL;
   fiber->m_post_switch_proc = NULL;
@@ -128,7 +128,7 @@ int cilk_fiber_deallocate_from_heap(cilk_fiber * fiber) {
 
 void cilk_fiber_run(cilk_fiber * fiber) {
     // Only fibers created from a pool have a proc method to run and execute. 
-    CILK_ASSERT(m_start_proc);
+    CILK_ASSERT(fiber->m_start_proc);
     CILK_ASSERT(!cilk_fiber_is_allocated_from_thread(fiber));
     CILK_ASSERT(!cilk_fiber_is_resumable(fiber));
 
@@ -160,7 +160,7 @@ void cilk_fiber_run(cilk_fiber * fiber) {
         // enough extra space from the top of the stack we are
         // switching to for any temporaries required for this run()
         // function.
-        JMPBUF_SP(fiber->ctx) = m_stack_base - frame_size;
+        JMPBUF_SP(fiber->ctx) = fiber->m_stack_base - frame_size;
 
         longjmp(fiber->ctx, 1);
     }
@@ -172,10 +172,10 @@ void cilk_fiber_run(cilk_fiber * fiber) {
     
     // Verify that 1) 'this' is still valid and 2) '*this' has not been
     // corrupted.
-    CILK_ASSERT(magic_number == m_magic);
+    //CILK_ASSERT(magic_number == m_magic);
 
     // If the fiber that switched to me wants to be deallocated, do it now.
-    do_post_switch_actions();
+    cilk_fiber_do_post_switch_actions(fiber);
 
     // Now call the user proc on the new stack
     fiber->m_start_proc(fiber);
@@ -183,7 +183,7 @@ void cilk_fiber_run(cilk_fiber * fiber) {
     // alloca() to force generation of frame pointer.  The argument to alloca
     // is contrived to prevent the compiler from optimizing it away.  This
     // code should never actually be executed.
-    int* dummy = (int*) alloca((sizeof(int) + (size_t) m_start_proc) & 0x1);
+    int* dummy = (int*) alloca((sizeof(int) + (size_t) fiber->m_start_proc) & 0x1);
     *dummy = 0xface;
 
     // User proc should never return.
@@ -192,10 +192,10 @@ void cilk_fiber_run(cilk_fiber * fiber) {
 
 void cilk_fiber_do_post_switch_actions(cilk_fiber * self)
 {
-    if (m_post_switch_proc) 
+    if (self->m_post_switch_proc) 
     {
         cilk_fiber_proc proc = self->m_post_switch_proc;
-        m_post_switch_proc = NULL;
+        self->m_post_switch_proc = NULL;
         proc(self);
     }
 
@@ -231,7 +231,7 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
 #if SUPPORT_GET_CURRENT_FIBER
     cilkos_set_tls_cilk_fiber(other);
 #endif
-    CILK_ASSERT(this->is_resumable());
+    // CILK_ASSERT(this->is_resumable());
 
     // Jump to the other fiber.  We expect to come back.
     if (! setjmp(self->ctx)) {
@@ -240,5 +240,5 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
 
     // Return here when another fiber resumes me.
     // If the fiber that switched to me wants to be deallocated, do it now.
-    do_post_switch_actions();
+    cilk_fiber_do_post_switch_actions(self);
 }
