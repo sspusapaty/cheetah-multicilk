@@ -21,48 +21,17 @@ struct ReadyDeque {
 };
 
 // assert that pn's deque be locked by ourselves 
-static inline void deque_assert_ownership(__cilkrts_worker *const ws,       
-                       int pn) {
+void deque_assert_ownership(__cilkrts_worker *const ws, int pn);
 
-    CILK_ASSERT(ws->g->deques[pn].mutex_owner == ws->self);
-}
+void deque_lock_self(__cilkrts_worker *const ws);
 
-static inline void deque_lock_self(__cilkrts_worker *const ws) {
+void deque_unlock_self(__cilkrts_worker *const ws);
 
-  int pn = ws->self;
-  Cilk_mutex_wait(&ws->g->deques[pn].mutex);
-  ws->g->deques[pn].mutex_owner = ws->self; // WHEN_CILK_DEBUG
-}
+int deque_trylock(__cilkrts_worker *const ws, int pn);
 
-static inline void deque_unlock_self(__cilkrts_worker *const ws) {
+void deque_lock(__cilkrts_worker *const ws, int pn);
 
-  int pn = ws->self;
-  ws->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
-  Cilk_mutex_signal(&ws->g->deques[pn].mutex);
-}
-
-static inline int deque_trylock(__cilkrts_worker *const ws, int pn) {
-
-  int ret = Cilk_mutex_try(&ws->g->deques[pn].mutex);
-  
-  if(ret) {
-    ws->g->deques[pn].mutex_owner = ws->self;
-  } // WHEN_CILK_DEBUG
-
-    return ret;
-} 
-
-static inline void deque_lock(__cilkrts_worker *const ws, int pn) {
-
-  Cilk_mutex_wait(&ws->g->deques[pn].mutex);
-  ws->g->deques[pn].mutex_owner = ws->self; // WHEN_CILK_DEBUG
-}
-
-static inline void deque_unlock(__cilkrts_worker *const ws, int pn) {
-
-  ws->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
-  Cilk_mutex_signal(&ws->g->deques[pn].mutex);
-}
+void deque_unlock(__cilkrts_worker *const ws, int pn);
 
 /* 
  * functions that add/remove elements from the top/bottom
@@ -85,12 +54,7 @@ Closure *deque_peek_bottom(__cilkrts_worker *const ws, int pn);
  */
 void deque_add_bottom(__cilkrts_worker *const ws, Closure *cl, int pn);
 
-static inline void deque_assert_is_bottom(__cilkrts_worker *const ws, Closure *t) {
-
-  /* ANGE: still need to make sure the worker self has the lock */
-  deque_assert_ownership(ws, ws->self);
-  CILK_ASSERT(t == deque_peek_bottom(ws, ws->self));
-}
+void deque_assert_is_bottom(__cilkrts_worker *const ws, Closure *t);
 
 
 /* ANGE: remove closure for frame f from bottom of pn's deque and _really_ 

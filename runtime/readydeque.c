@@ -4,6 +4,42 @@
  * Management of ReadyDeques
  *********************************************************/
 
+// assert that pn's deque be locked by ourselves 
+void deque_assert_ownership(__cilkrts_worker *const ws, int pn) {
+    CILK_ASSERT(ws->g->deques[pn].mutex_owner == ws->self);
+}
+
+void deque_lock_self(__cilkrts_worker *const ws) {
+  int pn = ws->self;
+  Cilk_mutex_wait(&ws->g->deques[pn].mutex);
+  ws->g->deques[pn].mutex_owner = ws->self; // WHEN_CILK_DEBUG
+}
+
+void deque_unlock_self(__cilkrts_worker *const ws) {
+  int pn = ws->self;
+  ws->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
+  Cilk_mutex_signal(&ws->g->deques[pn].mutex);
+}
+
+int deque_trylock(__cilkrts_worker *const ws, int pn) {
+  int ret = Cilk_mutex_try(&ws->g->deques[pn].mutex);
+  
+  if(ret) {
+    ws->g->deques[pn].mutex_owner = ws->self;
+  } // WHEN_CILK_DEBUG
+
+    return ret;
+} 
+
+void deque_lock(__cilkrts_worker *const ws, int pn) {
+  Cilk_mutex_wait(&ws->g->deques[pn].mutex);
+  ws->g->deques[pn].mutex_owner = ws->self; // WHEN_CILK_DEBUG
+}
+
+void deque_unlock(__cilkrts_worker *const ws, int pn) {
+  ws->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
+  Cilk_mutex_signal(&ws->g->deques[pn].mutex);
+}
 
 /* 
  * functions that add/remove elements from the top/bottom
@@ -101,6 +137,13 @@ Closure *deque_peek_bottom(__cilkrts_worker *const ws, int pn) {
   return cl;
 }
 
+void deque_assert_is_bottom(__cilkrts_worker *const ws, Closure *t) {
+
+  /* ANGE: still need to make sure the worker self has the lock */
+  deque_assert_ownership(ws, ws->self);
+  CILK_ASSERT(t == deque_peek_bottom(ws, ws->self));
+}
+
 /*
  * ANGE: this allow ws -> self to append Closure cl onto worker pn's ready
  *       deque (i.e. make cl the new bottom).
@@ -144,6 +187,6 @@ void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const ws,
     });
 
   /* ANGE: there is no splitter logging in the invoke_main frame */
-  Cilk_free(f);
-  Closure_destroy_malloc(ws, t);
+  //Cilk_free(f);
+  //Closure_destroy_malloc(ws, t);
 }
