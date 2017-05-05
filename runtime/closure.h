@@ -27,7 +27,8 @@ struct Closure {
   
   //WHEN_DEBUG_VERBOSE(int mutex_action;)
   int mutex_owner;
-
+  int owner_ready_deque;
+  
   int join_counter; /* number of spawned outstanding children */
 
   enum ClosureStatus status;

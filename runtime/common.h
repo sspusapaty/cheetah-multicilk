@@ -1,6 +1,8 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+#define NOBODY -1
+
 #define PAGE_SIZE 4096
 
 #define CILK_CACHE_LINE 64

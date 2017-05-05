@@ -57,7 +57,7 @@ Closure *deque_xtract_top(__cilkrts_worker *const ws, int pn) {
 
   cl = ws->g->deques[pn].top;
   if(cl) {
-    CILK_ASSERT(cl->owner_ready_deque == pn);
+    // CILK_ASSERT(cl->owner_ready_deque == pn);
     ws->g->deques[pn].top = cl->next_ready;
     /* ANGE: if there is only one entry in the deque ... */
     if (cl == ws->g->deques[pn].bottom) {
@@ -180,11 +180,6 @@ void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const ws,
 
   CILK_ASSERT(t->frame == f);
   deque_unlock(ws, pn);
-
-  WHEN_CILK_ALLOCA({
-      if(f->alloca_h)
-	Cilk_unalloca_internal(ws, f);
-    });
 
   /* ANGE: there is no splitter logging in the invoke_main frame */
   //Cilk_free(f);

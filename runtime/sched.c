@@ -66,7 +66,7 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     /* now execute it */
     __cilkrts_alert("Jump into user code (Worker %d).\n", ws->self);
 
-    cilk_fiber_suspend_self_and_resume_other(w->l->runtime_fiber, t->fiber_self);
+    cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
 
     __cilkrts_alert("Back from user code (Worker %d).\n", ws->self);
 
