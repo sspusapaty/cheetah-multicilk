@@ -33,6 +33,9 @@ struct Closure {
 
   enum ClosureStatus status;
 
+  int has_cilk_callee; // MAK: Can delete
+  Closure * callee; // MAK: Can delete
+  
   Closure *call_parent; /* the "parent" closure that called */
   Closure *spawn_parent; /* the "parent" closure that spawned */
 
@@ -69,9 +72,35 @@ struct Closure {
 
 void Closure_assert_ownership(__cilkrts_worker *const ws, Closure *t);
 
+void Closure_assert_alienation(__cilkrts_worker *const ws, Closure *t);
+
 int Closure_trylock(__cilkrts_worker *const ws, Closure *t);
 
 void Closure_lock(__cilkrts_worker *const ws, Closure *t);
 
 void Closure_unlock(__cilkrts_worker *const ws, Closure *t);
+
+int Closure_at_top_of_stack(__cilkrts_worker *const ws);
+
+int Closure_has_children(Closure *cl);
+
+Closure *Closure_create(__cilkrts_worker *const ws);
+
+Closure *Cilk_Closure_create_malloc(__cilkrts_global_state *const g, 
+                                    __cilkrts_worker *const ws);
+
+void Closure_add_child(__cilkrts_worker *const ws,
+		       Closure *parent, Closure *child);
+
+void Closure_remove_child(__cilkrts_worker *const ws,
+			  Closure *parent, Closure *child);
+
+void Closure_add_temp_callee(__cilkrts_worker *const ws, 
+			     Closure *caller, Closure *callee);
+
+void Closure_add_callee(__cilkrts_worker *const ws, 
+			Closure *caller, Closure *callee);
+
+void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller);
+
 #endif
