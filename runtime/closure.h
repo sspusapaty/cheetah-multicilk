@@ -86,7 +86,7 @@ int Closure_has_children(Closure *cl);
 
 Closure *Closure_create(__cilkrts_worker *const ws);
 
-Closure *Cilk_Closure_create_malloc(__cilkrts_global_state *const g, 
+Closure *Cilk_Closure_create_malloc(global_state *const g, 
                                     __cilkrts_worker *const ws);
 
 void Closure_add_child(__cilkrts_worker *const ws,
@@ -102,5 +102,12 @@ void Closure_add_callee(__cilkrts_worker *const ws,
 			Closure *caller, Closure *callee);
 
 void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller);
+
+void Closure_suspend_victim(__cilkrts_worker *const ws, 
+			    int victim, Closure *cl);
+
+void Closure_suspend(__cilkrts_worker *const ws, Closure *cl);
+
+void Closure_make_ready(Closure *cl);
 
 #endif

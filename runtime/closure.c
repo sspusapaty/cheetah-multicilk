@@ -98,7 +98,7 @@ Closure *Closure_create(__cilkrts_worker *const ws) {
  *       This seems to be used only for create_initial_thread from
  *       inovke-main.c.
  */
-Closure *Cilk_Closure_create_malloc(__cilkrts_global_state *const g, 
+Closure *Cilk_Closure_create_malloc(global_state *const g, 
                                     __cilkrts_worker *const ws) {
 
   Closure *new_closure = (Closure *) malloc(sizeof(Closure));
@@ -243,4 +243,60 @@ void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller) {
   CILK_ASSERT(caller->has_cilk_callee);
   caller->has_cilk_callee = 0;
   caller->callee = NULL;
+}
+
+/*
+ * ANGE: ws must have locks on closure and its own deque. 
+ * Ws first sets cl from RUNNING to SUSPENDED, then removes closure 
+ * cl from the ready deque.  Since this function is called from 
+ * promote_child (steal), the thief's stack is not remapped yet, so we can't
+ * access the oldest frame nor the fields of the frame.  Hence, this is a
+ * separate and distinctly different function from Closure_suspend (which 
+ * suspend a closure owned by the worker with appropriate stack mapping). 
+ */
+void Closure_suspend_victim(__cilkrts_worker *const ws, 
+			    int victim, Closure *cl) {
+
+  Closure *cl1;
+
+  Closure_checkmagic(ws, cl);
+  Closure_assert_ownership(ws, cl);
+  deque_assert_ownership(ws, victim);
+
+  CILK_ASSERT(cl->status == CLOSURE_RUNNING);
+  CILK_ASSERT(cl == ws->g->invoke_main || cl->spawn_parent || cl->call_parent);
+
+  cl->status = CLOSURE_SUSPENDED;
+
+  //----- EVENT_SUSPEND
+  cl1 = deque_xtract_bottom(ws, victim);
+  CILK_ASSERT(cl == cl1);
+}
+
+void Closure_suspend(__cilkrts_worker *const ws, Closure *cl) {
+
+  Closure *cl1;
+
+  Closure_checkmagic(ws, cl);
+  Closure_assert_ownership(ws, cl);
+  deque_assert_ownership(ws, ws->self);
+
+  CILK_ASSERT(cl->status == CLOSURE_RUNNING);
+  CILK_ASSERT(cl == ws->g->invoke_main || cl->spawn_parent || cl->call_parent);
+  CILK_ASSERT(cl->frame != NULL);
+  CILK_ASSERT(__cilkrts_stolen(cl->frame));
+  CILK_ASSERT(cl->frame->worker->self == ws->self);
+
+  cl->status = CLOSURE_SUSPENDED;
+  cl->frame->worker = (__cilkrts_worker *) NOBODY;
+
+  //----- EVENT_SUSPEND
+  cl1 = deque_xtract_bottom(ws, ws->self);
+
+  CILK_ASSERT(cl == cl1);
+}
+
+void Closure_make_ready(Closure *cl) {
+
+  cl->status = CLOSURE_READY;
 }
