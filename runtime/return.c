@@ -2,6 +2,10 @@
 #include "readydeque.h"
 #include "tls.h"
 #include "common.h"
+#include "cilk2c.h"
+#include "exception.h"
+#include "membar.h"
+#include "steal.h"
 
 //---------- SET ----------//
 
@@ -109,8 +113,6 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
 
   Closure *parent;
   Closure *res = (Closure *) NULL;
-  RMapPageDesc *user_rmap = NULL;
-  int tlmm_has_views; 
 
   CILK_ASSERT(child);
   CILK_ASSERT(child->join_counter == 0);

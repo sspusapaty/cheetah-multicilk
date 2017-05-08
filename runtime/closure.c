@@ -78,11 +78,11 @@ inline void Closure_init(Closure *t) {
   t->next_ready = NULL;
   t->prev_ready = NULL;
 
-  // t->magic = CILK_CLOSURE_MAGIC;
+  t->magic = CILK_CLOSURE_MAGIC;
 
 }
 
-Closure *Closure_create(__cilkrts_worker *const ws) {
+Closure * Closure_create() {
 
   Closure *new_closure = (Closure *)malloc(sizeof(Closure));
   CILK_ASSERT(new_closure != NULL);
@@ -114,12 +114,12 @@ Closure *Cilk_Closure_create_malloc(global_state *const g,
 inline void double_link_children(Closure *left, Closure *right) {
       
   if(left) {
-    CILK_ASSERT_TLS(left->right_sib == (Closure *) NULL);
+    CILK_ASSERT(left->right_sib == (Closure *) NULL);
     left->right_sib = right;
   }
 
   if(right) {
-    CILK_ASSERT_TLS(right->left_sib == (Closure *) NULL);
+    CILK_ASSERT(right->left_sib == (Closure *) NULL);
     right->left_sib = left;
   }
 }
@@ -277,7 +277,7 @@ void Closure_suspend(__cilkrts_worker *const ws, Closure *cl) {
 
   Closure *cl1;
 
-  Closure_checkmagic(ws, cl);
+  // Closure_checkmagic(ws, cl);
   Closure_assert_ownership(ws, cl);
   deque_assert_ownership(ws, ws->self);
 
@@ -299,4 +299,30 @@ void Closure_suspend(__cilkrts_worker *const ws, Closure *cl) {
 void Closure_make_ready(Closure *cl) {
 
   cl->status = CLOSURE_READY;
+}
+
+void Closure_checkmagic(Closure *t) {
+  CILK_ASSERT(t->magic == CILK_CLOSURE_MAGIC);
+}
+
+inline void Closure_clean(__cilkrts_worker *const ws, Closure *t) {
+
+  // sanity checks
+  CILK_ASSERT(t->left_sib == (Closure *)NULL);
+  CILK_ASSERT(t->right_sib == (Closure *)NULL);
+  CILK_ASSERT(t->right_most_child == (Closure *)NULL);
+    
+  Cilk_mutex_destroy(&t->mutex);
+}
+
+/* ANGE: destroy the closure and internally free it (put back to global
+ * pool)
+ */
+void Closure_destroy(struct __cilkrts_worker *const ws, Closure *t) {
+
+  // Closure_checkmagic(ws, t);
+
+  t->magic = ~CILK_CLOSURE_MAGIC;
+  Closure_clean(ws, t);
+  free(t);
 }

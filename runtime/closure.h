@@ -14,6 +14,9 @@ enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 #include "fiber.h"
 #include "types.h"
 #include "common.h"
+
+#define CILK_CLOSURE_MAGIC 0xDEADFACE
+
 /* 
  * the list of children is not distributed among
  * the children themselves, in order to avoid extra protocols
@@ -84,7 +87,7 @@ int Closure_at_top_of_stack(__cilkrts_worker *const ws);
 
 int Closure_has_children(Closure *cl);
 
-Closure *Closure_create(__cilkrts_worker *const ws);
+Closure *Closure_create(); // __cilkrts_worker *const ws);
 
 Closure *Cilk_Closure_create_malloc(global_state *const g, 
                                     __cilkrts_worker *const ws);
@@ -110,4 +113,7 @@ void Closure_suspend(__cilkrts_worker *const ws, Closure *cl);
 
 void Closure_make_ready(Closure *cl);
 
+void Closure_checkmagic(Closure *t);
+
+void Closure_destroy(__cilkrts_worker *const ws, Closure *t);
 #endif

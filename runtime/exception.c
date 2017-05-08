@@ -1,6 +1,8 @@
 #include "exception.h"
 #include "membar.h"
 #include "common.h"
+#include "tls.h"
+#include "sched.h"
 
 void increment_exception_pointer(__cilkrts_worker *const ws, 
 				 __cilkrts_worker *const victim_ws, 
@@ -69,7 +71,6 @@ void signal_immediate_exception_to_all(__cilkrts_worker *const ws) {
 void Cilk_exception_handler() {
 
     Closure *t;
-    int res = 0;
 
     __cilkrts_worker *ws = __cilkrts_get_tls_worker();
 
@@ -107,5 +108,5 @@ void Cilk_exception_handler() {
 
     Closure_unlock(ws, t);
     deque_unlock_self(ws);
-    goBackToRuntime(ws); // NOT returning back to user code
+    longjmp_to_runtime(ws); // NOT returning back to user code
 }
