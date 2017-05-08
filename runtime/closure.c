@@ -129,11 +129,11 @@ inline void double_link_children(Closure *left, Closure *right) {
 inline void unlink_child(Closure *cl) {
 
   if(cl->left_sib) {
-    CILK_ASSERT_TLS(cl->left_sib->right_sib == cl);
+    CILK_ASSERT(cl->left_sib->right_sib == cl);
     cl->left_sib->right_sib = cl->right_sib;
   }
   if(cl->right_sib) {
-    CILK_ASSERT_TLS(cl->right_sib->left_sib == cl);
+    CILK_ASSERT(cl->right_sib->left_sib == cl);
     cl->right_sib->left_sib = cl->left_sib;
   }
   // used only for error checking
@@ -259,7 +259,7 @@ void Closure_suspend_victim(__cilkrts_worker *const ws,
 
   Closure *cl1;
 
-  Closure_checkmagic(ws, cl);
+  // Closure_checkmagic(ws, cl);
   Closure_assert_ownership(ws, cl);
   deque_assert_ownership(ws, victim);
 
