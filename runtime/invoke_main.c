@@ -14,15 +14,9 @@ Closure * create_invoke_main(global_state *const g) {
   __cilkrts_stack_frame * sf;
   cilk_fiber * f;
 
-  t = (Closure *)malloc(sizeof(Closure));
-  t->owner_ready_deque = NOBODY;
-  t->call_parent = (Closure *) NULL;
-  t->spawn_parent = (Closure *) NULL;
-  // t->has_cilk_callee = 0;
-  t->join_counter = 0;
+  t = Closure_create();
+  
   t->status = CLOSURE_READY;
-
-  Cilk_mutex_init(&t->mutex);
 
   sf = (__cilkrts_stack_frame *)malloc(sizeof(__cilkrts_stack_frame));
 

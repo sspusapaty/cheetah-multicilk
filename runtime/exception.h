@@ -18,7 +18,8 @@ void decrement_exception_pointer(__cilkrts_worker *const ws,
 
 void reset_exception_pointer(__cilkrts_worker *const ws, Closure *cl);
 
-
 void signal_immediate_exception_to_all(__cilkrts_worker *const ws);
+
+void Cilk_exception_handler();
 
 #endif

@@ -1,5 +1,6 @@
 #include "closure.h"
 #include "common.h"
+#include "cilk2c.h"
 
 void Closure_assert_ownership(__cilkrts_worker *const ws, Closure *t) {
   CILK_ASSERT(t->mutex_owner == ws->self);
