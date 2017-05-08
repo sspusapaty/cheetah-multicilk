@@ -334,15 +334,15 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	// else case.
 	if(res == (Closure *) NULL) {
 	  res = deque_xtract_top(ws, victim);
-	  CILK_ASSERT(ws, cl == res);
+	  CILK_ASSERT(cl == res);
 	}
 	Closure_assert_ownership(ws, res);
 	    
 	finish_promote(ws, victim_ws, res, child);
 	deque_unlock(ws, victim); // at this point, more steals can happen from the victim.
 
-	CILK_ASSERT(ws, res->right_most_child == child);
-	CILK_ASSERT(ws, res->frame->worker == victim_ws); 
+	CILK_ASSERT(res->right_most_child == child);
+	CILK_ASSERT(res->frame->worker == victim_ws); 
 	Closure_unlock(ws, res);
 
 	//----- EVENT_STEAL
