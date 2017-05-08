@@ -3,6 +3,7 @@
 #include "readydeque.h"
 #include "tls.h"
 #include "common.h"
+#include "cilk2c.h"
 
 /* at a slow sync; return 0 if the sync succeeds, and 1 if suspended */
 /* ANGE: The return value is opposite of what I thought */
@@ -18,7 +19,7 @@ int Cilk_sync(__cilkrts_worker *const ws,
   t = deque_peek_bottom(ws, ws->self); 
   Closure_lock(ws, t);
   /* assert we are really at the top of the stack */
-  CILK_ASSERT(ws, Closure_at_top_of_stack(ws));
+  CILK_ASSERT(Closure_at_top_of_stack(ws));
 
   // reset_closure_frame(ws, t);
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
