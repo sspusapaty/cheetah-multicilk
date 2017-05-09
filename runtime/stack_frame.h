@@ -33,7 +33,7 @@ struct __cilkrts_stack_frame
 
     // Before every spawn and nontrivial sync the client function
     // saves its continuation here.
-    jmp_buf ctx;
+    jmpbuf ctx;
 };
 
 #endif

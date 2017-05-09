@@ -116,7 +116,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
   if( 1 /*Cilk_sync(ws, sf) == SYNC_READY*/ ) {
     // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
     // if this frame is ready to sync.
-    longjmp(sf->ctx, 1);
+    __builtin_longjmp(sf->ctx, 1);
   } else {
     longjmp_to_runtime(ws);                        
   }

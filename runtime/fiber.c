@@ -75,7 +75,7 @@ void cilk_fiber_resume_other(cilk_fiber * other)
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
     // Resume by longjmp'ing to the place where we suspended.
-    longjmp(other->ctx, 1);
+    __builtin_longjmp(other->ctx, 1);
   }
   else {
     // Otherwise, we've never ran this fiber before.  Start the
@@ -241,11 +241,46 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   // CILK_ASSERT(this->is_resumable());
 
   // Jump to the other fiber.  We expect to come back.
-  if (! setjmp(self->ctx)) {
+  if (! __builtin_setjmp(self->ctx)) {
     cilk_fiber_resume_other(other);
   }
 
   // Return here when another fiber resumes me.
   // If the fiber that switched to me wants to be deallocated, do it now.
   cilk_fiber_do_post_switch_actions(self);
+}
+
+void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
+  __cilkrts_stack_frame* sf = fiber->resume_sf;
+  __cilkrts_worker* ws = sf->worker;
+  Closure *t;
+
+  CILK_ASSERT(sf);
+
+  // When we pull the resume_sf out of the fiber to resume it, clear
+  // the old value.
+  fiber->resume_sf = NULL;
+
+  deque_lock_self(ws);
+  t = deque_peek_bottom(ws, ws->self); 
+  deque_unlock_self(ws);
+
+  CILK_ASSERT(ws == fiber->owner);
+
+  // Also, this function needs to be wrapped into a try-catch block
+  // so the compiler generates the appropriate exception information
+  // in this frame.
+    
+  // TBD: IS THIS HANDLER IN THE WRONG PLACE?  Can we longjmp out of
+  // this function (and does it matter?)
+    
+  char* new_sp = sysdep_reset_jump_buffers_for_resume(fiber, t, sf);
+
+  sf->flags &= ~CILK_FRAME_SUSPENDED;
+
+  // longjmp to user code.  Don't process exceptions here,
+  // because we are resuming a stolen frame.
+  sysdep_longjmp_to_sf(new_sp, sf, NULL);
+  /*NOTREACHED*/
+  // Intel's C compiler respects the preceding lint pragma
 }

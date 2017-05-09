@@ -7,7 +7,7 @@
 void longjmp_to_runtime(__cilkrts_worker * w) {
   __cilkrts_alert("Thread of worker %d: longjmp_to_runtime\n", w->self);
 
-  longjmp(w->l->runtime_fiber->ctx, 1);
+  __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
 
     /* 
     char * rsp = NULL;

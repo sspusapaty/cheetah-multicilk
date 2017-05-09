@@ -8,6 +8,7 @@
 //enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,  
 //               UNUSED_INDEX1 = 3, UNUSED_INDEX2 = 4, CTX_SIZE = 5};
 
+/*
 #define JB_RBX    0
 #define JB_RBP    1
 #define JB_R12    2
@@ -31,7 +32,17 @@
 #define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
 
 #endif
+*/
 
+
+typedef void * jmpbuf[5];
+
+    /* word 0 is frame address
+     * word 1 is resume address
+     * word 2 is stack address */
+#define JMPBUF_FP(ctx) (ctx)[0]
+#define JMPBUF_PC(ctx) (ctx)[1]
+#define JMPBUF_SP(ctx) (ctx)[2]
 
 /**
  * @brief Get frame pointer from jump buffer in__cilkrts_stack_frame.

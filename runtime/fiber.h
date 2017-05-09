@@ -43,7 +43,7 @@ struct cilk_fiber
   char * m_stack;
   char * m_stack_base;
   
-  jmp_buf ctx;
+  jmpbuf ctx;
   
   __cilkrts_worker * owner;            /**< Worker using this fiber    */
   __cilkrts_stack_frame * resume_sf;        /**< Stack frame to resume      */
