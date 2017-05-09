@@ -5,8 +5,8 @@
 #include <setjmp.h>
 
 // REALLY uncomfortable here
-//enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,  
-//               UNUSED_INDEX1 = 3, UNUSED_INDEX2 = 4, CTX_SIZE = 5};
+enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,  
+               UNUSED_INDEX1 = 3, UNUSED_INDEX2 = 4, CTX_SIZE = 5};
 
 /*
 #define JB_RBX    0
