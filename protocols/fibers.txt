@@ -1,6 +1,6 @@
 What cilk+ does
 
-########## STEALS
+########## RAND	STEAL
 
 static full_frame *make_child(__cilkrts_worker *w, 
                               full_frame *parent_ff,
@@ -36,6 +36,121 @@ static void detach_for_steal(__cilkrts_worker *w,
 
 appropriate promote gets new fibers, child gets stolen's, rest get nulls
 
+########## GOOD STEAL
+
+/* At sync discard the frame's old stack and take the leftmost child's. */
+static void provably_good_steal_stacks(__cilkrts_worker *w, full_frame *ff)
+{
+    CILK_ASSERT(NULL == ff->fiber_self);
+    ff->fiber_self = ff->fiber_child;
+    ff->fiber_child = NULL;
+}
+
+static
+enum provably_good_steal_t provably_good_steal(__cilkrts_worker *w,
+                                               full_frame       *ff)
+            ...
+	    provably_good_steal_stacks(w, ff);
+
+----------
+
+adopts fiber of child
+
+########## SPAWN RETURN
+
+-----##### THE EXCEPTION
+
+static inline
+void finish_spawn_return_on_user_stack(__cilkrts_worker *w,
+                                       full_frame *parent_ff,
+                                       full_frame *child_ff)
+    if (child_ff->left_sibling || parent_ff->fiber_child) {
+        CILK_ASSERT(parent_ff->fiber_child != child_ff->fiber_self);
+        w->l->fiber_to_free = child_ff->fiber_self;
+    }
+    else {
+        parent_ff->fiber_child = child_ff->fiber_self;
+        w->l->fiber_to_free = NULL;
+    }
+    child_ff->fiber_self = NULL;
+
+static __cilkrts_worker*
+execute_reductions_for_spawn_return(__cilkrts_worker *w,
+                                    full_frame *ff,
+                                    __cilkrts_stack_frame *returning_sf)
+        ...
+	finish_spawn_return_on_user_stack(w, ff->parent, ff);   
+
+static void do_return_from_spawn(__cilkrts_worker *w,
+                                 full_frame *ff,
+                                 __cilkrts_stack_frame *sf)
+                ...
+		steal_result = provably_good_steal(w, parent_ff); 
+
+longjmp_into_runtime(__cilkrts_worker *w,
+                     scheduling_stack_fcn_t fcn,
+                     __cilkrts_stack_frame *sf)
+    ...
+    cilk_fiber_set_post_switch_proc(w->l->scheduling_fiber,
+                                    enter_runtime_transition_proc);
+	...
+	w->l->fiber_to_free = NULL;
+
+void __cilkrts_c_THE_exception_check(__cilkrts_worker *w, 
+                                     __cilkrts_stack_frame *returning_sf)
+        ...
+        w = execute_reductions_for_spawn_return(w, ff, returning_sf);
+	...
+	longjmp_into_runtime(w, do_return_from_spawn, 0);
+
+----------
+
+IF LEFTMOST: frees parent's fiber; then adopts fiber of child
+ELSE: frees child's fiber
+
+-----##### RETURN
+
+static inline void splice_stacks_for_call(__cilkrts_worker *w,
+                                          full_frame *parent_ff,
+                                          full_frame *child_ff)
+    ....
+    parent_ff->fiber_self = child_ff->fiber_self;
+    child_ff->fiber_self = NULL;
+
+static void finalize_child_for_call(__cilkrts_worker *w,
+                                    full_frame *parent_ff,
+                                    full_frame *child_ff)
+        ...
+	splice_stacks_for_call(w, parent_ff, child_ff);
+
+void __cilkrts_return(__cilkrts_worker *w)
+            ...
+	    finalize_child_for_call(w, parent_ff, ff);
+
+----------
+
+adopts fiber of child
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ########## ALL
 
 ---------- 0 ----------
@@ -63,7 +178,6 @@ static void provably_good_steal_stacks(__cilkrts_worker *w, full_frame *ff)
     ff->fiber_self = ff->fiber_child;
     ff->fiber_child = NULL;
 }
-
 
 static inline void splice_stacks_for_call(__cilkrts_worker *w,
                                           full_frame *parent_ff,
@@ -196,3 +310,42 @@ CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
 
 static void enter_runtime_transition_proc(cilk_fiber *fiber)
         calls run_scheduling_stack_fcn(w) --> do_sync, do_return_from_spawn
+
+---------- 5 ----------
+
+CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
+{
+    __cilkrts_worker *w = sf->worker;
+
+    /* Must return normally if (1) the active function was called
+       and not spawned, or (2) the parent has never been stolen. */
+    if ((sf->flags & CILK_FRAME_DETACHED)) {
+        // During replay, check whether w was the last worker to continue
+        replay_wait_for_steal_if_parent_was_stolen(w);
+
+        // Attempt to undo the detach
+        if (__builtin_expect(__cilkrts_undo_detach(sf), 0)) {
+	        // The update of pedigree for leaving the frame occurs
+	        // inside this call if it does not return.
+            __cilkrts_c_THE_exception_check(w, sf);
+        }
+
+        update_pedigree_on_leave_frame(w, sf);
+
+        /* This path is taken when undo-detach wins the race with stealing.
+           Otherwise this strand terminates and the caller will be resumed
+           via setjmp at sync. */
+        if (__builtin_expect(sf->flags & CILK_FRAME_FLAGS_MASK, 0))
+            __cilkrts_bug("W%u: frame won undo-detach race with flags %02x\n",
+                          w->self, sf->flags);
+
+        return;
+    }
+
+    if (__builtin_expect(sf->flags & CILK_FRAME_LAST, 0))
+        __cilkrts_c_return_from_initial(w); /* does return */
+    else if (sf->flags & CILK_FRAME_STOLEN)
+        __cilkrts_return(w); /* does return */
+
+/*    DBGPRINTF("%d-%p __cilkrts_leave_frame - returning, StackBase: %p\n", w->self, GetWorkerFiber(w)); */
+}
