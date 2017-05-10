@@ -131,11 +131,31 @@ void __cilkrts_return(__cilkrts_worker *w)
 
 adopts fiber of child
 
+########## SYNC
 
+static __cilkrts_worker*
+execute_reductions_for_sync(__cilkrts_worker *w,
+                            full_frame *ff,
+                            __cilkrts_stack_frame *sf_at_sync)
+    ...
+    w->l->fiber_to_free = ff->fiber_self;
+    ff->fiber_self = NULL;
 
+static void do_sync(__cilkrts_worker *w, full_frame *ff,
+                    __cilkrts_stack_frame *sf)
+                ...
+		steal_result = provably_good_steal(w, ff);
 
+NORETURN __cilkrts_c_sync(__cilkrts_worker *w,
+                          __cilkrts_stack_frame *sf_at_sync)
+    ...
+    w = execute_reductions_for_sync(w, ff, sf_at_sync);
+    ...
+    longjmp_into_runtime(w, do_sync, sf_at_sync);
 
+----------
 
+frees fiber; adopts fiber of child
 
 
 

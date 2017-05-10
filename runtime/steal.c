@@ -384,7 +384,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	    
 	finish_promote(ws, victim_ws, res, child);
 
-	// MAK: I think this is an okay place
+	// MAK: FIBER-RAND STEAL
+	// I think this is an okay place
 	cl->fiber = 0;
 	res->fiber = fiber;
 	child->fiber = parent_fiber;
@@ -459,7 +460,10 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     res = parent;
     ws->l->provablyGoodSteal = 1;
     res->frame->worker = ws;
-
+    // MAK: FIBER-GOOD STEAL
+    res->fiber = res->fiber_child;
+    res->fiber_child = NULL;
+    
     //----- EVENT_PROVABLY_GOOD_STEAL
 
     /* debugging stuff */
