@@ -193,7 +193,8 @@ Closure *promote_child(__cilkrts_worker *const ws,
   // than one frame, because the right-most (oldest) frame must be a spawn
   // helper which can only call a Cilk function.  On the other hand, if
   // cl's frame is set AND equal to the frame at *HEAD, cl must be either
-  // the root frame (invoke_main) or have been stolen before. 
+  // the root frame (invoke_main) or have been stolen before.
+  // MAK: With the logic change, not sure this is valid
   if(cl->frame == frame_to_steal) {
     spawn_parent = cl;
   } else { // cl->frame could either be NULL or some older frame 
@@ -286,6 +287,41 @@ void finish_promote(__cilkrts_worker *const ws,
   return;
 }
 
+void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
+  __cilkrts_stack_frame* sf = fiber->resume_sf;
+  __cilkrts_worker* ws = sf->worker;
+  Closure *t;
+
+  CILK_ASSERT(sf);
+
+  // When we pull the resume_sf out of the fiber to resume it, clear
+  // the old value.
+  fiber->resume_sf = NULL;
+
+  deque_lock_self(ws);
+  t = deque_peek_bottom(ws, ws->self); 
+  deque_unlock_self(ws);
+
+  CILK_ASSERT(ws == fiber->owner);
+
+  // Also, this function needs to be wrapped into a try-catch block
+  // so the compiler generates the appropriate exception information
+  // in this frame.
+    
+  // TBD: IS THIS HANDLER IN THE WRONG PLACE?  Can we longjmp out of
+  // this function (and does it matter?)
+    
+  char* new_sp = sysdep_reset_jump_buffers_for_resume(fiber, sf);
+
+  sf->flags &= ~CILK_FRAME_SUSPENDED;
+
+  // longjmp to user code.  Don't process exceptions here,
+  // because we are resuming a stolen frame.
+  sysdep_longjmp_to_sf(new_sp, sf);
+  /*NOTREACHED*/
+  // Intel's C compiler respects the preceding lint pragma
+}
+
 //---------- 0 ----------//
 
 /*
@@ -297,6 +333,10 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
   Closure *res = (Closure *) NULL;
   Closure *cl, *child;
   __cilkrts_worker *victim_ws;
+  cilk_fiber *fiber = NULL;
+  cilk_fiber *parent_fiber = NULL;
+  
+  int success = 0;
 
   //----- EVENT_STEAL_ATTEMPT
 
@@ -312,7 +352,9 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       return NULL;
     }
 
+    __cilkrts_alert("Worker %d: trying steal from worker %d\n", ws->self, victim);
     victim_ws = ws->g->workers[victim];
+    fiber = cilk_fiber_allocate_from_heap();
 
     switch (cl->status) {
     case CLOSURE_READY:
@@ -322,6 +364,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RUNNING:
       /* send the exception to the worker */
       if (do_dekker_on(ws, victim_ws, cl)) {
+	parent_fiber = cl->fiber;
+	
 	/* 
 	 * if we could send the exception, promote
 	 * the child to a full closure, and steal
@@ -339,6 +383,12 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	Closure_assert_ownership(ws, res);
 	    
 	finish_promote(ws, victim_ws, res, child);
+
+	// MAK: I think this is an okay place
+	cl->fiber = 0;
+	res->fiber = fiber;
+	child->fiber = parent_fiber;
+	
 	deque_unlock(ws, victim); // at this point, more steals can happen from the victim.
 
 	CILK_ASSERT(res->right_most_child == child);
@@ -346,6 +396,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	Closure_unlock(ws, res);
 
 	//----- EVENT_STEAL
+	success = 0;
 
       } else {
 	//----- EVENT_STEAL_NO_DEKKER
@@ -377,7 +428,16 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     deque_unlock(ws, victim);
     //----- EVENT_STEAL_EMPTY_DEQUE
   }
-
+ 
+  if (0 == success) {
+    __cilkrts_alert("Worker %d: steal failed...\n", ws->self);
+  } else {
+    __cilkrts_alert("Worker %d: steal succeeded!\n", ws->self);
+    // Since our steal was successful, finish initialization of
+    // the fiber.
+    cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);
+  }
+    
   return res;
 }
 
