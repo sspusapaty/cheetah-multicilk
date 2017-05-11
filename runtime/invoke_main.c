@@ -74,6 +74,7 @@ void invoke_main(cilk_fiber * f) {
   int argc = ws->g->cilk_main_argc;
   char **args = ws->g->cilk_main_args;
 
+  __cilkrts_alert(2, "Worker %d: invoke_main.\n", ws->self);
   alloca(ZERO);
 
   cilk_fiber_set_owner(f, ws);

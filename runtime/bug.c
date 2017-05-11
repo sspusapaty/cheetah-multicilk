@@ -31,7 +31,7 @@ void __cilkrts_alert(const int lvl, const char *fmt,...) {
   vfprintf(stderr, fmt, l);
   va_end(l);
 #else
-  if (lvl < DEBUG_LVL) {
+  if (lvl <= DEBUG_LVL) {
     va_list l;
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);

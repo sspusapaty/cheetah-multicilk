@@ -57,6 +57,7 @@ void threads_join(global_state * g) {
     if (status != 0)
       __cilkrts_bug("Cilk runtime error: thread join (%d) failed: %d\n", i, status);
     }
+  __cilkrts_alert(1, "All workers joined!\n");
 }
 
 void __cilkrts_run(global_state * g) {

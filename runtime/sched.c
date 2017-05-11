@@ -4,6 +4,8 @@
 #include "return.h"
 #include "readydeque.h"
 #include "exception.h"
+#include "steal.h"
+#include "rts_rand.h"
 
 #include <stdio.h>
 
@@ -88,16 +90,35 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
   return res;
 }
 
-void worker_scheduler(__cilkrts_worker * w, Closure * t) {
-  CILK_ASSERT(w == __cilkrts_get_tls_worker());
-  __cilkrts_alert(2, "Thread of worker %d: worker_scheduler\n", w->self);
-  while (!w->g->done) {
+void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
+  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
+  __cilkrts_alert(2, "Thread of worker %d: worker_scheduler\n", ws->self);
+
+  rts_srand(ws, ws->self * 162347);
+
+  while (!ws->g->done) {
     if (!t) {
-      __cilkrts_alert("Thread of worker %d: no work!\n", w->self);
-      return;
+      // try to get work from our local queue
+      __cilkrts_alert(3, "Thread of worker %d: no work!  Checking local deque\n", ws->self);
+      deque_lock_self(ws);
+      t = deque_xtract_bottom(ws, ws->self);
+      deque_unlock_self(ws);
     }
 
-    do_what_it_says(w, t);
+    while (!t && !ws->g->done) {
+
+      int victim = rts_rand(ws) % ws->g->active_size;
+      if( victim != ws->self ) {
+	__cilkrts_alert(3, "Thread of worker %d:  Checking worker %d for work\n", ws->self, victim);
+	t = Closure_steal(ws, victim);
+      }
+    }
+
+    if (!ws->g->done) {
+      // if provably-good steals happened, it will contain
+      // the next closure to execute
+      t = do_what_it_says(ws, t);
+    }
   }
 }
 
