@@ -19,7 +19,7 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     worker_scheduler(w);
     ASM_SET_SP(rsp);
     */
-  __cilkrts_alert("Thread of worker %d: exit longjmp_to_runtime\n", w->self);
+  __cilkrts_alert(3, "Thread of worker %d: exit longjmp_to_runtime\n", w->self);
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {

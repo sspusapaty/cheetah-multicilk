@@ -5,7 +5,7 @@ OBJS = $(patsubst %.c,%.o,$(SRCS))
 OPTIONS = -Wall -fpic
 
 ifdef BUG
-  OPTIONS += -D"DEBUG_LVL=$(DEBUG)"
+  OPTIONS += -D"DEBUG_LVL=$(BUG)"
 endif
 
 $(MAIN).a: $(OBJS)

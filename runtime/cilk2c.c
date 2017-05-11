@@ -150,7 +150,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
 
     if( ws->exc > ws->tail ) {
       // this may not return if last work item has been stolen
-      __cilkrts_alert("ws->exc > ws->tail\n");
+      __cilkrts_alert(4, "ws->exc > ws->tail\n");
       Cilk_exception_handler(); 
     }
     
@@ -169,7 +169,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     if(sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
       // leaving a full frame, need to get the full frame for its call
       // parent back onto the deque
-      __cilkrts_alert("sf->flags & CILK_FRAME_STOLEN\n");
+      __cilkrts_alert(4, "sf->flags & CILK_FRAME_STOLEN\n");
       Cilk_set_return(ws); 
     }
   }
