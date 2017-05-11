@@ -350,6 +350,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	    
 	finish_promote(ws, victim_ws, res, child);
 
+	
+	fiber->resume_sf = res->frame; // MAK: ???
 	// MAK: FIBER-RAND STEAL
 	// I think this is an okay place
 	cl->fiber = 0;
@@ -363,10 +365,12 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	Closure_unlock(ws, res);
 
 	//----- EVENT_STEAL
-	success = 0;
+	success = 1;
 
       } else {
 	//----- EVENT_STEAL_NO_DEKKER
+        __cilkrts_alert(3, "Worker %d: steal failed: dekker fail\n", ws->self);
+
 	goto give_up;
       }
 
@@ -379,6 +383,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RETURNING:
       /* ok, let it leave alone */
       //----- EVENT_STEAL_RETURNING
+      __cilkrts_alert(3, "Worker %d: steal failed: returning closure\n", ws->self);
+
 
     give_up:
       // MUST unlock the closure before the queue;
@@ -396,9 +402,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     //----- EVENT_STEAL_EMPTY_DEQUE
   }
  
-  if (0 == success) {
-    __cilkrts_alert(3, "Worker %d: steal failed...\n", ws->self);
-  } else {
+  if (success) {
     __cilkrts_alert(3, "Worker %d: steal succeeded!\n", ws->self);
     // Since our steal was successful, finish initialization of
     // the fiber.

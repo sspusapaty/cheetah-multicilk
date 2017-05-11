@@ -33,6 +33,7 @@ struct global_state {
 
   Closure *invoke_main;
 
+  volatile int start;
   volatile int done;
 
   int cilk_main_argc;
