@@ -10,7 +10,7 @@
 #define CILK_CACHE_LINE_PAD  char __dummy[CILK_CACHE_LINE]
 
 void __cilkrts_bug(const char *fmt,...);
-void __cilkrts_alert(const char *fmt,...);
+void __cilkrts_alert(const int lvl, const char *fmt,...);
 
 /** Standard text for failed assertion */
 extern const char *const __cilkrts_assertion_failed;

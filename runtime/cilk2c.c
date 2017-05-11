@@ -45,7 +45,7 @@ int __cilkrts_not_stolen(__cilkrts_stack_frame *sf) {
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
   // MK: not supporting slow path yet
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert("Worker %d: entering frame %p\n", ws->self, sf);
+  __cilkrts_alert(4, "Worker %d: entering frame %p\n", ws->self, sf);
   /*
 
     if(ws == 0) { // slow path, rare
@@ -71,7 +71,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // this version of the function is actually used only in tlmm-invoke-main.c
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert("Worker %d: entering frame %p... fast!\n", ws->self, sf);
+  __cilkrts_alert(4, "Worker %d: entering frame %p... fast!\n", ws->self, sf);
 
   sf->flags = 0;
   sf->call_parent = ws->current_stack_frame; 
@@ -88,7 +88,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
 // this version of the function is actually used only in tlmm-invoke-main.c
 void __cilkrts_detach(__cilkrts_stack_frame * self) {
   struct __cilkrts_worker * ws = self->worker;
-  __cilkrts_alert("Worker %d: detaching frame %p\n", ws->self, self);
+  __cilkrts_alert(4, "Worker %d: detaching frame %p\n", ws->self, self);
 
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
   CILK_ASSERT(ws->current_stack_frame == self);
@@ -110,7 +110,7 @@ void __cilkrts_detach(__cilkrts_stack_frame * self) {
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert("Worker %d: syncing frame %p\n", ws->self, sf);
+  __cilkrts_alert(4, "Worker %d: syncing frame %p\n", ws->self, sf);
     
   // CILK_ASSERT(ws, sf->magic == CILK_STACKFRAME_MAGIC);
   CILK_ASSERT(sf->worker == ws);
@@ -130,7 +130,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 // this version of the function is actually used only in tlmm-invoke-main.c
 void __cilkrts_pop_frame(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = sf->worker;
-  __cilkrts_alert("Worker %d: popping frame %p\n", ws->self, sf);
+  __cilkrts_alert(4, "Worker %d: popping frame %p\n", ws->self, sf);
 
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
   ws->current_stack_frame = sf->call_parent;
@@ -139,7 +139,7 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame * sf) {
 
 void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert("Worker %d: leaving frame %p\n", ws->self, sf);
+  __cilkrts_alert(4, "Worker %d: leaving frame %p\n", ws->self, sf);
 
   CILK_ASSERT(sf->worker == ws);
   // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);

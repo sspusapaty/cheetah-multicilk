@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 void longjmp_to_runtime(__cilkrts_worker * w) {
-  __cilkrts_alert("Thread of worker %d: longjmp_to_runtime\n", w->self);
+  __cilkrts_alert(3, "Thread of worker %d: longjmp_to_runtime\n", w->self);
 
   __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
 
@@ -23,7 +23,7 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
-  __cilkrts_alert("Thread of worker %d: Preparing closure %p\n", ws->self, t);
+  __cilkrts_alert(3, "Thread of worker %d: Preparing closure %p\n", ws->self, t);
   t->frame->worker = ws;
   t->status = CLOSURE_RUNNING;
 
@@ -44,7 +44,7 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
   __cilkrts_stack_frame *f;
 
   
-  __cilkrts_alert("Thread of worker %d: do_what_it_says closure %p\n", ws->self, t);
+  __cilkrts_alert(3, "Thread of worker %d: do_what_it_says closure %p\n", ws->self, t);
   Closure_lock(ws, t);
 
   switch (t->status) {
@@ -64,11 +64,11 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     deque_unlock_self(ws);
     
     /* now execute it */
-    __cilkrts_alert("Jump into user code (Worker %d).\n", ws->self);
+    __cilkrts_alert(4, "Jump into user code (Worker %d).\n", ws->self);
 
     cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
 
-    __cilkrts_alert("Back from user code (Worker %d).\n", ws->self);
+    __cilkrts_alert(4, "Back from user code (Worker %d).\n", ws->self);
 	    
     break; // ?
 
@@ -90,7 +90,7 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
 
 void worker_scheduler(__cilkrts_worker * w, Closure * t) {
   CILK_ASSERT(w == __cilkrts_get_tls_worker());
-  __cilkrts_alert("Thread of worker %d: worker_scheduler\n", w->self);
+  __cilkrts_alert(2, "Thread of worker %d: worker_scheduler\n", w->self);
   while (!w->g->done) {
     if (!t) {
       __cilkrts_alert("Thread of worker %d: no work!\n", w->self);

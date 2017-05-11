@@ -21,12 +21,21 @@ void __cilkrts_bug(const char *fmt,...) {
 
     exit(1);
 }
-void __cilkrts_alert(const char *fmt,...) {
+void __cilkrts_alert(const int lvl, const char *fmt,...) {
 
-    /* To reduce user confusion, write all user-generated output
-       before the system-generated error message. */
+  /* To reduce user confusion, write all user-generated output
+     before the system-generated error message. */
+#ifndef DEBUG_LVL
+  va_list l;
+  va_start(l, fmt);
+  vfprintf(stderr, fmt, l);
+  va_end(l);
+#else
+  if (lvl < DEBUG_LVL) {
     va_list l;
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);
     va_end(l);
+  }
+#endif
 }

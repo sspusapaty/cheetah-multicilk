@@ -318,7 +318,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       return NULL;
     }
 
-    __cilkrts_alert("Worker %d: trying steal from worker %d\n", ws->self, victim);
+    __cilkrts_alert(2, "Worker %d: trying steal from worker %d\n", ws->self, victim);
     victim_ws = ws->g->workers[victim];
     fiber = cilk_fiber_allocate_from_heap();
 
@@ -397,9 +397,9 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
   }
  
   if (0 == success) {
-    __cilkrts_alert("Worker %d: steal failed...\n", ws->self);
+    __cilkrts_alert(3, "Worker %d: steal failed...\n", ws->self);
   } else {
-    __cilkrts_alert("Worker %d: steal succeeded!\n", ws->self);
+    __cilkrts_alert(3, "Worker %d: steal succeeded!\n", ws->self);
     // Since our steal was successful, finish initialization of
     // the fiber.
     cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);

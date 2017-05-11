@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 global_state * global_state_init(int argc, char* argv[]) {
-  __cilkrts_alert("Initializing global state.\n");
+  __cilkrts_alert(1, "Initializing global state.\n");
   
   global_state * g = (global_state *) malloc(sizeof(global_state));
 
@@ -27,12 +27,14 @@ local_state * worker_local_init() {
   local_state * l = (local_state *) malloc(sizeof(local_state));
   l->deque_depth = 10000;
   l->shadow_stack = (CilkShadowStack) malloc(l->deque_depth * sizeof(struct __cilkrts_stack_frame *));
+  l->runtime_fiber = NULL;
+  l->fiber_to_free = NULL;
 
   return l;
 }
 
 void deques_init(global_state * g) {
-  __cilkrts_alert("Initializing deques.\n");
+  __cilkrts_alert(1, "Initializing deques.\n");
   for (int i = 0; i < g->active_size; i++) {
     g->deques[i].top = NULL;
     g->deques[i].bottom = NULL;
@@ -42,8 +44,9 @@ void deques_init(global_state * g) {
 }
 
 void workers_init(global_state * g) {
-  __cilkrts_alert("Initializing workers.\n");
+  __cilkrts_alert(1, "Initializing workers.\n");
   for (int i = 0; i < g->active_size; i++) {
+    __cilkrts_alert(2, "Initializing worker %d.\n", i);
     __cilkrts_worker * w = (__cilkrts_worker *) malloc(sizeof(__cilkrts_worker));
     w->self = i; // i + 1?
     w->g = g;
@@ -58,6 +61,7 @@ void workers_init(global_state * g) {
 }
 
 global_state * __cilkrts_init(int argc, char* argv[]) {
+  __cilkrts_alert(1, "__cilkrts_init\n");
   global_state * g = global_state_init(argc, argv);
   __cilkrts_init_tls_variables();
   workers_init(g);

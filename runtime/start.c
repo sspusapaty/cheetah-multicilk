@@ -31,13 +31,13 @@ void* scheduler_thread_proc(void * arg) {
 }
 
 void main_thread_init(global_state * g) {
-  __cilkrts_alert("Setting up main thread's closure.\n");
+  __cilkrts_alert(1, "Setting up main thread's closure.\n");
 
   g->invoke_main = create_invoke_main(g);
 }
 
 void threads_init(global_state * g) {
-  __cilkrts_alert("Setting up threads.\n");
+  __cilkrts_alert(1, "Setting up threads.\n");
   for (int i = 0; i < g->active_size; i++) {
     int status = pthread_create(&g->threads[i],
                                 NULL,
