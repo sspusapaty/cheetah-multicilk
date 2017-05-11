@@ -4,6 +4,7 @@
 #include "exception.h"
 #include "membar.h"
 #include "readydeque.h"
+#include "fiber-procs.h"
 
 //---------- 3 ----------//
 
@@ -14,7 +15,7 @@
  * full frame (i.e., never been stolen), or the closest detached frame 
  * if nothing in this stacklet has been promoted. 
  */
-inline __cilkrts_stack_frame * oldest_non_stolen_frame_in_stacklet(__cilkrts_stack_frame *head) {
+static inline __cilkrts_stack_frame * oldest_non_stolen_frame_in_stacklet(__cilkrts_stack_frame *head) {
 
   __cilkrts_stack_frame *cur = head;
   while(cur && (cur->flags & CILK_FRAME_DETACHED) == 0 && 
@@ -285,41 +286,6 @@ void finish_promote(__cilkrts_worker *const ws,
   Closure_make_ready(parent);
 
   return;
-}
-
-void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
-  __cilkrts_stack_frame* sf = fiber->resume_sf;
-  __cilkrts_worker* ws = sf->worker;
-  Closure *t;
-
-  CILK_ASSERT(sf);
-
-  // When we pull the resume_sf out of the fiber to resume it, clear
-  // the old value.
-  fiber->resume_sf = NULL;
-
-  deque_lock_self(ws);
-  t = deque_peek_bottom(ws, ws->self); 
-  deque_unlock_self(ws);
-
-  CILK_ASSERT(ws == fiber->owner);
-
-  // Also, this function needs to be wrapped into a try-catch block
-  // so the compiler generates the appropriate exception information
-  // in this frame.
-    
-  // TBD: IS THIS HANDLER IN THE WRONG PLACE?  Can we longjmp out of
-  // this function (and does it matter?)
-    
-  char* new_sp = sysdep_reset_jump_buffers_for_resume(fiber, sf);
-
-  sf->flags &= ~CILK_FRAME_SUSPENDED;
-
-  // longjmp to user code.  Don't process exceptions here,
-  // because we are resuming a stolen frame.
-  sysdep_longjmp_to_sf(new_sp, sf);
-  /*NOTREACHED*/
-  // Intel's C compiler respects the preceding lint pragma
 }
 
 //---------- 0 ----------//

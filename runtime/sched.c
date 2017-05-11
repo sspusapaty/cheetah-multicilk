@@ -1,6 +1,9 @@
 #include "sched.h"
 #include "jmpbuf.h"
 #include "tls.h"
+#include "return.h"
+#include "readydeque.h"
+#include "exception.h"
 
 #include <stdio.h>
 
@@ -17,12 +20,6 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     ASM_SET_SP(rsp);
     */
   __cilkrts_alert("Thread of worker %d: exit longjmp_to_runtime\n", w->self);
-}
-  
-
-
-static inline void reset_exception_pointer(__cilkrts_worker * ws, Closure *cl) {
-  ws->exc = ws->head;
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
@@ -72,7 +69,16 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
 
     __cilkrts_alert("Back from user code (Worker %d).\n", ws->self);
+	    
+    break; // ?
 
+  case CLOSURE_RETURNING:
+    // the return protocol assumes t is not locked, and everybody 
+    // will respect the fact that t is returning
+    Closure_unlock(ws, t);
+
+    res = return_value(ws, t);
+	    
     break; // ?
   default:
     __cilkrts_bug("BUG in do_what_it_says()\n");

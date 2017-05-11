@@ -33,8 +33,8 @@ int Cilk_sync(__cilkrts_worker *const ws,
 
   if(Closure_has_children(t)) {
     // MAK: FIBER-SYNC GUESS
-    w->l->fiber_to_free = t->fiber_self;
-    t->fiber_self = NULL;
+    ws->l->fiber_to_free = t->fiber;
+    t->fiber = NULL;
     // place holder for reducer map; the views in tlmm (if any) are updated 
     // by the last strand in Closure t before sync; need to reduce 
     // these when successful provably good steal occurs

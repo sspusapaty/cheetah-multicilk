@@ -26,7 +26,9 @@ struct Closure {
   Cilk_mutex mutex;          /* mutual exclusion lock */
 
   __cilkrts_stack_frame *frame;       /* rest of the closure */
+
   cilk_fiber * fiber;
+  cilk_fiber * fiber_child;
   
   //WHEN_DEBUG_VERBOSE(int mutex_action;)
   int mutex_owner;

@@ -54,11 +54,12 @@ int Closure_has_children(Closure *cl) {
   return ( cl->has_cilk_callee || cl->join_counter != 0 );
 }
 
-inline void Closure_init(Closure *t) {
+static inline void Closure_init(Closure *t) {
   Cilk_mutex_init(&t->mutex);
 
   t->frame = NULL;
   t->fiber = NULL;
+  t->fiber_child = NULL;
 
   t->mutex_owner = NOBODY;
   t->owner_ready_deque = NOBODY;
@@ -111,7 +112,7 @@ Closure *Cilk_Closure_create_malloc(global_state *const g,
 
 // double linking left and right; the right is always the new child
 // Note that we must have the lock on the parent when invoking this function
-inline void double_link_children(Closure *left, Closure *right) {
+static inline void double_link_children(Closure *left, Closure *right) {
       
   if(left) {
     CILK_ASSERT(left->right_sib == (Closure *) NULL);
@@ -126,7 +127,7 @@ inline void double_link_children(Closure *left, Closure *right) {
 
 // unlink the closure from its left and right siblings
 // Note that we must have the lock on the parent when invoking this function
-inline void unlink_child(Closure *cl) {
+static inline void unlink_child(Closure *cl) {
 
   if(cl->left_sib) {
     CILK_ASSERT(cl->left_sib->right_sib == cl);
@@ -305,7 +306,7 @@ void Closure_checkmagic(Closure *t) {
   CILK_ASSERT(t->magic == CILK_CLOSURE_MAGIC);
 }
 
-inline void Closure_clean(__cilkrts_worker *const ws, Closure *t) {
+static inline void Closure_clean(__cilkrts_worker *const ws, Closure *t) {
 
   // sanity checks
   CILK_ASSERT(t->left_sib == (Closure *)NULL);

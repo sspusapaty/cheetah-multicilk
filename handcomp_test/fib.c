@@ -32,6 +32,7 @@ static void fib_spawn_helper(int *x, int n);
 
 int fib(int n) {
     int x, y, _tmp;
+    char * rsp;
 
     if(n < 2) {
         return n;
@@ -40,17 +41,21 @@ int fib(int n) {
     PREAMBLE
     __cilkrts_enter_frame(sf);
 
-    if(!setjmp(sf->ctx)) {
+    ASM_GET_SP(rsp);
+    
+    if(!__builtin_setjmp(sf->ctx)) {
         fib_spawn_helper(&x, n-1);
     }
 
     y = fib(n - 2);
 
     if(__cilkrts_unsynced(sf)) {
-      if(!setjmp(sf->ctx)) {
+      if(!__builtin_setjmp(sf->ctx)) {
 	__cilkrts_sync(sf);
       }
     }
+    ASM_SET_SP(rsp);
+    
     _tmp = x + y;
 
     __cilkrts_pop_frame(sf);

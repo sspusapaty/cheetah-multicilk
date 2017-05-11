@@ -26,7 +26,7 @@ struct local_state {
     int barrier_direction;
 
     cilk_fiber * runtime_fiber;
-    cilk_fiber * user_fiber;
+    cilk_fiber * fiber_to_free;
   
     volatile unsigned int magic;
 };

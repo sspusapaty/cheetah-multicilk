@@ -40,7 +40,6 @@ void reset_exception_pointer(__cilkrts_worker *const ws, Closure *cl) {
   ws->exc = ws->head;
 }
 
-
 void signal_immediate_exception_to_all(__cilkrts_worker *const ws) {
 
     int i, active_size = ws->g->active_size;

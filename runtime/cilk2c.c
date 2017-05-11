@@ -4,6 +4,9 @@
 //#include "common.h"
 #include "membar.h"
 #include "sched.h"
+#include "sync.h"
+#include "exception.h"
+#include "return.h"
 
 void __cilkrts_set_stolen(__cilkrts_stack_frame *sf) {
     sf->flags |= CILK_FRAME_STOLEN;
@@ -113,7 +116,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
   CILK_ASSERT(sf->worker == ws);
   CILK_ASSERT(sf == ws->current_stack_frame);
 
-  if( 1 /*Cilk_sync(ws, sf) == SYNC_READY*/ ) {
+  if( Cilk_sync(ws, sf) == SYNC_READY ) {
     // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
     // if this frame is ready to sync.
     __builtin_longjmp(sf->ctx, 1);
@@ -148,7 +151,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     if( ws->exc > ws->tail ) {
       // this may not return if last work item has been stolen
       __cilkrts_alert("ws->exc > ws->tail\n");
-      //Cilk_exception_handler(); 
+      Cilk_exception_handler(); 
     }
     
     CILK_ASSERT(*(ws->tail) == ws->current_stack_frame);
@@ -167,7 +170,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
       // leaving a full frame, need to get the full frame for its call
       // parent back onto the deque
       __cilkrts_alert("sf->flags & CILK_FRAME_STOLEN\n");
-      //Cilk_set_return(ws); 
+      Cilk_set_return(ws); 
     }
   }
 }
