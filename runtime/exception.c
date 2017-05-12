@@ -105,6 +105,27 @@ void Cilk_exception_handler() {
         return;
     }
 
+    
+
+    // MAK: FIBER-THE CASE
+    // Execute left-holder logic for stacks.
+    if (t->left_sib || t->spawn_parent->fiber_child) {
+      // Case where we are not the leftmost stack.
+      CILK_ASSERT(t->spawn_parent->fiber_child != t->fiber);
+
+      // Remember any fiber we need to free in the worker.
+      // After we jump into the runtime, we will actually do the
+      // free.
+      ws->l->fiber_to_free = t->fiber;
+    } else {
+      // We are leftmost, pass stack/fiber up to parent.
+      // Thus, no stack/fiber to free.
+      t->spawn_parent->fiber_child = t->fiber;
+      ws->l->fiber_to_free = NULL;
+    }
+
+    t->fiber = NULL;
+
     Closure_unlock(ws, t);
     deque_unlock_self(ws);
     longjmp_to_runtime(ws); // NOT returning back to user code

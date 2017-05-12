@@ -318,9 +318,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       return NULL;
     }
 
-    __cilkrts_alert(2, "Worker %d: trying steal from worker %d\n", ws->self, victim);
+    __cilkrts_alert(5, "[%d]: trying steal from W%d; cl=%p\n", ws->self, victim, cl);
     victim_ws = ws->g->workers[victim];
-    fiber = cilk_fiber_allocate_from_heap();
 
     switch (cl->status) {
     case CLOSURE_READY:
@@ -330,6 +329,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RUNNING:
       /* send the exception to the worker */
       if (do_dekker_on(ws, victim_ws, cl)) {
+        __cilkrts_alert(3, "[%d]: can steal from W%d; cl=%p\n", ws->self, victim, cl);
+	fiber = cilk_fiber_allocate_from_heap();
 	parent_fiber = cl->fiber;
 	
 	/* 
@@ -338,6 +339,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	 * the parent
 	 */
 	child = promote_child(ws, victim_ws, cl, &res);
+        __cilkrts_alert(3, "[%d]: promote gave cl/res = %p/%p\n", ws->self, cl, res);
 
 	/* detach the parent */
 	// ANGE: the top of the deque could have changed in the
@@ -369,7 +371,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 
       } else {
 	//----- EVENT_STEAL_NO_DEKKER
-        __cilkrts_alert(3, "Worker %d: steal failed: dekker fail\n", ws->self);
+        __cilkrts_alert(5, "Worker %d: steal failed: dekker fail\n", ws->self);
 
 	goto give_up;
       }
@@ -383,7 +385,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RETURNING:
       /* ok, let it leave alone */
       //----- EVENT_STEAL_RETURNING
-      __cilkrts_alert(3, "Worker %d: steal failed: returning closure\n", ws->self);
+      __cilkrts_alert(5, "Worker %d: steal failed: returning closure\n", ws->self);
 
 
     give_up:
@@ -403,12 +405,12 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
   }
  
   if (success) {
-    __cilkrts_alert(3, "Worker %d: steal succeeded!\n", ws->self);
+    __cilkrts_alert(3, "[%d]: stole from W%d; res=%p\n", ws->self, victim, res);
     // Since our steal was successful, finish initialization of
     // the fiber.
     cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);
   }
-    
+
   return res;
 }
 

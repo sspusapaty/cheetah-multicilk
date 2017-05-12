@@ -77,7 +77,7 @@ void* scheduler_thread_proc(void * arg) {
     usleep(1);
     idle++;
   }
-  __cilkrts_alert(2, "Thread of worker %d: idled for %d loops\n", w->self, idle);
+  __cilkrts_alert(2, "[%d]: idled for %d loops\n", w->self, idle);
 
 
   if (w->self == 0) {

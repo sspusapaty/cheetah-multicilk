@@ -1,5 +1,6 @@
 #include "fiber.h"
 #include "common.h"
+#include "tls.h"
 
 #include <sys/mman.h>
 #include <stdlib.h>
@@ -104,6 +105,8 @@ cilk_fiber * cilk_fiber_allocate_from_thread() {
   cilk_fiber_init(f);
   
   cilk_fiber_set_allocated_from_thread(f, 1);
+  __cilkrts_set_tls_cilk_fiber(f);
+  __cilkrts_alert(4, "Allocated fiber %p/%p\n", f, f->m_stack_base);
   return f;
 }
 
@@ -112,6 +115,9 @@ cilk_fiber * cilk_fiber_allocate_from_heap() {
   cilk_fiber_init(f);
   
   make_stack(f, 4000000); // ~4MB stack
+
+  __cilkrts_alert(4, "Allocated fiber %p/%p\n", f, f->m_stack_base);
+  
   return f;
 }
 
@@ -223,6 +229,7 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
 	  self, other, other->owner, other->resume_sf);
 #endif
+  __cilkrts_alert(3, "[%d owner]: switching from fiber %p to %p\n", self->owner->self, self, other);
 
   // Pass along my owner.
   other->owner = self->owner;
@@ -235,9 +242,8 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   // cilk_fiber_sysdep* self = self->sysdep();
   // self->suspend_self_and_resume_other_sysdep(other->sysdep());
     
-#if SUPPORT_GET_CURRENT_FIBER
-  cilkos_set_tls_cilk_fiber(other);
-#endif
+  __cilkrts_set_tls_cilk_fiber(other);
+
   // CILK_ASSERT(this->is_resumable());
 
   // Jump to the other fiber.  We expect to come back.

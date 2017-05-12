@@ -9,6 +9,8 @@
 /* ANGE: The return value is opposite of what I thought */
 int Cilk_sync(__cilkrts_worker *const ws, 
               __cilkrts_stack_frame *frame) {
+  
+  __cilkrts_alert(3, "[%d]: Cilk_sync %p\n", ws->self, frame);
 
   Closure *t;
   int res = SYNC_READY;
@@ -33,8 +35,9 @@ int Cilk_sync(__cilkrts_worker *const ws,
 
   if(Closure_has_children(t)) {
     // MAK: FIBER-SYNC GUESS
+    // 
     ws->l->fiber_to_free = t->fiber;
-    t->fiber = NULL;
+    // MAK: guess t->fiber = NULL;
     // place holder for reducer map; the views in tlmm (if any) are updated 
     // by the last strand in Closure t before sync; need to reduce 
     // these when successful provably good steal occurs

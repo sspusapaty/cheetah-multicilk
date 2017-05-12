@@ -10,9 +10,42 @@
 #include <stdio.h>
 
 void longjmp_to_runtime(__cilkrts_worker * w) {
-  __cilkrts_alert(3, "Thread of worker %d: longjmp_to_runtime\n", w->self);
+  Closure * cl;
+  __cilkrts_alert(3, "[%d]: longjmp_to_runtime\n", w->self);
 
-  __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
+  // Current fiber is either the (1) one we are about to free,
+  // or (2) it has been passed up to the parent.
+  // deque_lock(w, w->self);
+  // cl = deque_peek_bottom(w, w->self);
+  // deque_unlock(w, w->self);
+  
+  cilk_fiber *current_fiber = __cilkrts_get_tls_cilk_fiber();
+
+  //CILK_ASSERT(NULL == cl->fiber);
+
+
+  // Clear the sf in the current fiber for cleanliness, to prevent
+  // us from accidentally resuming a bad sf.
+  // Technically, resume_sf gets overwritten for a fiber when
+  // we are about to resume it anyway.
+  current_fiber->resume_sf = NULL;
+  CILK_ASSERT(current_fiber->owner == w);
+
+    
+  if (w->l->fiber_to_free) {
+    // Case 1: we are freeing this fiber.  We never
+    // resume this fiber again after jumping into the runtime.
+    w->l->fiber_to_free = NULL;
+
+    // Extra check. Normally, the fiber we are about to switch to
+    // should have a NULL owner.
+    CILK_ASSERT(NULL == w->l->runtime_fiber->owner);
+  }
+  
+  cilk_fiber_suspend_self_and_resume_other(current_fiber,
+					   w->l->runtime_fiber);
+
+  // __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
 
     /* 
     char * rsp = NULL;
@@ -21,11 +54,11 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     worker_scheduler(w);
     ASM_SET_SP(rsp);
     */
-  __cilkrts_alert(3, "Thread of worker %d: exit longjmp_to_runtime\n", w->self);
+  __cilkrts_alert(3, "[%d]: exit longjmp_to_runtime\n", w->self);
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
-  __cilkrts_alert(3, "Thread of worker %d: Preparing closure %p\n", ws->self, t);
+  __cilkrts_alert(3, "[%d]: Preparing closure %p\n", ws->self, t);
   t->frame->worker = ws;
   t->status = CLOSURE_RUNNING;
 
@@ -46,7 +79,7 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
   __cilkrts_stack_frame *f;
 
   
-  __cilkrts_alert(3, "Thread of worker %d: do_what_it_says closure %p\n", ws->self, t);
+  __cilkrts_alert(3, "[%d]: do_what_it_says closure %p\n", ws->self, t);
   Closure_lock(ws, t);
 
   switch (t->status) {
@@ -66,11 +99,13 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     deque_unlock_self(ws);
     
     /* now execute it */
-    __cilkrts_alert(4, "Jump into user code (Worker %d).\n", ws->self);
+    __cilkrts_alert(3, "[%d]: Jump into user code.\n", ws->self);
+
+    CILK_ASSERT(ws->l->runtime_fiber != t->fiber);
 
     cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
 
-    __cilkrts_alert(4, "Back from user code (Worker %d).\n", ws->self);
+    __cilkrts_alert(3, "[%d]: Back from user code.\n", ws->self);
 	    
     break; // ?
 
@@ -86,30 +121,33 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     __cilkrts_bug("BUG in do_what_it_says()\n");
     break;
   }
-
+  __cilkrts_alert(3, "[%d]: do_what_it_says returned %p\n", ws->self, res);
   return res;
 }
 
 void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
-  __cilkrts_alert(2, "Thread of worker %d: worker_scheduler\n", ws->self);
+  __cilkrts_alert(2, "[%d]: worker_scheduler\n", ws->self);
 
   rts_srand(ws, ws->self * 162347);
 
   while (!ws->g->done) {
+    __cilkrts_alert(2, "[%d]: worker_scheduler loop\n", ws->self);
     if (!t) {
       // try to get work from our local queue
-      __cilkrts_alert(3, "Thread of worker %d: no work!  Checking local deque\n", ws->self);
+      __cilkrts_alert(3, "[%d]: no work!  Checking local deque\n", ws->self);
       deque_lock_self(ws);
       t = deque_xtract_bottom(ws, ws->self);
       deque_unlock_self(ws);
     }
 
+    if (!t) __cilkrts_alert(3, "[%d]:  Checking for steal\n", ws->self);
+
     while (!t && !ws->g->done) {
 
       int victim = rts_rand(ws) % ws->g->active_size;
       if( victim != ws->self ) {
-	__cilkrts_alert(3, "Thread of worker %d:  Checking worker %d for work\n", ws->self, victim);
+	__cilkrts_alert(5, "[%d]:  Checking worker %d for work\n", ws->self, victim);
 	t = Closure_steal(ws, victim);
       }
     }

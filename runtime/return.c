@@ -40,6 +40,8 @@ void Cilk_set_return(__cilkrts_worker *const ws) {
 
   Closure *t;
 
+  __cilkrts_alert(3, "[%d]: Cilk_set_return\n", ws->self);
+
   deque_lock_self(ws);
   t = deque_peek_bottom(ws, ws->self);
   Closure_lock(ws, t);
@@ -139,25 +141,6 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
   // CILK_ASSERT(parent->frame->magic == CILK_STACKFRAME_MAGIC);
 
   Closure_lock(ws, child);
-
-  // MAK: FIBER-THE CASE
-  // Execute left-holder logic for stacks.
-  if (child->left_sib || parent->fiber_child) {
-    // Case where we are not the leftmost stack.
-    CILK_ASSERT(parent->fiber_child != child->fiber);
-
-    // Remember any fiber we need to free in the worker.
-    // After we jump into the runtime, we will actually do the
-    // free.
-    ws->l->fiber_to_free = child->fiber;
-  } else {
-    // We are leftmost, pass stack/fiber up to parent.
-    // Thus, no stack/fiber to free.
-    parent->fiber_child = child->fiber;
-    ws->l->fiber_to_free = NULL;
-  }
-
-  child->fiber = NULL;
   Closure_remove_child(ws, parent, child);
 
   /* now the child is no longer needed */
@@ -190,7 +173,8 @@ Closure *return_value(__cilkrts_worker *const ws, Closure *t) {
 
   Closure *res = NULL;
   CILK_ASSERT(t->status == CLOSURE_RETURNING);
-    
+  
+  __cilkrts_alert(3, "[%d]: returning closure %p\n", ws->self, t);
   if(t->call_parent == NULL) {
     res = Closure_return(ws, t);
 

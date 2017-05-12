@@ -70,11 +70,13 @@ void invoke_main(cilk_fiber * f) {
   // Closure * t = ws->g->invoke_main;
   __cilkrts_stack_frame *sf = ws->current_stack_frame;
 
+  char * rsp;
   int _tmp, i;
   int argc = ws->g->cilk_main_argc;
   char **args = ws->g->cilk_main_args;
 
-  __cilkrts_alert(2, "Worker %d: invoke_main.\n", ws->self);
+  ASM_GET_SP(rsp);
+  __cilkrts_alert(2, "[%d]: invoke_main.\n", ws->self);
   alloca(ZERO);
 
   cilk_fiber_set_owner(f, ws);
@@ -84,9 +86,12 @@ void invoke_main(cilk_fiber * f) {
     spawn_cilk_main(&_tmp, argc, args);
   } else {
     // ANGE: Important to reset using sf->worker;
-    // otherwise ws gets cached in a register
+    // otherwise ws gets cached in a register 
     ws = sf->worker;
-  }     
+  __cilkrts_alert(3, "[%d]: invoke_main corrected worker after spawn.\n", ws->self);
+  }
+
+  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
 
   if(__cilkrts_unsynced(sf)) {
     if(__builtin_setjmp(sf->ctx) == 0) {
@@ -95,8 +100,13 @@ void invoke_main(cilk_fiber * f) {
       // ANGE: Important to reset using sf->worker; 
       // otherwise ws gets cached in a register
       ws = sf->worker;
+      __cilkrts_alert(3, "[%d]: invoke_main corrected worker after sync.\n", ws->self);
     }
   }
+  
+  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
+
+  ASM_SET_SP(rsp);
   ws->g->cilk_main_return = _tmp;
 
   CILK_WMB();
