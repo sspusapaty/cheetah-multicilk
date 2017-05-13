@@ -2,14 +2,34 @@
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
+OPTIONS = -Wall
 
-all: fib
+ifdef O
+  OPTIONS += -O$(O) -fno-omit-frame-pointer
+else
+  OPTIONS += -O0
+endif
+
+ifeq ($(GDB), 1)
+  OPTIONS += -g
+endif
+
+all: fib fib_serial fib_cilkplus
 
 fib: fib.o ktiming.o ../runtime/libcilkr.a
-	gcc fib.o ktiming.o ../runtime/libcilkr.a -lpthread -o fib
+	gcc $^ -lpthread -o $@
+
+fib_serial: fib_serial.o ktiming.o
+	gcc $^ -o $@
+
+fib_cilkplus: fib_cilkplus.o ktiming.o
+	gcc $^ -lcilkrts -o $@
+
+fib_cilkplus.o: fib_cilkplus.c
+	gcc -c $(OPTIONS) -fcilkplus $<
 
 %.o: %.c
-	gcc -O0 -g -c -Wall $<
+	gcc -c $(OPTIONS) $<
 
 clean:
 	rm -f *.o *~ fib
