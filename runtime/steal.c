@@ -353,7 +353,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	finish_promote(ws, victim_ws, res, child);
 
 	
-	fiber->resume_sf = res->frame; // MAK: ???
+	// fiber->resume_sf = res->frame; // MAK: ???
 	// MAK: FIBER-RAND STEAL
 	// I think this is an okay place
 	cl->fiber = 0;

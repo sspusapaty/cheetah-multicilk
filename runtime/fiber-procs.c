@@ -74,23 +74,26 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
 }
 
 
-void cilkrts_resume(__cilkrts_stack_frame *sf) {
-    // Save the sync stack pointer, and do the bookkeeping
-  char* sync_sp = NULL; // MAK: only on spawn return
+void cilkrts_resume(__cilkrts_stack_frame *sf, char* sync_sp) {
+  // Save the sync stack pointer, and do the bookkeeping
 
-    sf->flags &= ~CILK_FRAME_SUSPENDED;
-    // Actually longjmp to the user code.
-    // We may have exceptions to deal with, since we are resuming
-    // a previous-suspended frame.
-    sysdep_longjmp_to_sf(sync_sp, sf);
+  // MAK: I think we can skip this
+  // sf->flags &= ~CILK_FRAME_SUSPENDED;
+  // Actually longjmp to the user code.
+  // We may have exceptions to deal with, since we are resuming
+  // a previous-suspended frame.
+  sysdep_longjmp_to_sf(sync_sp, sf);
 }
 
 
 void user_code_resume_after_switch_into_runtime(cilk_fiber *fiber) {
-    __cilkrts_worker *w = cilk_fiber_get_owner(fiber);
-    __cilkrts_stack_frame *sf;
-    sf = w->current_stack_frame;
+  __cilkrts_worker *w = fiber->owner;
+  __cilkrts_stack_frame *sf;
+  char* sync_sp;
+  
+  sf = w->current_stack_frame;
+  sync_sp = sysdep_reset_jump_buffers_for_resume(fiber, sf); // MAK: only on spawn return--gets reset ASAP
 
-    // Actually jump to user code.
-    cilkrts_resume(sf);
- }
+  // Actually jump to user code.
+  cilkrts_resume(sf, sync_sp);
+}

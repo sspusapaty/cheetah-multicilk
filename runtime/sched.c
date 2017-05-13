@@ -107,6 +107,7 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     /* just execute it */
     setup_for_execution(ws, t);
     f = t->frame;
+    t->fiber->resume_sf = f; // I THINK this works
     
     CILK_ASSERT(f);
 	  
