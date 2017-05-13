@@ -1,6 +1,7 @@
 #include "sched.h"
 #include "jmpbuf.h"
 #include "tls.h"
+#include "fiber-procs.h"
 #include "return.h"
 #include "readydeque.h"
 #include "exception.h"

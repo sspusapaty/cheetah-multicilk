@@ -29,11 +29,11 @@ struct __cilkrts_stack_frame
     // The client copies the worker from TLS here when initializing
     // the structure.  The runtime ensures that the field always points
     // to the __cilkrts_worker which currently "owns" the frame.
-    volatile __cilkrts_worker * worker;
+    __cilkrts_worker * worker;
 
     // Before every spawn and nontrivial sync the client function
     // saves its continuation here.
-    volatile jmpbuf ctx;
+    jmpbuf ctx;
 };
 
 #endif
