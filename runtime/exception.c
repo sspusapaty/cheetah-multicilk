@@ -82,6 +82,8 @@ void Cilk_exception_handler() {
     
     Closure_lock(ws, t);
 
+    __cilkrts_alert(3, "[%d]: Cilk_exception_handler %p!\n", ws->self, t);
+
     /* ANGE: resetting the E pointer since we are handling the exception */
     reset_exception_pointer(ws, t);
 
@@ -91,6 +93,7 @@ void Cilk_exception_handler() {
 
     if( ws->head > ws->tail ) {
         //----- EVENT_EXCEPTION_STEAL // ANGE: this is a steal
+      __cilkrts_alert(3, "[%d]:\tthis is a steal!\n", ws->self);
 
         if(t->status == CLOSURE_RUNNING) {
             CILK_ASSERT(Closure_has_children(t) == 0);
@@ -111,6 +114,7 @@ void Cilk_exception_handler() {
     // Execute left-holder logic for stacks.
     if (t->left_sib || t->spawn_parent->fiber_child) {
       // Case where we are not the leftmost stack.
+      __cilkrts_alert(3, "[%d]:\twe are not the leftmost stack.\n", ws->self);
       CILK_ASSERT(t->spawn_parent->fiber_child != t->fiber);
 
       // Remember any fiber we need to free in the worker.
@@ -119,6 +123,7 @@ void Cilk_exception_handler() {
       ws->l->fiber_to_free = t->fiber;
     } else {
       // We are leftmost, pass stack/fiber up to parent.
+      __cilkrts_alert(3, "[%d]:\twe are the leftmost stack!\n", ws->self);
       // Thus, no stack/fiber to free.
       t->spawn_parent->fiber_child = t->fiber;
       ws->l->fiber_to_free = NULL;

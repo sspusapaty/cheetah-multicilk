@@ -40,7 +40,7 @@ void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
   // needed on IA64 or Intel64 processors.
   restore_x86_fp_state(sf);
 #endif
-
+    __cilkrts_alert(3, "[%d]: jmping to %p.\n", sf->worker->self, PC(sf));
   __builtin_longjmp(sf->ctx, 1);
 }
 
@@ -54,10 +54,6 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   // When we pull the resume_sf out of the fiber to resume it, clear
   // the old value.
   fiber->resume_sf = NULL;
-
-  deque_lock_self(ws);
-  t = deque_peek_bottom(ws, ws->self); 
-  deque_unlock_self(ws);
 
   CILK_ASSERT(ws == fiber->owner);
 
@@ -74,5 +70,27 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   // because we are resuming a stolen frame.
   sysdep_longjmp_to_sf(new_sp, sf);
   /*NOTREACHED*/
-  // Intel's C compiler respects the preceding lint pragma
+  CILK_ASSERT(0);
 }
+
+
+void cilkrts_resume(__cilkrts_stack_frame *sf) {
+    // Save the sync stack pointer, and do the bookkeeping
+  char* sync_sp = NULL; // MAK: only on spawn return
+
+    sf->flags &= ~CILK_FRAME_SUSPENDED;
+    // Actually longjmp to the user code.
+    // We may have exceptions to deal with, since we are resuming
+    // a previous-suspended frame.
+    sysdep_longjmp_to_sf(sync_sp, sf);
+}
+
+
+void user_code_resume_after_switch_into_runtime(cilk_fiber *fiber) {
+    __cilkrts_worker *w = cilk_fiber_get_owner(fiber);
+    __cilkrts_stack_frame *sf;
+    sf = w->current_stack_frame;
+
+    // Actually jump to user code.
+    cilkrts_resume(sf);
+ }

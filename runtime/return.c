@@ -170,6 +170,7 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
  * CLOSURE_RETURNING
  */
 Closure *return_value(__cilkrts_worker *const ws, Closure *t) {
+  __cilkrts_alert(3, "[%d]: return_value of %p\n", ws->self, t);
 
   Closure *res = NULL;
   CILK_ASSERT(t->status == CLOSURE_RETURNING);

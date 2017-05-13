@@ -76,11 +76,13 @@ void cilk_fiber_resume_other(cilk_fiber * other)
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
     // Resume by longjmp'ing to the place where we suspended.
+    __cilkrts_alert(3, "[%d]: jmping to %p##%p.\n", other->owner->self, other, PC(other));
     __builtin_longjmp(other->ctx, 1);
   }
   else {
     // Otherwise, we've never ran this fiber before.  Start the
     // proc method.
+    __cilkrts_alert(3, "[%d]: running %p.\n", other->owner->self, other);
     cilk_fiber_run(other);
   }
 }
@@ -229,7 +231,7 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
 	  self, other, other->owner, other->resume_sf);
 #endif
-  __cilkrts_alert(3, "[%d owner]: switching from fiber %p to %p\n", self->owner->self, self, other);
+  __cilkrts_alert(3, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
 
   // Pass along my owner.
   other->owner = self->owner;

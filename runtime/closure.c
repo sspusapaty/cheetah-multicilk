@@ -278,6 +278,8 @@ void Closure_suspend(__cilkrts_worker *const ws, Closure *cl) {
 
   Closure *cl1;
 
+  __cilkrts_alert(3, "[%d]: Closure_suspend %p\n", ws->self, cl);
+  
   // Closure_checkmagic(ws, cl);
   Closure_assert_ownership(ws, cl);
   deque_assert_ownership(ws, ws->self);

@@ -448,5 +448,6 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     ws->l->provablyGoodSteal = 0;
   }
 
+  __cilkrts_alert(3, "[%d]: provably_good_steal_maybe cl=%p returned %p\n", ws->self, parent, res);
   return res;
 }
