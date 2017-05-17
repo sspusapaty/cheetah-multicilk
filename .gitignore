@@ -11,6 +11,8 @@ runtime/cilk_types.h
 
 # Exes
 handcomp_test/fib
+handcomp_test/fib_serial
+handcomp_test/fib_cilkplus
 
 # Future proofing
 *.so

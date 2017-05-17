@@ -405,7 +405,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
   }
  
   if (success) {
-    __cilkrts_alert(3, "[%d]: stole from W%d; res=%p\n", ws->self, victim, res);
+    __cilkrts_alert(2, "[%d]: stole from W%d; res=%p\n", ws->self, victim, res);
     // Since our steal was successful, finish initialization of
     // the fiber.
     cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);

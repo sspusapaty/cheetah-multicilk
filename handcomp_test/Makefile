@@ -14,7 +14,19 @@ ifeq ($(GDB), 1)
   OPTIONS += -g
 endif
 
-all: fib fib_serial fib_cilkplus
+all: mm_dac mm_dac_serial mm_dac_cilkplus fib fib_serial fib_cilkplus
+
+mm_dac: mm_dac.o ktiming.o ../runtime/libcilkr.a
+	gcc $^ -lpthread -o $@
+
+mm_dac_serial: mm_dac_serial.o ktiming.o
+	gcc $^ -o $@
+
+mm_dac_cilkplus: mm_dac_cilkplus.o ktiming.o
+	gcc $^ -lcilkrts -o $@
+
+mm_dac_cilkplus.o: mm_dac_cilkplus.c
+	gcc -c $(OPTIONS) -fcilkplus $<
 
 fib: fib.o ktiming.o ../runtime/libcilkr.a
 	gcc $^ -lpthread -o $@
@@ -32,4 +44,4 @@ fib_cilkplus.o: fib_cilkplus.c
 	gcc -c $(OPTIONS) $<
 
 clean:
-	rm -f *.o *~ fib
+	rm -f *.o *~ mm_dac mm_dac_serial mm_dac_cilkplus fib fib_serial fib_cilkplus

@@ -155,7 +155,7 @@ void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
   rts_srand(ws, ws->self * 162347);
 
   while (!ws->g->done) {
-    __cilkrts_alert(2, "[%d]:\tworker_scheduler loop\n", ws->self);
+    __cilkrts_alert(3, "[%d]:\tworker_scheduler loop\n", ws->self);
     if (!t) {
       // try to get work from our local queue
       __cilkrts_alert(3, "[%d]:\tno work!  Checking local deque\n", ws->self);

@@ -1,0 +1,250 @@
+########## v0.0.1a
+
+#####----- CilkR on -O2, fib on -O2
+
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make clean ; cd ../handcomp_test/ ; make clean 
+rm -f *.o *.a *~
+rm -f *.o *~ fib
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make O=2 BUG=1 ; cd ../handcomp_test/ ; make O=2
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" init.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" steal.c
+steal.c: In function ‘promote_child’:
+steal.c:177:35: warning: initialization discards ‘volatile’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   __cilkrts_stack_frame **head =  victim_ws->head;
+                                   ^~~~~~~~~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber-procs.c
+fiber-procs.c: In function ‘fiber_proc_to_resume_user_code_for_random_steal’:
+fiber-procs.c:50:12: warning: unused variable ‘t’ [-Wunused-variable]
+   Closure *t;
+            ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sync.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" closure.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exception.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sched.c
+sched.c: In function ‘longjmp_to_runtime’:
+sched.c:14:13: warning: unused variable ‘cl’ [-Wunused-variable]
+   Closure * cl;
+             ^~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" return.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" tls.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" ZERO.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exit.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" rand.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk2c.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" bug.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" start.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" invoke_main.c
+invoke_main.c: In function ‘invoke_main’:
+invoke_main.c:75:13: warning: unused variable ‘i’ [-Wunused-variable]
+   int _tmp, i;
+             ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" libcilkr_main.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" readydeque.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk_mutex.c
+ar rcs libcilkr.a init.o steal.o fiber.o fiber-procs.o sync.o closure.o exception.o sched.o return.o tls.o ZERO.o exit.o rand.o cilk2c.o bug.o start.o invoke_main.o libcilkr_main.o readydeque.o cilk_mutex.o
+gcc -c -Wall -O2 -fno-omit-frame-pointer fib.c
+fib.c: In function ‘fib2’:
+fib.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc -c -Wall -O2 -fno-omit-frame-pointer ktiming.c
+gcc fib.o ktiming.o ../runtime/libcilkr.a -lpthread -o fib
+gcc -c -Wall -O2 -fno-omit-frame-pointer fib_serial.c
+fib_serial.c: In function ‘fib’:
+fib_serial.c:18:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_serial.o ktiming.o -o fib_serial
+gcc -c -Wall -O2 -fno-omit-frame-pointer -fcilkplus fib_cilkplus.c
+fib_cilkplus.c: In function ‘fib’:
+fib_cilkplus.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_cilkplus.o ktiming.o -lcilkrts -o fib_cilkplus
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib 40
+Running the real main()
+__cilkrts_init
+Initializing global state.
+Initializing workers.
+Setting up threads.
+Setting up main thread's closure.
+Result: 102334155
+Running time 1: 5.554427 s
+Running time average: 5.554427 s
+All workers joined!
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib_serial 40
+Result: 102334155
+Running time 1: 0.338361 s
+Running time average: 0.338361 s
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ CILK_NWORKERS=2 ./fib_cilkplus 40
+Result: 102334155
+Running time 1: 3.454535 s
+Running time average: 3.454535 s
+
+
+#####----- CilkR on -O2, fib on -O1
+
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make clean ; cd ../handcomp_test/ ; make clean 
+rm -f *.o *.a *~
+rm -f *.o *~ fib
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make O=2 BUG=1 ; cd ../handcomp_test/ ; make O=1
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" init.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" steal.c
+steal.c: In function ‘promote_child’:
+steal.c:177:35: warning: initialization discards ‘volatile’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   __cilkrts_stack_frame **head =  victim_ws->head;
+                                   ^~~~~~~~~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber-procs.c
+fiber-procs.c: In function ‘fiber_proc_to_resume_user_code_for_random_steal’:
+fiber-procs.c:50:12: warning: unused variable ‘t’ [-Wunused-variable]
+   Closure *t;
+            ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sync.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" closure.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exception.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sched.c
+sched.c: In function ‘longjmp_to_runtime’:
+sched.c:14:13: warning: unused variable ‘cl’ [-Wunused-variable]
+   Closure * cl;
+             ^~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" return.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" tls.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" ZERO.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exit.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" rand.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk2c.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" bug.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" start.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" invoke_main.c
+invoke_main.c: In function ‘invoke_main’:
+invoke_main.c:75:13: warning: unused variable ‘i’ [-Wunused-variable]
+   int _tmp, i;
+             ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" libcilkr_main.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" readydeque.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk_mutex.c
+ar rcs libcilkr.a init.o steal.o fiber.o fiber-procs.o sync.o closure.o exception.o sched.o return.o tls.o ZERO.o exit.o rand.o cilk2c.o bug.o start.o invoke_main.o libcilkr_main.o readydeque.o cilk_mutex.o
+gcc -c -Wall -O1 -fno-omit-frame-pointer fib.c
+fib.c: In function ‘fib2’:
+fib.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc -c -Wall -O1 -fno-omit-frame-pointer ktiming.c
+gcc fib.o ktiming.o ../runtime/libcilkr.a -lpthread -o fib
+gcc -c -Wall -O1 -fno-omit-frame-pointer fib_serial.c
+fib_serial.c: In function ‘fib’:
+fib_serial.c:18:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_serial.o ktiming.o -o fib_serial
+gcc -c -Wall -O1 -fno-omit-frame-pointer -fcilkplus fib_cilkplus.c
+fib_cilkplus.c: In function ‘fib’:
+fib_cilkplus.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_cilkplus.o ktiming.o -lcilkrts -o fib_cilkplus
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib 40
+Running the real main()
+__cilkrts_init
+Initializing global state.
+Initializing workers.
+Setting up threads.
+Setting up main thread's closure.
+Result: 102334155
+Running time 1: 5.489884 s
+Running time average: 5.489884 s
+All workers joined!
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib_serial 40
+Result: 102334155
+Running time 1: 0.420418 s
+Running time average: 0.420418 s
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ CILK_NWORKERS=2 ./fib_cilkplus 40
+Result: 102334155
+Running time 1: 3.468774 s
+Running time average: 3.468774 s
+
+
+#####----- CilkR on -O2, fib on -O0
+
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make clean ; cd ../handcomp_test/ ; make clean 
+rm -f *.o *.a *~
+rm -f *.o *~ fib
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ cd ../runtime/ ; make O=2 BUG=1 ; cd ../handcomp_test/ ; make O=0
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" init.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" steal.c
+steal.c: In function ‘promote_child’:
+steal.c:177:35: warning: initialization discards ‘volatile’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   __cilkrts_stack_frame **head =  victim_ws->head;
+                                   ^~~~~~~~~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" fiber-procs.c
+fiber-procs.c: In function ‘fiber_proc_to_resume_user_code_for_random_steal’:
+fiber-procs.c:50:12: warning: unused variable ‘t’ [-Wunused-variable]
+   Closure *t;
+            ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sync.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" closure.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exception.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" sched.c
+sched.c: In function ‘longjmp_to_runtime’:
+sched.c:14:13: warning: unused variable ‘cl’ [-Wunused-variable]
+   Closure * cl;
+             ^~
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" return.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" tls.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" ZERO.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" exit.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" rand.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk2c.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" bug.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" start.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" invoke_main.c
+invoke_main.c: In function ‘invoke_main’:
+invoke_main.c:75:13: warning: unused variable ‘i’ [-Wunused-variable]
+   int _tmp, i;
+             ^
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" libcilkr_main.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" readydeque.c
+gcc -c -Wall -fpic -O2 -fno-omit-frame-pointer -D"DEBUG_LVL=1" cilk_mutex.c
+ar rcs libcilkr.a init.o steal.o fiber.o fiber-procs.o sync.o closure.o exception.o sched.o return.o tls.o ZERO.o exit.o rand.o cilk2c.o bug.o start.o invoke_main.o libcilkr_main.o readydeque.o cilk_mutex.o
+gcc -c -Wall -O0 -fno-omit-frame-pointer fib.c
+fib.c: In function ‘fib2’:
+fib.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc -c -Wall -O0 -fno-omit-frame-pointer ktiming.c
+gcc fib.o ktiming.o ../runtime/libcilkr.a -lpthread -o fib
+gcc -c -Wall -O0 -fno-omit-frame-pointer fib_serial.c
+fib_serial.c: In function ‘fib’:
+fib_serial.c:18:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_serial.o ktiming.o -o fib_serial
+gcc -c -Wall -O0 -fno-omit-frame-pointer -fcilkplus fib_cilkplus.c
+fib_cilkplus.c: In function ‘fib’:
+fib_cilkplus.c:19:15: warning: unused variable ‘_tmp’ [-Wunused-variable]
+     int x, y, _tmp;
+               ^~~~
+gcc fib_cilkplus.o ktiming.o -lcilkrts -o fib_cilkplus
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib 40
+Running the real main()
+__cilkrts_init
+Initializing global state.
+Initializing workers.
+Setting up threads.
+Setting up main thread's closure.
+Result: 102334155
+Running time 1: 7.633940 s
+Running time average: 7.633940 s
+All workers joined!
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ ./fib_serial 40
+Result: 102334155
+Running time 1: 0.750214 s
+Running time average: 0.750214 s
+matt@matt-Alienware-X51-R2:~/Desktop/CilkR/handcomp_test$ CILK_NWORKERS=2 ./fib_cilkplus 40
+Result: 102334155
+Running time 1: 3.602871 s
+Running time average: 3.602871 s
+
