@@ -422,8 +422,11 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
 
   Closure_assert_ownership(ws, parent);
 
+  __cilkrts_alert(3, "[%d]: (provably_good_steal_maybe) cl %p\n", ws->self, parent);
+
   if (!Closure_has_children(parent) &&
       parent->status == CLOSURE_SUSPENDED) {
+    __cilkrts_alert(3, "[%d]: (provably_good_steal_maybe) completing a sync\n", ws->self);
 
     CILK_ASSERT(parent->frame != NULL);
     CILK_ASSERT(parent->frame->worker == (__cilkrts_worker *) NOBODY);
@@ -434,6 +437,7 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     res->frame->worker = ws;
     // MAK: FIBER-GOOD STEAL
     res->fiber = res->fiber_child;
+    __cilkrts_alert(3, "[%d]: (provably_good_steal_maybe) set res->fiber %p\n", ws->self, res->fiber);
     res->fiber_child = NULL;
     
     //----- EVENT_PROVABLY_GOOD_STEAL
@@ -448,6 +452,6 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     ws->l->provablyGoodSteal = 0;
   }
 
-  __cilkrts_alert(3, "[%d]: provably_good_steal_maybe cl=%p returned %p\n", ws->self, parent, res);
+  __cilkrts_alert(3, "[%d]: (provably_good_steal_maybe) returned %p\n", ws->self, res);
   return res;
 }

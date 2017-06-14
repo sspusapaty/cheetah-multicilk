@@ -10,7 +10,7 @@
 int Cilk_sync(__cilkrts_worker *const ws, 
               __cilkrts_stack_frame *frame) {
   
-  __cilkrts_alert(3, "[%d]: Cilk_sync %p\n", ws->self, frame);
+  __cilkrts_alert(3, "[%d]: (Cilk_sync) frame %p\n", ws->self, frame);
 
   Closure *t;
   int res = SYNC_READY;
@@ -35,7 +35,8 @@ int Cilk_sync(__cilkrts_worker *const ws,
 
   if(Closure_has_children(t)) {
     // MAK: FIBER-SYNC GUESS
-    // 
+    __cilkrts_alert(3, "[%d]: (Cilk_sync) outstanding children\n", ws->self, frame);
+
     ws->l->fiber_to_free = t->fiber;
     t->fiber = NULL;
     // place holder for reducer map; the views in tlmm (if any) are updated 

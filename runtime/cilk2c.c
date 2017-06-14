@@ -110,19 +110,19 @@ void __cilkrts_detach(__cilkrts_stack_frame * self) {
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert(3, "[%d]: syncing frame %p\n", ws->self, sf);
+  __cilkrts_alert(3, "[%d]: (__cilkrts_sync) syncing frame %p\n", ws->self, sf);
     
   // CILK_ASSERT(ws, sf->magic == CILK_STACKFRAME_MAGIC);
   CILK_ASSERT(sf->worker == ws);
   CILK_ASSERT(sf == ws->current_stack_frame);
 
   if( Cilk_sync(ws, sf) == SYNC_READY ) {
-    __cilkrts_alert(3, "[%d]: synced frame %p!\n", ws->self, sf);
+    __cilkrts_alert(3, "[%d]: (__cilkrts_sync) synced frame %p!\n", ws->self, sf);
     // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
     // if this frame is ready to sync.
     __builtin_longjmp(sf->ctx, 1);
   } else {
-    __cilkrts_alert(3, "[%d]: waiting to sync frame %p!\n", ws->self, sf);
+    __cilkrts_alert(3, "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n", ws->self, sf);
     longjmp_to_runtime(ws);                        
   }
 }
