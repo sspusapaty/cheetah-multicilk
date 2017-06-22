@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <setjmp.h>
+#include "common.h"
 
 // REALLY uncomfortable here
 enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,  
@@ -67,4 +68,5 @@ typedef void * jmpbuf[5];
 #define ASM_SET_FP(nfp) asm volatile ("movq %0, %%rbp": : "r" (nfp) : "rbp")
 
 
+#define DUMP_STACK(lvl, wid) {char * x_bp; char * x_sp; ASM_GET_FP(x_bp); ASM_GET_SP(x_sp);  __cilkrts_alert((lvl), "[%d]: rbp: %p\n[%d]: rsp: %p\n", (wid), x_bp, (wid), x_sp);}
 #endif

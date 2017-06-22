@@ -25,13 +25,13 @@ void __cilkrts_alert(const int lvl, const char *fmt,...) {
 
   /* To reduce user confusion, write all user-generated output
      before the system-generated error message. */
-#ifndef DEBUG_LVL
+#ifndef ALERT_LVL
   va_list l;
   va_start(l, fmt);
   vfprintf(stderr, fmt, l);
   va_end(l);
 #else
-  if (lvl <= DEBUG_LVL) {
+  if (lvl & ALERT_LVL) {
     va_list l;
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);

@@ -14,8 +14,8 @@ ifeq ($(GDB), 1)
   OPTIONS += -g
 endif
 
-ifdef BUG
-  OPTIONS += -D"DEBUG_LVL=$(BUG)"
+ifdef ALERT
+  OPTIONS += -D"ALERT_LVL=$(ALERT)"
 endif
 
 $(MAIN).a: $(OBJS)

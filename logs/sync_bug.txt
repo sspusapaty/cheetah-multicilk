@@ -1,0 +1,1121 @@
+Starting program: /home/matt/Desktop/CilkR/handcomp_test/mm_dac 32
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+Running the real main()
+__cilkrts_init
+Initializing global state.
+Initializing workers.
+Initializing worker 0.
+Initializing worker 1.
+Setting up threads.
+[New Thread 0x7ffff77f1700 (LWP 20449)]
+Thread of worker 0: scheduler_thread_proc
+(cilk_fiber_allocate_from_thread) Allocated fiber 0x7ffff00008c0/(nil)
+[New Thread 0x7fffeffff700 (LWP 20450)]
+Thread of worker 1: scheduler_thread_proc
+(cilk_fiber_allocate_from_thread) Allocated fiber 0x7fffe80008c0/(nil)
+Setting up main thread's closure.
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x555555789790:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff6ff0000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff684f000
+[0]: idled for 4 loops
+[0]: (worker_scheduler) closure 0x555555789650
+[0]: (worker_scheduler) in loop
+[1]: idled for 2 loops
+[1]: (worker_scheduler) closure (nil)
+[0]: (do_what_it_says) closure 0x555555789650
+[0]: (do_what_it_says) CLOSURE_READY
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (worker_scheduler) Checking for steal
+[0]: (setup_for_execution) closure 0x555555789650
+[0]: (do_what_it_says) Jump into user code.
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff00008c0 to 0x555555789790
+[0]: rbp: 0x7ffff77f0ea0
+[0]: rsp: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other) running 0x555555789790.
+[0]: (cilk_fiber_run) starting fiber 0x555555789790
+[0]: invoke_main.
+[0]: invoke_main rsp = 0x7ffff6feff30.
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fefe90
+[0]: rbp: 0x7ffff6fefe80
+[0]: rsp: 0x7ffff6fefe50
+[0]: (__cilkrts_detach) frame 0x7ffff6fefe90
+[0]: rbp: 0x7ffff6fefe80
+[0]: rsp: 0x7ffff6fefe40
+[1]: can steal from W0; cl=0x555555789650
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fefc80
+[0]: rbp: 0x7ffff6fefc70
+[0]: rsp: 0x7ffff6fefc40
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fefc80
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fefc80
+[0]: rbp: 0x7ffff6fefc70
+[0]: rsp: 0x7ffff6fefc40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fefc40
+[0]: rbp: 0x7ffff6fefc30
+[0]: rsp: 0x7ffff6fefc00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fefc40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fefc40
+[0]: rbp: 0x7ffff6fefc30
+[0]: rsp: 0x7ffff6fefc00
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7fffe8000930:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff684e000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff60ad000
+[1]: promote gave cl/res = 0x555555789650/(nil)
+[1]: stole from W0; res=0x555555789650
+[1]: (do_what_it_says) closure 0x555555789650
+[1]: (do_what_it_says) CLOSURE_READY
+[1]: (setup_for_execution) closure 0x555555789650
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7fffe8000930
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) running 0x7fffe8000930.
+[1]: (cilk_fiber_run) starting fiber 0x7fffe8000930
+[1]: (sysdep_longjmp_to_sf) BP: 0x7ffff6feff80
+[1]: (sysdep_longjmp_to_sf) SP: 0x7ffff684df00
+[1]: (sysdep_longjmp_to_sf) PC: 0x55555555c80c
+[1]: invoke_main corrected worker after spawn.
+matrix32:
+[1]: invoke_main rsp = 0x7ffff684df00.
+[1]: (__cilkrts_sync) syncing frame 0x555555789740
+[1]: rbp: 0x7ffff684def0
+[1]: rsp: 0x7ffff684dec0
+[1]: (Cilk_sync) frame 0x555555789740
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fefbe0
+[0]: rbp: 0x7ffff6fefbd0
+[0]: rsp: 0x7ffff6fefba0
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fefb50
+[0]: rbp: 0x7ffff6fefb40
+[0]: rsp: 0x7ffff6fefb10
+[0]: (__cilkrts_detach) frame 0x7ffff6fefb50
+[0]: rbp: 0x7ffff6fefb40
+[0]: rsp: 0x7ffff6fefb00
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fefa00
+[0]: rbp: 0x7ffff6fef9f0
+[0]: rsp: 0x7ffff6fef9c0
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: (Cilk_sync) outstanding children
+[1]: Closure_suspend 0x555555789650
+[1]: (__cilkrts_sync) waiting to sync frame 0x555555789740!
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: (longjmp_to_runtime)
+[1]: (longjmp_to_runtime) freeing 0x7fffe8000930
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe8000930 to 0x7fffe80008c0
+[1]: rbp: 0x7ffff684de80
+[1]: rsp: 0x7ffff684de30
+[1]: (cilk_fiber_resume_other) jmping to 0x7fffe80008c0:
+[1]: (cilk_fiber_resume_other)           BP: 0x7fffefffee70
+[1]: (cilk_fiber_resume_other)           SP: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: (suspend_self_and_resume_other) returned to fiber 0x7fffe80008c0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: (do_what_it_says) Back from user code.
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (worker_scheduler) Checking for steal
+[1]: can steal from W0; cl=0x7fffe80009a0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7fffe8000a90:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff60ac000
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff590b000
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_detach) frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef920
+[0]: (__cilkrts_enter_frame) frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[1]: promote gave cl/res = 0x7fffe80009a0/0x7fffe8000b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef820
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef820
+[0]: rbp: 0x7ffff6fef810
+[0]: rsp: 0x7ffff6fef7e0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fef970
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fef970
+[0]: rbp: 0x7ffff6fef960
+[0]: rsp: 0x7ffff6fef930
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fefa00
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fefa00
+[0]: rbp: 0x7ffff6fef9f0
+[0]: rsp: 0x7ffff6fef9c0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff6fefb50
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff6fefb50
+[0]: rbp: 0x7ffff6fefb40
+[0]: rsp: 0x7ffff6fefb10
+[0]: (Cilk_exception_handler) closure 0x7fffe8000bf0!
+[0]: (Cilk_exception_handler) this is a steal!
+[0]: (Cilk_exception_handler) we are the leftmost stack!
+[0]: (longjmp_to_runtime)
+[0]: (longjmp_to_runtime) passing 0x555555789790
+[0]: (suspend_self_and_resume_other) switching from fiber 0x555555789790 to 0x7ffff00008c0
+[0]: rbp: 0x7ffff6fefab0
+[0]: rsp: 0x7ffff6fefa60
+[0]: (cilk_fiber_resume_other) jmping to 0x7ffff00008c0:
+[0]: (cilk_fiber_resume_other)           BP: 0x7ffff77f0e70
+[0]: (cilk_fiber_resume_other)           SP: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[0]: (suspend_self_and_resume_other) returned to fiber 0x7ffff00008c0
+[0]: (do_what_it_says) Back from user code.
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[1]: stole from W0; res=0x7fffe8000b00
+[1]: (do_what_it_says) closure 0x7fffe8000b00
+[1]: (do_what_it_says) CLOSURE_READY
+[0]: (do_what_it_says) closure 0x7fffe8000bf0
+[0]: (do_what_it_says) CLOSURE_RETURNING
+[0]: (return_value) closure 0x7fffe8000bf0
+[0]: (Closure_return) child 35000005760
+[1]: (setup_for_execution) closure 0x7fffe8000b00
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7fffe8000a90
+[0]: (provably_good_steal_maybe) cl 0x7fffe8000b00
+[0]: (provably_good_steal_maybe) returned (nil)
+[0]: (return_value) returning closure 0x7fffe8000bf0
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (worker_scheduler) Checking for steal
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) running 0x7fffe8000a90.
+[1]: (cilk_fiber_run) starting fiber 0x7fffe8000a90
+[1]: (sysdep_longjmp_to_sf) BP: 0x7ffff6fefcf0
+[1]: (sysdep_longjmp_to_sf) SP: 0x7ffff60abf00
+[1]: (sysdep_longjmp_to_sf) PC: 0x55555555540c
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abe70
+[1]: rbp: 0x7ffff60abe60
+[1]: rsp: 0x7ffff60abe30
+[1]: (__cilkrts_detach) frame 0x7ffff60abe70
+[1]: rbp: 0x7ffff60abe60
+[1]: rsp: 0x7ffff60abe20
+[0]: can steal from W1; cl=0x7fffe8000b00
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abd20
+[1]: rbp: 0x7ffff60abd10
+[1]: rsp: 0x7ffff60abce0
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7ffff0005d90:
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff590a000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff5169000
+[0]: promote gave cl/res = 0x7fffe8000b00/(nil)
+[0]: stole from W1; res=0x7fffe8000b00
+[0]: (do_what_it_says) closure 0x7fffe8000b00
+[0]: (do_what_it_says) CLOSURE_READY
+[0]: (setup_for_execution) closure 0x7fffe8000b00
+[0]: (do_what_it_says) Jump into user code.
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff00008c0 to 0x7ffff0005d90
+[0]: rbp: 0x7ffff77f0ea0
+[0]: rsp: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other) running 0x7ffff0005d90.
+[0]: (cilk_fiber_run) starting fiber 0x7ffff0005d90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[0]: (sysdep_longjmp_to_sf) BP: 0x7ffff6fefcf0
+[0]: (sysdep_longjmp_to_sf) SP: 0x7ffff5909f00
+[0]: (sysdep_longjmp_to_sf) PC: 0x555555555464
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909e70
+[0]: rbp: 0x7ffff5909e60
+[0]: rsp: 0x7ffff5909e30
+[0]: (__cilkrts_detach) frame 0x7ffff5909e70
+[0]: rbp: 0x7ffff5909e60
+[0]: rsp: 0x7ffff5909e20
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909d20
+[0]: rbp: 0x7ffff5909d10
+[0]: rsp: 0x7ffff5909ce0
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_detach) frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abb40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abb40
+[1]: rbp: 0x7ffff60abb30
+[1]: rsp: 0x7ffff60abb00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abc90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abc90
+[1]: rbp: 0x7ffff60abc80
+[1]: rsp: 0x7ffff60abc50
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abd20
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abd20
+[1]: rbp: 0x7ffff60abd10
+[1]: rsp: 0x7ffff60abce0
+[1]: (__cilkrts_pop_frame) frame 0x7ffff60abe70
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff60abe70
+[1]: rbp: 0x7ffff60abe60
+[1]: rsp: 0x7ffff60abe30
+[1]: (Cilk_exception_handler) closure 0x7ffff0005e00!
+[1]: (Cilk_exception_handler) this is a steal!
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909d20
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909d20
+[0]: rbp: 0x7ffff5909d10
+[0]: rsp: 0x7ffff5909ce0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909e70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909e70
+[0]: rbp: 0x7ffff5909e60
+[0]: rsp: 0x7ffff5909e30
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909e70
+[0]: rbp: 0x7ffff5909e60
+[0]: rsp: 0x7ffff5909e30
+[0]: (__cilkrts_detach) frame 0x7ffff5909e70
+[1]: (Cilk_exception_handler) we are not the leftmost stack.
+[1]: (longjmp_to_runtime)
+[1]: (longjmp_to_runtime) freeing 0x7fffe8000a90
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe8000a90 to 0x7fffe80008c0
+[1]: rbp: 0x7ffff60abdd0
+[1]: rsp: 0x7ffff60abd80
+[1]: (cilk_fiber_resume_other) jmping to 0x7fffe80008c0:
+[1]: (cilk_fiber_resume_other)           BP: 0x7fffefffee70
+[1]: (cilk_fiber_resume_other)           SP: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[1]: (suspend_self_and_resume_other) returned to fiber 0x7fffe80008c0
+[1]: (do_what_it_says) Back from user code.
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (do_what_it_says) closure 0x7ffff0005e00
+[0]: rbp: 0x7ffff5909e60
+[0]: rsp: 0x7ffff5909e20
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909d20
+[1]: (do_what_it_says) CLOSURE_RETURNING
+[1]: (return_value) closure 0x7ffff0005e00
+[1]: (Closure_return) child 36000057000
+[1]: (provably_good_steal_maybe) cl 0x7fffe8000b00
+[1]: (provably_good_steal_maybe) returned (nil)
+[1]: (return_value) returning closure 0x7ffff0005e00
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (worker_scheduler) Checking for steal
+[1]: can steal from W0; cl=0x7fffe8000b00
+[0]: rbp: 0x7ffff5909d10
+[0]: rsp: 0x7ffff5909ce0
+[0]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+[0]: (__cilkrts_detach) frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c40
+[0]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7fffe8000bf0:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff5168000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff49c7000
+[1]: promote gave cl/res = 0x7fffe8000b00/(nil)
+[1]: stole from W0; res=0x7fffe8000b00
+[1]: (do_what_it_says) closure 0x7fffe8000b00
+[1]: (do_what_it_says) CLOSURE_READY
+[1]: (setup_for_execution) closure 0x7fffe8000b00
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7fffe8000bf0
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) running 0x7fffe8000bf0.
+[1]: (cilk_fiber_run) starting fiber 0x7fffe8000bf0
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[1]: (sysdep_longjmp_to_sf) BP: 0x7ffff6fefcf0
+[1]: (sysdep_longjmp_to_sf) SP: 0x7ffff5167f00
+[1]: (sysdep_longjmp_to_sf) PC: 0x555555555514
+[1]: (__cilkrts_sync) syncing frame 0x7ffff6fefbe0
+[1]: rbp: 0x7ffff5167ef0
+[1]: rsp: 0x7ffff5167ec0
+[1]: (Cilk_sync) frame 0x7ffff6fefbe0
+[1]: (Cilk_sync) outstanding children
+[1]: Closure_suspend 0x7fffe8000b00
+[1]: (__cilkrts_sync) waiting to sync frame 0x7ffff6fefbe0!
+[1]: (longjmp_to_runtime)
+[1]: (longjmp_to_runtime) freeing 0x7fffe8000bf0
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe8000bf0 to 0x7fffe80008c0
+[1]: rbp: 0x7ffff5167e80
+[1]: rsp: 0x7ffff5167e30
+[1]: (cilk_fiber_resume_other) jmping to 0x7fffe80008c0:
+[1]: (cilk_fiber_resume_other)           BP: 0x7fffefffee70
+[1]: (cilk_fiber_resume_other)           SP: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[1]: (suspend_self_and_resume_other) returned to fiber 0x7fffe80008c0
+[1]: (do_what_it_says) Back from user code.
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (worker_scheduler) Checking for steal
+[1]: can steal from W0; cl=0x7fffe8000c60
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[0]: rbp: 0x7ffff5909b30
+[0]: rsp: 0x7ffff5909b00
+[0]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[0]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[0]: rbp: 0x7ffff5909c80
+[0]: rsp: 0x7ffff5909c50
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7fffe8000d50:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7ffff49c6000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7ffff4225000
+[1]: promote gave cl/res = 0x7fffe8000c60/0x7fffe8000dc0
+[1]: stole from W0; res=0x7fffe8000dc0
+[0]: (Cilk_exception_handler) closure 0x7fffe8000eb0!
+[0]: (Cilk_exception_handler) this is a steal!
+[1]: (do_what_it_says) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) CLOSURE_READY
+[1]: (setup_for_execution) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7fffe8000d50
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) running 0x7fffe8000d50.
+[1]: (cilk_fiber_run) starting fiber 0x7fffe8000d50
+[0]: (Cilk_exception_handler) we are the leftmost stack!
+[0]: (longjmp_to_runtime)
+[0]: (longjmp_to_runtime) passing 0x7ffff0005d90
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff0005d90 to 0x7ffff00008c0
+[0]: rbp: 0x7ffff5909bf0
+[0]: rsp: 0x7ffff5909ba0
+[0]: (cilk_fiber_resume_other) jmping to 0x7ffff00008c0:
+[0]: (cilk_fiber_resume_other)           BP: 0x7ffff77f0e70
+[0]: (cilk_fiber_resume_other)           SP: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[1]: (sysdep_longjmp_to_sf) BP: 0x7ffff5909e30
+[1]: (sysdep_longjmp_to_sf) SP: 0x7ffff49c5f00
+[1]: (sysdep_longjmp_to_sf) PC: 0x55555555540c
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff49c5e70
+[1]: rbp: 0x7ffff49c5e60
+[1]: rsp: 0x7ffff49c5e30
+[1]: (__cilkrts_detach) frame 0x7ffff49c5e70
+[1]: rbp: 0x7ffff49c5e60
+[1]: rsp: 0x7ffff49c5e20
+[0]: (suspend_self_and_resume_other) returned to fiber 0x7ffff00008c0
+[0]: (do_what_it_says) Back from user code.
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (do_what_it_says) closure 0x7fffe8000eb0
+[0]: (do_what_it_says) CLOSURE_RETURNING
+[0]: (return_value) closure 0x7fffe8000eb0
+[0]: (Closure_return) child 35000007260
+[0]: (provably_good_steal_maybe) cl 0x7fffe8000dc0
+[0]: (provably_good_steal_maybe) returned (nil)
+[0]: (return_value) returning closure 0x7fffe8000eb0
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (worker_scheduler) Checking for steal
+[0]: can steal from W1; cl=0x7fffe8000dc0
+[1]: (__cilkrts_enter_frame) frame 0x7ffff49c5d20
+[1]: rbp: 0x7ffff49c5d10
+[1]: rsp: 0x7ffff49c5ce0
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7ffff0005e00:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7fffef7fe000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7fffef05d000
+[1]: (__cilkrts_pop_frame) frame 0x7ffff49c5d20
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff49c5d20
+[1]: rbp: 0x7ffff49c5d10
+[1]: rsp: 0x7ffff49c5ce0
+[1]: (__cilkrts_pop_frame) frame 0x7ffff49c5e70
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff49c5e70
+[1]: rbp: 0x7ffff49c5e60
+[1]: rsp: 0x7ffff49c5e30
+[0]: promote gave cl/res = 0x7fffe8000dc0/(nil)
+[0]: stole from W1; res=0x7fffe8000dc0
+[0]: (do_what_it_says) closure 0x7fffe8000dc0
+[0]: (do_what_it_says) CLOSURE_READY
+[0]: (setup_for_execution) closure 0x7fffe8000dc0
+[0]: (do_what_it_says) Jump into user code.
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff00008c0 to 0x7ffff0005e00
+[0]: rbp: 0x7ffff77f0ea0
+[0]: rsp: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other) running 0x7ffff0005e00.
+[0]: (cilk_fiber_run) starting fiber 0x7ffff0005e00
+[1]: (Cilk_exception_handler) closure 0x7ffff0005e70!
+[1]: (Cilk_exception_handler) this is a steal!
+[0]: (sysdep_longjmp_to_sf) BP: 0x7ffff5909e30
+[0]: (sysdep_longjmp_to_sf) SP: 0x7fffef7fdf00
+[0]: (sysdep_longjmp_to_sf) PC: 0x555555555464
+[1]: (Cilk_exception_handler) we are not the leftmost stack.
+[1]: (longjmp_to_runtime)
+[1]: (longjmp_to_runtime) freeing 0x7fffe8000d50
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe8000d50 to 0x7fffe80008c0
+[1]: rbp: 0x7ffff49c5dd0
+[1]: rsp: 0x7ffff49c5d80
+[1]: (cilk_fiber_resume_other) jmping to 0x7fffe80008c0:
+[1]: (cilk_fiber_resume_other)           BP: 0x7fffefffee70
+[1]: (cilk_fiber_resume_other)           SP: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[1]: (suspend_self_and_resume_other) returned to fiber 0x7fffe80008c0
+[1]: (do_what_it_says) Back from user code.
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[0]: (__cilkrts_enter_frame_fast) frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde30
+[0]: (__cilkrts_detach) frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde20
+[1]: (do_what_it_says) closure 0x7ffff0005e70
+[1]: (do_what_it_says) CLOSURE_RETURNING
+[0]: (__cilkrts_enter_frame) frame 0x7fffef7fdd20
+[0]: rbp: 0x7fffef7fdd10
+[0]: rsp: 0x7fffef7fdce0
+[1]: (return_value) closure 0x7ffff0005e70
+[1]: (Closure_return) child 36000057160
+[1]: (provably_good_steal_maybe) cl 0x7fffe8000dc0
+[1]: (provably_good_steal_maybe) returned (nil)
+[0]: (__cilkrts_pop_frame) frame 0x7fffef7fdd20
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffef7fdd20
+[0]: rbp: 0x7fffef7fdd10
+[0]: rsp: 0x7fffef7fdce0
+[0]: (__cilkrts_pop_frame) frame 0x7fffef7fde70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde30
+[0]: (__cilkrts_enter_frame_fast) frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde30
+[0]: (__cilkrts_detach) frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde20
+[0]: (__cilkrts_enter_frame) frame 0x7fffef7fdd20
+[0]: rbp: 0x7fffef7fdd10
+[0]: rsp: 0x7fffef7fdce0
+[1]: (return_value) returning closure 0x7ffff0005e70
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[1]: (worker_scheduler) Checking for steal
+[1]: can steal from W0; cl=0x7fffe8000dc0
+[0]: (__cilkrts_pop_frame) frame 0x7fffef7fdd20
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7fffe8000eb0:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7fffef05c000
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffef7fdd20
+[0]: rbp: 0x7fffef7fdd10
+[0]: rsp: 0x7fffef7fdce0
+[0]: (__cilkrts_pop_frame) frame 0x7fffef7fde70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffef7fde70
+[0]: rbp: 0x7fffef7fde60
+[0]: rsp: 0x7fffef7fde30
+(cilk_fiber_allocate_from_heap)      stack top: 0x7fffee8bb000
+[1]: promote gave cl/res = 0x7fffe8000dc0/(nil)
+[1]: stole from W0; res=0x7fffe8000dc0
+[1]: (do_what_it_says) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) CLOSURE_READY
+[0]: (Cilk_exception_handler) closure 0x7fffe8000f20!
+[0]: (Cilk_exception_handler) this is a steal!
+[0]: (Cilk_exception_handler) we are not the leftmost stack.
+[0]: (longjmp_to_runtime)
+[0]: (longjmp_to_runtime) freeing 0x7ffff0005e00
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff0005e00 to 0x7ffff00008c0
+[0]: rbp: 0x7fffef7fddd0
+[0]: rsp: 0x7fffef7fdd80
+[0]: (cilk_fiber_resume_other) jmping to 0x7ffff00008c0:
+[0]: (cilk_fiber_resume_other)           BP: 0x7ffff77f0e70
+[0]: (cilk_fiber_resume_other)           SP: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[0]: (suspend_self_and_resume_other) returned to fiber 0x7ffff00008c0
+[0]: (do_what_it_says) Back from user code.
+[1]: (setup_for_execution) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7fffe8000eb0
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) running 0x7fffe8000eb0.
+[1]: (cilk_fiber_run) starting fiber 0x7fffe8000eb0
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[1]: (sysdep_longjmp_to_sf) BP: 0x7ffff5909e30
+[1]: (sysdep_longjmp_to_sf) SP: 0x7fffef05bf00
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (do_what_it_says) closure 0x7fffe8000f20
+[0]: (do_what_it_says) CLOSURE_RETURNING
+[0]: (return_value) closure 0x7fffe8000f20
+[0]: (Closure_return) child 35000007440
+[0]: (provably_good_steal_maybe) cl 0x7fffe8000dc0
+[0]: (provably_good_steal_maybe) returned (nil)
+[0]: (return_value) returning closure 0x7fffe8000f20
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (worker_scheduler) Checking for steal
+[1]: (sysdep_longjmp_to_sf) PC: 0x555555555514
+[1]: (__cilkrts_sync) syncing frame 0x7ffff5909d20
+[1]: rbp: 0x7fffef05bef0
+[1]: rsp: 0x7fffef05bec0
+[1]: (Cilk_sync) frame 0x7ffff5909d20
+[1]: (__cilkrts_sync) synced frame 0x7ffff5909d20!
+[1]: (__cilkrts_enter_frame_fast) frame 0x7ffff5909c90
+[1]: rbp: 0x7ffff5909c80
+[1]: rsp: 0x7ffff5909c50
+[1]: (__cilkrts_detach) frame 0x7ffff5909c90
+[1]: rbp: 0x7ffff5909c80
+[1]: rsp: 0x7ffff5909c40
+[1]: (__cilkrts_enter_frame) frame 0x7ffff5909b40
+[1]: rbp: 0x7ffff5909b30
+[1]: rsp: 0x7ffff5909b00
+[0]: can steal from W1; cl=0x7fffe8000dc0
+[1]: (__cilkrts_pop_frame) frame 0x7ffff5909b40
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909b40
+[1]: rbp: 0x7ffff5909b30
+[1]: rsp: 0x7ffff5909b00
+[1]: (__cilkrts_pop_frame) frame 0x7ffff5909c90
+[1]: (__cilkrts_leave_frame) leaving frame 0x7ffff5909c90
+[1]: rbp: 0x7ffff5909c80
+[1]: rsp: 0x7ffff5909c50
+(cilk_fiber_allocate_from_heap) Allocated fiber 0x7ffff0005e70:
+(cilk_fiber_allocate_from_heap)     stack base: 0x7fffee8ba000
+(cilk_fiber_allocate_from_heap)      stack top: 0x7fffee119000
+[0]: promote gave cl/res = 0x7fffe8000dc0/(nil)
+[0]: stole from W1; res=0x7fffe8000dc0
+[0]: (do_what_it_says) closure 0x7fffe8000dc0
+[0]: (do_what_it_says) CLOSURE_READY
+[0]: (setup_for_execution) closure 0x7fffe8000dc0
+[0]: (do_what_it_says) Jump into user code.
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff00008c0 to 0x7ffff0005e70
+[0]: rbp: 0x7ffff77f0ea0
+[0]: rsp: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other) running 0x7ffff0005e70.
+[0]: (cilk_fiber_run) starting fiber 0x7ffff0005e70
+[1]: (Cilk_exception_handler) closure 0x7ffff0005ee0!
+[0]: (sysdep_longjmp_to_sf) BP: 0x7ffff5909e30
+[0]: (sysdep_longjmp_to_sf) SP: 0x7fffee8b9f00
+[0]: (sysdep_longjmp_to_sf) PC: 0x5555555555c4
+[0]: (__cilkrts_enter_frame_fast) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_detach) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e20
+[0]: (__cilkrts_enter_frame) frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[1]: (Cilk_exception_handler) this is a steal!
+[1]: (Cilk_exception_handler) we are not the leftmost stack.
+[1]: (longjmp_to_runtime)
+[1]: (longjmp_to_runtime) freeing 0x7fffe8000eb0
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9d20
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9e70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_enter_frame_fast) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_detach) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e20
+[0]: (__cilkrts_enter_frame) frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe8000eb0 to 0x7fffe80008c0
+[1]: rbp: 0x7ffff5909bf0
+[1]: rsp: 0x7ffff5909ba0
+[1]: (cilk_fiber_resume_other) jmping to 0x7fffe80008c0:
+[1]: (cilk_fiber_resume_other)           BP: 0x7fffefffee70
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9d20
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9e70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9e70
+[1]: (cilk_fiber_resume_other)           SP: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_enter_frame_fast) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_detach) frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e20
+[0]: (__cilkrts_enter_frame) frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[1]: (suspend_self_and_resume_other) returned to fiber 0x7fffe80008c0
+[1]: (do_what_it_says) Back from user code.
+[1]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9d20
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9d20
+[0]: rbp: 0x7fffee8b9d10
+[0]: rsp: 0x7fffee8b9ce0
+[0]: (__cilkrts_pop_frame) frame 0x7fffee8b9e70
+[0]: (__cilkrts_leave_frame) leaving frame 0x7fffee8b9e70
+[0]: rbp: 0x7fffee8b9e60
+[0]: rsp: 0x7fffee8b9e30
+[0]: (__cilkrts_sync) syncing frame 0x7ffff5909d20
+[0]: rbp: 0x7fffee8b9ef0
+[0]: rsp: 0x7fffee8b9ec0
+[0]: (Cilk_sync) frame 0x7ffff5909d20
+[0]: (Cilk_sync) outstanding children
+[0]: Closure_suspend 0x7fffe8000dc0
+[0]: (__cilkrts_sync) waiting to sync frame 0x7ffff5909d20!
+[0]: (longjmp_to_runtime)
+[0]: (longjmp_to_runtime) freeing 0x7ffff0005e70
+[0]: (suspend_self_and_resume_other) switching from fiber 0x7ffff0005e70 to 0x7ffff00008c0
+[0]: rbp: 0x7fffee8b9e80
+[0]: rsp: 0x7fffee8b9e30
+[0]: (cilk_fiber_resume_other) jmping to 0x7ffff00008c0:
+[0]: (cilk_fiber_resume_other)           BP: 0x7ffff77f0e70
+[0]: (cilk_fiber_resume_other)           SP: 0x7ffff77f0e50
+[0]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+[0]: (suspend_self_and_resume_other) returned to fiber 0x7ffff00008c0
+[1]: (worker_scheduler) in loop
+[1]: (worker_scheduler) no work!  Checking local deque
+[0]: (do_what_it_says) Back from user code.
+[0]: (worker_scheduler) do_what_it_says returned (nil)
+[0]: (worker_scheduler) in loop
+[0]: (worker_scheduler) no work!  Checking local deque
+[0]: (worker_scheduler) Checking for steal
+[1]: (do_what_it_says) closure 0x7ffff0005ee0
+[1]: (do_what_it_says) CLOSURE_RETURNING
+[1]: (return_value) closure 0x7ffff0005ee0
+[1]: (Closure_return) child 36000057340
+[1]: (provably_good_steal_maybe) cl 0x7fffe8000dc0
+[1]: (provably_good_steal_maybe) completing a sync
+[1]: (provably_good_steal_maybe) set res->fiber 0x7ffff0005d90
+[1]: (provably_good_steal_maybe) returned 0x7fffe8000dc0
+[1]: (return_value) returning closure 0x7ffff0005ee0
+[1]: (worker_scheduler) do_what_it_says returned 0x7fffe8000dc0
+[1]: (worker_scheduler) in loop
+[1]: (do_what_it_says) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) CLOSURE_READY
+[1]: (setup_for_execution) closure 0x7fffe8000dc0
+[1]: (do_what_it_says) Jump into user code.
+[1]: (suspend_self_and_resume_other) switching from fiber 0x7fffe80008c0 to 0x7ffff0005d90
+[1]: rbp: 0x7fffefffeea0
+[1]: rsp: 0x7fffefffee50
+[1]: (cilk_fiber_resume_other) jmping to 0x7ffff0005d90:
+[1]: (cilk_fiber_resume_other)           BP: 0x7ffff5909bc0
+[1]: (cilk_fiber_resume_other)           SP: 0x7ffff5909ba0
+[1]: (cilk_fiber_resume_other)           PC: 0x555555557b6e
+
+Thread 3 "mm_dac" received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0x7fffeffff700 (LWP 20450)]
+0x0000555555557b8f in cilk_fiber_suspend_self_and_resume_other (self=0x7fffe8000eb0, other=0x7fffe80008c0) at fiber.c:265
+265	  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
+(gdb) bt
+#0  0x0000555555557b8f in cilk_fiber_suspend_self_and_resume_other (self=0x7fffe8000eb0, other=0x7fffe80008c0) at fiber.c:265
+#1  0x00005555555594be in longjmp_to_runtime (w=0x555555775af0) at sched.c:41
+#2  0x0000555555559348 in Cilk_exception_handler () at exception.c:136
+#3  0x0000555555556a6e in __cilkrts_leave_frame (sf=0x7ffff5909c90) at cilk2c.c:161
+#4  0x0000555555555840 in mm_internal_spawn_helper (C=0x7ffff00041a0, A=0x7ffff0001150, B=0x7ffff0001d80, n=32, length=8) at mm_dac.c:174
+#5  0x00005555555555f7 in mm_internal (C=0x7ffff00041a0, A=0x7ffff0001130, B=0x7ffff0001980, n=32, length=16) at mm_dac.c:141
+#6  0x0000555555555828 in mm_internal_spawn_helper (C=0x7ffff00041a0, A=0x7ffff0001130, B=0x7ffff0001980, n=32, length=16) at mm_dac.c:172
+#7  0x0000555555555547 in mm_internal (C=0x7ffff0003960, A=0x7ffff0000930, B=0x7ffff0001940, n=32, length=32) at mm_dac.c:130
+#8  0x000055555555588b in mm_recursive_parallel (C=0x7ffff0003960, A=0x7ffff0000930, B=0x7ffff0001940, n=32) at mm_dac.c:181
+#9  0x0000555555555a17 in test_mm (C=0x7ffff0002950, A=0x7ffff0000930, B=0x7ffff0001940, n=32, test_name=0x7ffff6fefe50 "matrix32") at mm_dac.c:217
+#10 0x0000555555555db8 in random_test (n=32, test_name=0x7ffff6fefe50 "matrix32") at mm_dac.c:286
+#11 0x0000555555555f52 in cilk_main (argc=2, argv=0x7fffffffdf08) at mm_dac.c:341
+#12 0x000055555555c6c7 in spawn_cilk_main (res=0x7ffff6feff48, argc=2, args=0x7fffffffdf08) at invoke_main.c:53
+#13 0x000055555555c82e in invoke_main (f=0x555555789790) at invoke_main.c:89
+#14 0x0000555555557981 in cilk_fiber_run (fiber=0x2b) at fiber.c:204
+#15 0x00007fffe8000dc0 in ?? ()
+#16 0x0000555555775af0 in ?? ()
+#17 0x00005555557621d0 in ?? ()
+#18 0x00007ffff77f0e70 in ?? ()
+#19 0x000055555555b723 in do_dekker_on (ws=0x0, victim_ws=0x0, cl=0x0) at steal.c:116
+#20 0x00007fffeffff9c0 in ?? ()
+#21 0x00004fe000004fe1 in ?? ()
+#22 0x00007ffff77f19e0 in ?? ()
+#23 0x00007ffff77f19e0 in ?? ()
+#24 0xffffffffffffffe0 in ?? ()
+#25 0x0000000000000000 in ?? ()
+(gdb) info r
+rax            0x0	0
+rbx            0x7fffefffee70	140737219915376
+rcx            0x3c	60
+rdx            0x555555557b6e	93824992246638
+rsi            0x0	0
+rdi            0x7fffefffc690	140737219905168
+rbp            0x7ffff5909bf0	0x7ffff5909bf0
+rsp            0x7ffff5909ba0	0x7ffff5909ba0
+r8             0x7fffeffff700	140737219917568
+r9             0x3c	60
+r10            0x78	120
+r11            0x0	0
+r12            0x7fffffffdd1e	140737488346398
+r13            0x7fffffffdd1f	140737488346399
+r14            0x7fffeffff9c0	140737219918272
+r15            0x7fffeffff700	140737219917568
+rip            0x555555557b8f	0x555555557b8f <cilk_fiber_suspend_self_and_resume_other+345>
+eflags         0x10202	[ IF RF ]
+cs             0x33	51
+ss             0x2b	43
+ds             0x0	0
+es             0x0	0
+fs             0x0	0
+gs             0x0	0
+

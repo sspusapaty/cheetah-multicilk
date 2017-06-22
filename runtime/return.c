@@ -40,7 +40,7 @@ void Cilk_set_return(__cilkrts_worker *const ws) {
 
   Closure *t;
 
-  __cilkrts_alert(3, "[%d]: (Cilk_set_return)\n", ws->self);
+  __cilkrts_alert(ALERT_RETURN, "[%d]: (Cilk_set_return)\n", ws->self);
 
   deque_lock_self(ws);
   t = deque_peek_bottom(ws, ws->self);
@@ -130,7 +130,7 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
   CILK_ASSERT(child->call_parent == NULL);
   CILK_ASSERT(child->spawn_parent != NULL);
 
-  __cilkrts_alert(3, "[%d]: (Closure_return) child %o\n", ws->self, child);
+  __cilkrts_alert(ALERT_RETURN, "[%d]: (Closure_return) child %o\n", ws->self, child);
 
   parent = child->spawn_parent;
 
@@ -172,12 +172,11 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
  * CLOSURE_RETURNING
  */
 Closure *return_value(__cilkrts_worker *const ws, Closure *t) {
-  __cilkrts_alert(3, "[%d]: (return_value) closure %p\n", ws->self, t);
+  __cilkrts_alert(ALERT_RETURN, "[%d]: (return_value) closure %p\n", ws->self, t);
 
   Closure *res = NULL;
   CILK_ASSERT(t->status == CLOSURE_RETURNING);
   
-  __cilkrts_alert(3, "[%d]: returning closure %p\n", ws->self, t);
   if(t->call_parent == NULL) {
     res = Closure_return(ws, t);
 
@@ -186,6 +185,8 @@ Closure *return_value(__cilkrts_worker *const ws, Closure *t) {
     // is when the user program calls Cilk_exit, leading to global abort
     // MAK: We don't support this!!!
   }
+
+  __cilkrts_alert(ALERT_RETURN, "[%d]: (return_value) returning closure %p\n", ws->self, t);
 
   return res;
 }

@@ -76,13 +76,16 @@ void cilk_fiber_resume_other(cilk_fiber * other)
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
     // Resume by longjmp'ing to the place where we suspended.
-    __cilkrts_alert(3, "[%d]: jmping to %p##%p.\n", other->owner->self, other, PC(other));
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other) jmping to %p:\n", other->owner->self, other);
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           BP: %p\n", other->owner->self, FP(other));
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           SP: %p\n", other->owner->self, SP(other));
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           PC: %p\n", other->owner->self, PC(other));
     __builtin_longjmp(other->ctx, 1);
   }
   else {
     // Otherwise, we've never ran this fiber before.  Start the
     // proc method.
-    __cilkrts_alert(3, "[%d]: running %p.\n", other->owner->self, other);
+    __cilkrts_alert(3, "[%d]: (cilk_fiber_resume_other) running %p.\n", other->owner->self, other);
     cilk_fiber_run(other);
   }
 }
@@ -108,7 +111,7 @@ cilk_fiber * cilk_fiber_allocate_from_thread() {
   
   cilk_fiber_set_allocated_from_thread(f, 1);
   __cilkrts_set_tls_cilk_fiber(f);
-  __cilkrts_alert(4, "Allocated fiber %p/%p\n", f, f->m_stack_base);
+  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_thread) Allocated fiber %p/%p\n", f, f->m_stack_base);
   return f;
 }
 
@@ -116,9 +119,11 @@ cilk_fiber * cilk_fiber_allocate_from_heap() {
   cilk_fiber * f = (cilk_fiber *) malloc(sizeof(cilk_fiber));
   cilk_fiber_init(f);
   
-  make_stack(f, 4000000); // ~4MB stack
+  make_stack(f, 8000000); // ~8MB stack
 
-  __cilkrts_alert(4, "Allocated fiber %p/%p\n", f, f->m_stack_base);
+  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap) Allocated fiber %p:\n", f);
+  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap)     stack base: %p\n", f->m_stack_base);
+  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap)      stack top: %p\n", f->m_stack);
   
   return f;
 }
@@ -140,6 +145,8 @@ void cilk_fiber_run(cilk_fiber * fiber) {
   CILK_ASSERT(!cilk_fiber_is_allocated_from_thread(fiber));
   CILK_ASSERT(!cilk_fiber_is_resumable(fiber));
 
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_run) starting fiber %p\n", fiber->owner->self, fiber);
+
   // TBD: This setjmp/longjmp pair simply changes the stack pointer.
   // We could probably replace this code with some assembly.
   //if (! setjmp(fiber->ctx))
@@ -148,6 +155,7 @@ void cilk_fiber_run(cilk_fiber * fiber) {
   char * rbp;
   ASM_GET_SP(rsp);
   ASM_GET_FP(rbp);
+
   // Calculate the size of the current stack frame (i.e., this
   // run() function.  
   size_t frame_size = (size_t)rbp - (size_t)rsp;
@@ -231,8 +239,9 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
 	  self, other, other->owner, other->resume_sf);
 #endif
-  __cilkrts_alert(3, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
-
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) switching from fiber %p to %p\n", self->owner->self, self, other);
+  DUMP_STACK(ALERT_FIBER, self->owner->self);
+  
   // Pass along my owner.
   other->owner = self->owner;
   self->owner  = NULL;
@@ -253,6 +262,8 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
     cilk_fiber_resume_other(other);
   }
 
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
+
   // Return here when another fiber resumes me.
   // If the fiber that switched to me wants to be deallocated, do it now.
   cilk_fiber_do_post_switch_actions(self);
@@ -265,7 +276,7 @@ void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, c
   fprintf(stderr, "remove_reference_from_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
 	  self, other, other->owner, other->resume_sf);
 #endif
-  __cilkrts_alert(3, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
+  __cilkrts_alert(ALERT_FIBER, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
 
   // Pass along my owner.
   other->owner = self->owner;
