@@ -125,7 +125,9 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
     __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) synced frame %p!\n", ws->self, sf);
     // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
     // if this frame is ready to sync.
-    __builtin_longjmp(sf->ctx, 1);
+    //__builtin_longjmp(sf->ctx, 1);
+    // MAK: GUESS FOR SYNC BUG
+    longjmp_to_runtime(ws);
   } else {
     __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n", ws->self, sf);
     longjmp_to_runtime(ws);                        

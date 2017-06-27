@@ -107,6 +107,8 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
   Closure_lock(ws, t);
 
   switch (t->status) {
+  case CLOSURE_SYNCING:
+    // Treat the same as READY
   case CLOSURE_READY:
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) CLOSURE_READY\n", ws->self);
     /* just execute it */

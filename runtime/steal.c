@@ -387,6 +387,11 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       //----- EVENT_STEAL_RETURNING
       __cilkrts_alert(0, "Worker %d: steal failed: returning closure\n", ws->self);
 
+    case CLOSURE_SYNCING:
+      /* ok, let it leave alone */
+      //----- EVENT_STEAL_SYNCING
+      __cilkrts_alert(0, "Worker %d: steal failed: SYNCING closure\n", ws->self);
+
 
     give_up:
       // MUST unlock the closure before the queue;

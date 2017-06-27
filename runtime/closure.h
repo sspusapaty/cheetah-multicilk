@@ -4,7 +4,9 @@
 // Forward declaration
 typedef struct Closure Closure;
 enum ClosureStatus { CLOSURE_RUNNING = 42, CLOSURE_SUSPENDED,
-                     CLOSURE_RETURNING, CLOSURE_READY };
+                     CLOSURE_RETURNING, CLOSURE_READY,
+		     // MAK: Hack--remove or better integrate
+		     CLOSURE_SYNCING };
 /* The order is important here. */
 enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 
