@@ -109,6 +109,32 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
   switch (t->status) {
   case CLOSURE_SYNCING:
     // Treat the same as READY
+    __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) CLOSURE_SYNCING\n", ws->self);
+    /* just execute it */
+    setup_for_execution(ws, t);
+    f = t->frame;
+    t->fiber->resume_sf = f; // I THINK this works
+    
+    CILK_ASSERT(f);
+	  
+    Closure_unlock(ws, t);
+    
+    // MUST unlock the closure before locking the queue 
+    // (rule A in file PROTOCOLS)
+    deque_lock_self(ws);
+    deque_add_bottom(ws, t, ws->self);
+    deque_unlock_self(ws);
+    
+    /* now execute it */
+    __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) Jump into user code.\n", ws->self);
+
+    CILK_ASSERT(ws->l->runtime_fiber != t->fiber);
+
+    cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
+
+    __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) Back from user code.\n", ws->self);
+	    
+    break; // ?
   case CLOSURE_READY:
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) CLOSURE_READY\n", ws->self);
     /* just execute it */

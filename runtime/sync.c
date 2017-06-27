@@ -47,8 +47,8 @@ int Cilk_sync(__cilkrts_worker *const ws,
 
   } else {
     // MAK: GUESS FOR SYNC BUG
-    cl->status = CLOSURE_SUSPENDED;
-    cl->frame->worker = (__cilkrts_worker *) NOBODY;
+    t->status = CLOSURE_SYNCING;
+    t->frame->worker = (__cilkrts_worker *) NOBODY;
     
     __cilkrts_set_synced(t->frame);
     // restore the original rsp 
