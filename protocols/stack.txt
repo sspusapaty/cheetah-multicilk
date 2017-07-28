@@ -1,0 +1,73 @@
+
+
+
+/* The functions __cilkrts_put_stack and __cilkrts_take_stack keep track of
+ * changes in the stack's depth between when the point at which a frame is
+ * stolen and when it is resumed at a sync.  A stolen frame typically goes
+ * through the following phase changes:
+ *
+ *   1. Suspend frame while stealing it.
+ *   2. Resume stolen frame at begining of continuation
+ *   3. Suspend stolen frame at a sync
+ *   4. Resume frame (no longer marked stolen) after the sync
+ *
+ * When the frame is suspended (steps 1 and 3), __cilkrts_put_stack is called to
+ * establish the stack pointer for the sync.  When the frame is resumed (steps
+ * 2 and 4), __cilkrts_take_stack is called to indicate the stack pointer
+ * (which may be on a different stack) at
+ * the point of resume.  If the stack pointer changes between steps 2 and 3,
+ * e.g., as a result of pushing 4 bytes onto the stack,
+ * the offset is reflected in the value of ff->sync_sp after step 3 relative to
+ * its value after step 1 (e.g., the value of ff->sync_sp after step 3 would be
+ * 4 less than its value after step 1, for a down-growing stack).
+ *
+ * Imp detail: The actual call chains for each of these phase-change events is:
+ *
+ *   1. unroll_call_stack -> make_unrunnable  -> __cilkrts_put_stack
+ *    --> ??
+ *   2. do_work           -> __cilkrts_resume -> __cilkrts_take_stack
+ *    --> ??
+ *   3. do_sync -> disown -> make_runnable    -> __cilkrts_put_stack
+ *    --> __cilkrts_c_sync -> execute_reductions_for_sync -> __cilkrts_put_stack
+ *   4. __cilkrts_resume                      -> __cilkrts_take_stack
+ *    --> ??
+ *
+ * (The above is a changeable implementation detail.  The resume, sequence, in
+ * particular, is more complex on some operating systems.)
+ */
+
+make_unrunnable
+unroll_call_stack:
+    runtime/scheduler.c:714:    make_unrunnable(w, ff, sf, sf == loot_sf, "steal 1");
+    runtime/scheduler.c:719:        make_unrunnable(w, ff, t_sf, t_sf == loot_sf, "steal 2");
+__cilkrts_return:
+  disown:
+    runtime/scheduler.c:2144:    make_unrunnable(w, ff, sf, sf != 0, why);
+
+__cilkrts_put_stack
+make_unrunnable:
+    runtime/scheduler.c:410:            __cilkrts_put_stack(ff, sf);
+__cilkrts_c_sync:
+  execute_reductions_for_sync:
+    runtime/scheduler.c:3955:    __cilkrts_put_stack(ff, sf_at_sync);
+
+__cilkrts_take_stack
+user_code_resume_after_switch_into_runtime:
+  cilkrts_resume:
+    runtime/scheduler.c:1537:    __cilkrts_take_stack(ff, sync_sp);  // leaves ff->sync_sp null
+fiber_proc_to_resume_user_code_for_random_steal:
+  sysdep_reset_jump_buffers_for_resume:
+    runtime/sysdep-unix.c:482:    __cilkrts_take_stack(ff, sp);
+
+sync_sp
+runtime/scheduler.c:1454:    CILK_ASSERT(ff->sync_sp != NULL);
+runtime/scheduler.c:1536:    char* sync_sp = ff->sync_sp;
+runtime/scheduler.c:1537:    __cilkrts_take_stack(ff, sync_sp);  // leaves ff->sync_sp null
+runtime/scheduler.c:1543:    sysdep_longjmp_to_sf(sync_sp, sf, ff);
+runtime/cilk-abi-vla-internal.c:92:    ff->sync_sp = ff->sync_sp + full_size;
+runtime/full_frame.c:81:        ff->sync_sp = 0;
+runtime/full_frame.c:111:    ptrdiff_t sync_sp_i = (ptrdiff_t) ff->sync_sp;
+runtime/full_frame.c:114:    ff->sync_sp = sp + sync_sp_i;
+runtime/full_frame.c:131:    ptrdiff_t sync_sp_i = ff->sync_sp - (char*) sp;
+runtime/full_frame.c:133:    ff->sync_sp = (char *) sync_sp_i;
+runtime/full_frame.c:153:    ff->sync_sp = ff->sync_sp + size;

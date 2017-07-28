@@ -102,3 +102,5 @@ void user_code_resume_after_switch_into_runtime(cilk_fiber *fiber) {
   // Actually jump to user code.
   cilkrts_resume(sf, sync_sp);
 }
+
+//----------
