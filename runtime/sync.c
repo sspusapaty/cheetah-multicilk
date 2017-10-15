@@ -46,10 +46,6 @@ int Cilk_sync(__cilkrts_worker *const ws,
     res = SYNC_NOT_READY;
 
   } else {
-    // MAK: GUESS FOR SYNC BUG
-    t->status = CLOSURE_SYNCING;
-    t->frame->worker = (__cilkrts_worker *) NOBODY;
-    
     __cilkrts_set_synced(t->frame);
     // restore the original rsp 
     //t->frame->ctx[RSP_INDEX] = (void *) t->frame_rsp;

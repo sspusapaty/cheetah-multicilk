@@ -332,8 +332,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
         __cilkrts_alert(ALERT_STEAL, "[%d]: can steal from W%d; cl=%p\n", ws->self, victim, cl);
 	fiber = cilk_fiber_allocate_from_heap();
 	parent_fiber = cl->fiber;
-
-	// MAK: 
+	
 	/* 
 	 * if we could send the exception, promote
 	 * the child to a full closure, and steal
@@ -387,12 +386,6 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       /* ok, let it leave alone */
       //----- EVENT_STEAL_RETURNING
       __cilkrts_alert(0, "Worker %d: steal failed: returning closure\n", ws->self);
-      goto give_up;
-
-    case CLOSURE_SYNCING:
-      /* ok, let it leave alone */
-      //----- EVENT_STEAL_SYNCING
-      __cilkrts_alert(0, "Worker %d: steal failed: SYNCING closure\n", ws->self);
 
 
     give_up:

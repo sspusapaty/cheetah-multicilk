@@ -60,8 +60,7 @@ void Cilk_set_return(__cilkrts_worker *const ws) {
     CILK_ASSERT(t == t1);
     CILK_ASSERT(__cilkrts_stolen(t->frame));
     // CILK_ASSERT(t->frame->debug_call_parent == call_parent->frame);
-    // MAK: 95% DISOWN GOES HERE
-    // MAK: make_unrunnable(ws, t, t->frame, t->frame != 0, why);
+
     t->frame = NULL;
 
     Closure_unlock(ws, t);
