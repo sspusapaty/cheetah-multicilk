@@ -260,7 +260,6 @@ bool is_power_of_2(int n) {
 //               a standard test suite.
 int main(int argc, char *argv[]) {
   int N = -1;
-  bool do_verify = false, do_time = true, do_pause = false;
   const char *N_str = NULL;
   
   if(argc != 2) {

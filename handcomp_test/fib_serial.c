@@ -15,7 +15,7 @@
 
 
 int fib(int n) {
-    int x, y, _tmp;
+    int x, y;
 
     if(n < 2) {
         return n;

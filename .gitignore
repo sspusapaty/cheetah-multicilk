@@ -1,5 +1,10 @@
+# Exes
+handcomp_test/*
+!handcomp_test/*.*
+
 # Emacs backups
 *~
+\#*#
 
 # Compilations
 *.o
@@ -8,14 +13,6 @@
 # Scratch
 runtime/cilk_types.h
 *.t
-
-# Exes
-handcomp_test/fib
-handcomp_test/fib_serial
-handcomp_test/fib_cilkplus
-handcomp_test/mm_dac
-handcomp_test/mm_dac_serial
-handcomp_test/mm_dac_cilkplus
 
 # Future proofing
 *.so
