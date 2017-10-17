@@ -7,7 +7,7 @@ OPTIONS = -Wall -fpic
 ifdef O
   OPTIONS += -O$(O) -fno-omit-frame-pointer
 else
-  OPTIONS += -O0
+  OPTIONS += -O0 -fno-omit-frame-pointer
 endif
 
 ifeq ($(GDB), 1)

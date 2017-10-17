@@ -3,7 +3,7 @@ SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
-TESTS          = mm_dac fib
+TESTS          = mm_dac fib fiber_debug
 TESTS_CILKR    = $(patsubst %,%_cilkr,$(TESTS))
 TESTS_SERIAL   = $(patsubst %,%_serial,$(TESTS))
 TESTS_CILKPLUS = $(patsubst %,%_cilkplus,$(TESTS))
