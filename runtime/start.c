@@ -7,7 +7,7 @@
 
 
 void main_thread_init(global_state * g) {
-  __cilkrts_alert(ALERT_BOOT, "(main_thread_init) Setting up main thread's closure.\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (main_thread_init) Setting up main thread's closure.\n");
 
   g->invoke_main = create_invoke_main(g);
   g->start = 1;
@@ -23,7 +23,7 @@ void threads_join(global_state * g) {
     if (status != 0)
       __cilkrts_bug("Cilk runtime error: thread join (%d) failed: %d\n", i, status);
     }
-  __cilkrts_alert(ALERT_BOOT, "(threads_join) All workers joined!\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (threads_join) All workers joined!\n");
 }
 
 void __cilkrts_run(global_state * g) {

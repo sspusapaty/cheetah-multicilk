@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 global_state * global_state_init(int argc, char* argv[]) {
-  __cilkrts_alert(ALERT_BOOT, "(global_state_init) Initializing global state.\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_init) Initializing global state.\n");
   
   global_state * g = (global_state *) malloc(sizeof(global_state));
 
@@ -38,7 +38,7 @@ local_state * worker_local_init() {
 }
 
 void deques_init(global_state * g) {
-  __cilkrts_alert(ALERT_BOOT, "(deques_init) Initializing deques.\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (deques_init) Initializing deques.\n");
   for (int i = 0; i < g->active_size; i++) {
     g->deques[i].top = NULL;
     g->deques[i].bottom = NULL;
@@ -48,9 +48,9 @@ void deques_init(global_state * g) {
 }
 
 void workers_init(global_state * g) {
-  __cilkrts_alert(ALERT_BOOT, "(workers_init) Initializing workers.\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing workers.\n");
   for (int i = 0; i < g->active_size; i++) {
-    __cilkrts_alert(ALERT_BOOT, "(workers_init) Initializing worker %d.\n", i);
+    __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing worker %d.\n", i);
     __cilkrts_worker * w = (__cilkrts_worker *) malloc(sizeof(__cilkrts_worker));
     w->self = i; // i + 1?
     w->g = g;
@@ -72,6 +72,7 @@ void* scheduler_thread_proc(void * arg) {
   // Create a cilk fiber for this worker on this thread.
   w->l->runtime_fiber = cilk_fiber_allocate_from_thread();
   cilk_fiber_set_owner(w->l->runtime_fiber, w);
+  __cilkrts_alert(ALERT_BOOT | ALERT_BOOT, "[%d]: (scheduler_thread_proc) runtime_fiber = %p\n", w->self, w->l->runtime_fiber);
 
   while(!w->g->start) {
     usleep(1);
@@ -96,7 +97,7 @@ void* scheduler_thread_proc(void * arg) {
 }
 
 void threads_init(global_state * g) {
-  __cilkrts_alert(ALERT_BOOT, "(threads_init) Setting up threads.\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (threads_init) Setting up threads.\n");
   for (int i = 0; i < g->active_size; i++) {
     int status = pthread_create(&g->threads[i],
                                 NULL,
@@ -108,7 +109,7 @@ void threads_init(global_state * g) {
 }
 
 global_state * __cilkrts_init(int argc, char* argv[]) {
-  __cilkrts_alert(ALERT_BOOT, "(__cilkrts_init)\n");
+  __cilkrts_alert(ALERT_BOOT, "[M]: (__cilkrts_init)\n");
   global_state * g = global_state_init(argc, argv);
   __cilkrts_init_tls_variables();
   workers_init(g);

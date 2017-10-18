@@ -111,7 +111,7 @@ cilk_fiber * cilk_fiber_allocate_from_thread() {
   
   cilk_fiber_set_allocated_from_thread(f, 1);
   __cilkrts_set_tls_cilk_fiber(f);
-  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_thread) Allocated fiber %p/%p\n", f, f->m_stack_base);
+  __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_thread) Allocated fiber %p (base: %p)\n", f, f->m_stack_base);
   return f;
 }
 
@@ -121,9 +121,7 @@ cilk_fiber * cilk_fiber_allocate_from_heap() {
   
   make_stack(f, 8000000); // ~8MB stack
 
-  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap) Allocated fiber %p:\n", f);
-  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap)     stack base: %p\n", f->m_stack_base);
-  __cilkrts_alert(ALERT_FIBER, "(cilk_fiber_allocate_from_heap)      stack top: %p\n", f->m_stack);
+  __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_heap) Allocated fiber %p (base/top: %p/%p)\n", f, f->m_stack_base, f->m_stack);
   
   return f;
 }

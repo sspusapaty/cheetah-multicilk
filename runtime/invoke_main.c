@@ -15,13 +15,15 @@ Closure * create_invoke_main(global_state *const g) {
   cilk_fiber * f;
 
   t = Closure_create();
-  
   t->status = CLOSURE_READY;
+
+  __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n", t);
 
   sf = (__cilkrts_stack_frame *)malloc(sizeof(__cilkrts_stack_frame));
 
   f = cilk_fiber_allocate_from_heap();
   cilk_fiber_reset_state(f, invoke_main);
+  
   // it's important to set the following fields for the root closure, 
   // because we use the info to jump to the right stack position and start
   // executing user code.  For any other frames, these fields get setup 
@@ -41,6 +43,8 @@ Closure * create_invoke_main(global_state *const g) {
   t->frame = sf;
   sf->worker = (__cilkrts_worker *) NOBODY;
   t->fiber = f;
+  
+  __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", f);
     
   return t;
 }

@@ -27,7 +27,7 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
   CILK_ASSERT(current_fiber->owner == w);
 
   if (w->l->fiber_to_free) {
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) freeing %p\n", w->self, current_fiber);
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) freeing fiber %p\n", w->self, current_fiber);
     // Case 1: we are freeing this fiber.  We never
     // resume this fiber again after jumping into the runtime.
     CILK_ASSERT(current_fiber == w->l->fiber_to_free);
@@ -43,7 +43,7 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     // We should never come back here!
     CILK_ASSERT(0);
   } else {        
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing %p\n", w->self, current_fiber);
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing fiber %p\n", w->self, current_fiber);
     // Case 2: We are passing the fiber to our parent because we
     // are leftmost.  We should come back later to
     // resume execution of user code.
@@ -159,16 +159,16 @@ void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
   rts_srand(ws, ws->self * 162347);
 
   while (!ws->g->done) {
-    __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) in loop\n", ws->self);
+    __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) Looking for work\n", ws->self);
     if (!t) {
       // try to get work from our local queue
-      __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) no work!  Checking local deque\n", ws->self);
+      __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) No pre-existing work!  Checking local deque\n", ws->self);
       deque_lock_self(ws);
       t = deque_xtract_bottom(ws, ws->self);
       deque_unlock_self(ws);
     }
 
-    if (!t) __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) Checking for steal\n", ws->self);
+    if (!t) __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) Nothing in local deque!  Trying to steal\n", ws->self);
 
     while (!t && !ws->g->done) {
 

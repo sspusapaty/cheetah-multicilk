@@ -339,7 +339,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	 * the parent
 	 */
 	child = promote_child(ws, victim_ws, cl, &res);
-        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) promote gave cl/res = %p/%p\n", ws->self, cl, res);
+        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) promote gave cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
 
 	/* detach the parent */
 	// ANGE: the top of the deque could have changed in the
@@ -359,6 +359,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	cl->fiber = 0;
 	res->fiber = fiber;
 	child->fiber = parent_fiber;
+        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
+        __cilkrts_alert(ALERT_FIBER, "[%d]: (Closure_steal) cl/res/child now have fiber %p/%p/%p\n", ws->self, 0, fiber, parent_fiber);
 	
 	deque_unlock(ws, victim); // at this point, more steals can happen from the victim.
 
