@@ -76,10 +76,7 @@ void cilk_fiber_resume_other(cilk_fiber * other)
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
     // Resume by longjmp'ing to the place where we suspended.
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other) jmping to %p:\n", other->owner->self, other);
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           BP: %p\n", other->owner->self, FP(other));
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           SP: %p\n", other->owner->self, SP(other));
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other)           PC: %p\n", other->owner->self, PC(other));
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other) jmping to fiber %p (BP/SP/PC: %p/%p/%p)\n", other->owner->self, other, FP(other), SP(other), PC(other));
     __builtin_longjmp(other->ctx, 1);
   }
   else {
@@ -99,8 +96,12 @@ void cilk_fiber_init(cilk_fiber * fiber) {
   
   fiber->m_start_proc = NULL;
   fiber->m_post_switch_proc = NULL;
+
+  fiber->m_pending_remove_ref = NULL;
   
   fiber->m_flags = 0;
+
+  fiber->m_outstanding_references = 0;
 }
 
 // ----------
@@ -111,6 +112,9 @@ cilk_fiber * cilk_fiber_allocate_from_thread() {
   
   cilk_fiber_set_allocated_from_thread(f, 1);
   __cilkrts_set_tls_cilk_fiber(f);
+
+  f->m_outstanding_references = 2;
+  
   __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_thread) Allocated fiber %p (base: %p)\n", f, f->m_stack_base);
   return f;
 }
@@ -121,20 +125,142 @@ cilk_fiber * cilk_fiber_allocate_from_heap() {
   
   make_stack(f, 8000000); // ~8MB stack
 
+  f->m_outstanding_references = 1;
+  
   __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_heap) Allocated fiber %p (base/top: %p/%p)\n", f, f->m_stack_base, f->m_stack);
   
   return f;
 }
 
 int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber) {
+  CILK_ASSERT(fiber->m_outstanding_references >= 2);
+  
+  // Suspending the fiber should conceptually decrement the ref
+  // count by 1.  Then, freeing the fiber itself decrements the
+  // ref count again.
+  int ref_count = cilk_fiber_sub_from_ref_count(fiber, 2);
+  if (ref_count == 0) {
+    free(fiber);
+  }
+  return ref_count;
+}
+
+int cilk_fiber_deallocate_to_heap(cilk_fiber * fiber) {
+  free_stack(fiber);
   free(fiber);
   return 0;
 }
 
-int cilk_fiber_deallocate_from_heap(cilk_fiber * fiber) {
-  free_stack(fiber);
-  free(fiber);
-  return 0;
+int cilk_fiber_remove_reference(cilk_fiber * fiber)
+{
+  int ref_count = cilk_fiber_dec_ref_count(fiber);
+  if (ref_count == 0) {
+    cilk_fiber_deallocate_to_heap(fiber);
+  }
+  return ref_count;
+}
+
+void cilk_fiber_do_post_switch_actions(cilk_fiber * self)
+{
+  if (self->m_post_switch_proc) {
+    cilk_fiber_proc proc = self->m_post_switch_proc;
+    self->m_post_switch_proc = NULL;
+    proc(self);
+  }
+
+  if (self->m_pending_remove_ref) {
+    cilk_fiber_remove_reference(self->m_pending_remove_ref); //m_pending_pool);
+
+    // Even if we don't free it,
+    self->m_pending_remove_ref = NULL;
+    // m_pending_pool   = NULL;
+  }
+}
+
+void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * other)
+{
+#if FIBER_DEBUG >=1
+  fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
+	  self, other, other->owner, other->resume_sf);
+#endif
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) switching from fiber %p to %p\n", self->owner->self, self, other);
+  //DUMP_STACK(ALERT_FIBER, self->owner->self);
+  
+  // Decrement my reference count (to suspend)
+  // Increment other's count (to resume)
+  // Suspended fiber should have a reference count of at least 1.  (It is not in a pool).
+  cilk_fiber_dec_ref_count(self);
+  cilk_fiber_inc_ref_count(other);
+  CILK_ASSERT(self->m_outstanding_references >= 1);
+  
+  // Pass along my owner.
+  other->owner = self->owner;
+  self->owner  = NULL;
+
+  // Change this fiber to resumable.
+  CILK_ASSERT(!cilk_fiber_is_resumable(self));
+  cilk_fiber_set_resumable(self, 1);
+
+  // cilk_fiber_sysdep* self = self->sysdep();
+  // self->suspend_self_and_resume_other_sysdep(other->sysdep());
+    
+  __cilkrts_set_tls_cilk_fiber(other);
+
+  // CILK_ASSERT(this->is_resumable());
+
+  // Jump to the other fiber.  We expect to come back.
+  if (! __builtin_setjmp(self->ctx)) {
+    cilk_fiber_resume_other(other);
+  }
+
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
+
+  CILK_ASSERT(self->m_outstanding_references >= 2);
+  
+  // Return here when another fiber resumes me.
+  // If the fiber that switched to me wants to be deallocated, do it now.
+  cilk_fiber_do_post_switch_actions(self);
+}
+
+
+void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, cilk_fiber * other)
+{
+#if FIBER_DEBUG >=1
+  fprintf(stderr, "remove_reference_from_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
+	  self, other, other->owner, other->resume_sf);
+#endif
+  __cilkrts_alert(ALERT_FIBER, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
+
+  // Decrement my reference count (to suspend)
+  // Increment other's count (to resume)
+  // Suspended fiber should have a reference count of at least 1.  (It is not in a pool).
+  cilk_fiber_dec_ref_count(self);
+  cilk_fiber_inc_ref_count(other);
+  CILK_ASSERT(self->m_outstanding_references >= 1);
+
+  // Set a pending remove reference for this fiber, once we have
+  // actually switched off.
+  other->m_pending_remove_ref = self;
+  // other->m_pending_pool   = self_pool;
+
+  // Pass along my owner.
+  other->owner = self->owner;
+  self->owner  = NULL;
+
+  // Change this fiber to resumable.
+  CILK_ASSERT(!cilk_fiber_is_resumable(self));
+
+  // cilk_fiber_sysdep* self = self->sysdep();
+  // self->jump_to_resume_other_sysdep(other->sysdep());
+    
+  __cilkrts_set_tls_cilk_fiber(other);
+
+  // CILK_ASSERT(this->is_resumable());
+
+  cilk_fiber_resume_other(other);
+
+  __cilkrts_bug("Deallocating fiber.  We should never come back here.");
+  
 }
 
 void cilk_fiber_run(cilk_fiber * fiber) {
@@ -209,87 +335,4 @@ void cilk_fiber_run(cilk_fiber * fiber) {
 
   // User proc should never return.
   __cilkrts_bug("Should not get here");
-}
-
-void cilk_fiber_do_post_switch_actions(cilk_fiber * self)
-{
-  if (self->m_post_switch_proc) 
-    {
-      cilk_fiber_proc proc = self->m_post_switch_proc;
-      self->m_post_switch_proc = NULL;
-      proc(self);
-    }
-
-  /* WTF Emacs */
-  /* if (m_pending_remove_ref) */
-  /* { */
-  /*     m_pending_remove_ref->remove_reference(m_pending_pool); */
-
-  /*     // Even if we don't free it,  */
-  /*     m_pending_remove_ref = NULL; */
-  /*     m_pending_pool   = NULL; */
-  /* } */
-}
-
-void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * other)
-{
-#if FIBER_DEBUG >=1
-  fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
-	  self, other, other->owner, other->resume_sf);
-#endif
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) switching from fiber %p to %p\n", self->owner->self, self, other);
-  //DUMP_STACK(ALERT_FIBER, self->owner->self);
-  
-  // Pass along my owner.
-  other->owner = self->owner;
-  self->owner  = NULL;
-
-  // Change this fiber to resumable.
-  CILK_ASSERT(!cilk_fiber_is_resumable(self));
-  cilk_fiber_set_resumable(self, 1);
-
-  // cilk_fiber_sysdep* self = self->sysdep();
-  // self->suspend_self_and_resume_other_sysdep(other->sysdep());
-    
-  __cilkrts_set_tls_cilk_fiber(other);
-
-  // CILK_ASSERT(this->is_resumable());
-
-  // Jump to the other fiber.  We expect to come back.
-  if (! __builtin_setjmp(self->ctx)) {
-    cilk_fiber_resume_other(other);
-  }
-
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
-
-  // Return here when another fiber resumes me.
-  // If the fiber that switched to me wants to be deallocated, do it now.
-  cilk_fiber_do_post_switch_actions(self);
-}
-
-
-void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, cilk_fiber * other)
-{
-#if FIBER_DEBUG >=1
-  fprintf(stderr, "remove_reference_from_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
-	  self, other, other->owner, other->resume_sf);
-#endif
-  __cilkrts_alert(ALERT_FIBER, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
-
-  // Pass along my owner.
-  other->owner = self->owner;
-  self->owner  = NULL;
-
-  // Change this fiber to resumable.
-  CILK_ASSERT(!cilk_fiber_is_resumable(self));
-
-  // cilk_fiber_sysdep* self = self->sysdep();
-  // self->jump_to_resume_other_sysdep(other->sysdep());
-    
-  __cilkrts_set_tls_cilk_fiber(other);
-
-  // CILK_ASSERT(this->is_resumable());
-
-  cilk_fiber_resume_other(other);
-  
 }

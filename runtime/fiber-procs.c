@@ -42,9 +42,7 @@ void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
 #endif
   //__cilkrts_alert(3, "[%d]: jmping to %p.\n", sf->worker->self, PC(sf));
 
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP: %p\n", sf->worker->self, FP(sf));
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) SP: %p\n", sf->worker->self, SP(sf));
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) PC: %p\n", sf->worker->self, PC(sf));
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP/SP/PC: %p/%p/%p\n", sf->worker->self, FP(sf), SP(sf), PC(sf));
     
   __builtin_longjmp(sf->ctx, 1);
 }

@@ -1,0 +1,237 @@
+cilk_fiber.cpp:569:    return (fiber->get_ref_count() > 0);
+cilk_fiber.cpp:572:int cilk_fiber_get_ref_count(cilk_fiber *fiber)
+cilk_fiber.cpp:574:    return fiber->get_ref_count();
+cilk_fiber.cpp:579:    fiber->inc_ref_count();
+
+
+cilk_fiber::cilk_fiber()
+    : m_start_proc(NULL)
+    , m_post_switch_proc(NULL)
+    , m_pending_remove_ref(NULL)
+    , m_pending_pool(NULL)
+    , m_flags(0)
+{
+    // Clear cilk_fiber_data base-class data members
+    std::memset((cilk_fiber_data*) this, 0, sizeof(cilk_fiber_data));
+
+    // cilk_fiber data members
+    init_ref_count(0);
+}
+
+cilk_fiber* cilk_fiber::allocate_from_heap(std::size_t stack_size)
+{
+    // Case 1: pool is NULL. create a new fiber from the heap
+    // No need for locks here.
+    cilk_fiber_sysdep* ret =
+        (cilk_fiber_sysdep*) __cilkrts_malloc(sizeof(cilk_fiber_sysdep));
+
+    // Error condition. If we failed to allocate a fiber from the
+    // heap, we are in trouble though...
+    if (!ret)
+        return NULL;
+
+    ::new(ret) cilk_fiber_sysdep(stack_size);
+
+    CILK_ASSERT(0 == ret->m_flags);
+    CILK_ASSERT(NULL == ret->m_pending_remove_ref);
+    CILK_ASSERT(NULL == ret->m_pending_pool);
+    ret->init_ref_count(1);
+    return ret;
+}
+
+cilk_fiber.cpp:705:        ret->init_ref_count(1);
+cilk_fiber.cpp:760:            ret->init_ref_count(1);
+
+int cilk_fiber::remove_reference(cilk_fiber_pool* pool)
+{
+    int ref_count = this->dec_ref_count();
+    if (ref_count == 0) {
+        if (pool) {
+            deallocate_self(pool);
+        }
+        else {
+            deallocate_to_heap();
+        }
+    }
+    return ref_count;
+}
+
+cilk_fiber* cilk_fiber::allocate_from_thread()
+{
+    void* retmem = __cilkrts_malloc(sizeof(cilk_fiber_sysdep));
+    CILK_ASSERT(retmem);
+    cilk_fiber_sysdep* ret = ::new(retmem) cilk_fiber_sysdep(from_thread);
+
+    // A fiber allocated from a thread begins with a reference count
+    // of 2.  The first is for being created, and the second is for
+    // being running.
+    //
+    // Suspending this fiber will decrement the count down to 1.
+    ret->init_ref_count(2);
+
+#if SUPPORT_GET_CURRENT_FIBER    
+    // We're creating the main fiber for this thread. Set this fiber as the
+    // current fiber.
+    cilkos_set_tls_cilk_fiber(ret);
+#endif
+    return ret;
+}
+
+int cilk_fiber::deallocate_from_thread()
+{
+    CILK_ASSERT(this->is_allocated_from_thread());
+#if SUPPORT_GET_CURRENT_FIBER
+    CILK_ASSERT(this == cilkos_get_tls_cilk_fiber());
+    // Reverse of "allocate_from_thread".
+    cilkos_set_tls_cilk_fiber(NULL);
+#endif
+
+    this->assert_ref_count_at_least(2);
+
+    // Suspending the fiber should conceptually decrement the ref
+    // count by 1.
+    cilk_fiber_sysdep* self = this->sysdep();
+    self->convert_fiber_back_to_thread();
+
+    // Then, freeing the fiber itself decrements the ref count again.
+    int ref_count = this->sub_from_ref_count(2);
+    if (ref_count == 0) {
+        self->~cilk_fiber_sysdep();
+        __cilkrts_free(self);
+    }
+    return ref_count;
+}
+
+int cilk_fiber::remove_reference_from_thread()
+{
+    int ref_count = dec_ref_count();
+    if (ref_count == 0) {
+        cilk_fiber_sysdep* self = this->sysdep();
+        self->~cilk_fiber_sysdep();
+        __cilkrts_free(self);
+    }
+    return ref_count;
+}
+
+void cilk_fiber::suspend_self_and_resume_other(cilk_fiber* other)
+{
+#if FIBER_DEBUG >=1
+    fprintf(stderr, "suspend_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
+            this, other, other->owner, other->resume_sf);
+#endif
+
+    // Decrement my reference count (to suspend)
+    // Increment other's count (to resume)
+    // Suspended fiber should have a reference count of at least 1.  (It is not in a pool).
+    this->dec_ref_count();
+    other->inc_ref_count();
+    this->assert_ref_count_at_least(1);
+
+    // Pass along my owner.
+    other->owner = this->owner;
+    this->owner  = NULL;
+
+    // Change this fiber to resumable.
+    CILK_ASSERT(!this->is_resumable());
+    this->set_resumable(true);
+
+    // Normally, I'd assert other->is_resumable().  But this flag may
+    // be false the first time we try to "resume" a fiber.
+    cilk_fiber_sysdep* self = this->sysdep();
+    self->suspend_self_and_resume_other_sysdep(other->sysdep());
+
+    // HAVE RESUMED EXECUTION
+    // When we come back here, we should have at least two references:
+    // one for the fiber being allocated / out of a pool, and one for it being active.
+    this->assert_ref_count_at_least(2);
+}
+
+NORETURN
+cilk_fiber::remove_reference_from_self_and_resume_other(cilk_fiber_pool* self_pool,
+                                                        cilk_fiber*      other)
+{
+    // Decrement my reference count once (to suspend)
+    // Increment other's count (to resume)
+    // Suspended fiber should have a reference count of at least 1.  (It is not in a pool).
+    this->dec_ref_count();
+    other->inc_ref_count();
+
+    // Set a pending remove reference for this fiber, once we have
+    // actually switched off.
+    other->m_pending_remove_ref = this;
+    other->m_pending_pool   = self_pool;
+
+    // Pass along my owner.
+    other->owner = this->owner;
+    this->owner  = NULL;
+
+    // Since we are deallocating self, this fiber does not become
+    // resumable.
+    CILK_ASSERT(!this->is_resumable());
+
+    cilk_fiber_sysdep* self = this->sysdep();
+    self->jump_to_resume_other_sysdep(other->sysdep());
+
+    __cilkrts_bug("Deallocating fiber.  We should never come back here.");
+    std::abort();
+}
+
+cilk_fiber.cpp:985:    this->assert_ref_count_equals(0);
+
+----------
+
+    /** @brief Verifies that this fiber's reference count equals v. */
+    inline void assert_ref_count_equals(long v) {
+    #if FIBER_CHECK_REF_COUNTS
+        CILK_ASSERT(m_outstanding_references >= v);
+    #endif
+    }
+
+    /** @brief Verifies that this fiber's reference count is at least v. */
+    inline void assert_ref_count_at_least(long v) {
+    #if FIBER_CHECK_REF_COUNTS
+        CILK_ASSERT(m_outstanding_references >= v);
+    #endif
+    }
+
+    /** @brief Get reference count. */
+    inline long get_ref_count()        { return m_outstanding_references; }
+
+    /** @brief Initialize reference count.
+     *  Operation is not atomic.
+     */
+    inline void init_ref_count(long v) { m_outstanding_references = v; }
+
+    // For Windows, updates to the fiber reference count need to be
+    // atomic, because exceptions can live on a stack that we are not
+    // currently executing on.  Thus, we can update the reference
+    // count of a fiber we are not currently executing on.
+
+    /** @brief Increment reference count for this fiber [Windows]. */
+    inline void inc_ref_count()            { atomic_inc_ref_count(); }
+
+    /** @brief Decrement reference count for this fiber [Windows]. */
+    inline long dec_ref_count()            { return atomic_dec_ref_count(); }
+
+    /** @brief Subtract v from the reference count for this fiber [Windows]. */
+    inline long sub_from_ref_count(long v) { return atomic_sub_from_ref_count(v); }
+
+void cilk_fiber::atomic_inc_ref_count()
+{
+    cilkos_atomic_add(&m_outstanding_references, 1);
+}
+
+long cilk_fiber::atomic_dec_ref_count()
+{
+    return cilkos_atomic_add(&m_outstanding_references, -1);
+}
+
+long cilk_fiber::atomic_sub_from_ref_count(long v)
+{
+    return cilkos_atomic_add(&m_outstanding_references, -v);
+}
+
+long cilkos_atomic_add(volatile long* p, long x)
+{
+    return __sync_add_and_fetch(p, x);
+}
