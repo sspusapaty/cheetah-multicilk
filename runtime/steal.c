@@ -329,7 +329,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RUNNING:
       /* send the exception to the worker */
       if (do_dekker_on(ws, victim_ws, cl)) {
-        __cilkrts_alert(ALERT_STEAL, "[%d]: can steal from W%d; cl=%p\n", ws->self, victim, cl);
+        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", ws->self, victim, cl);
 	fiber = cilk_fiber_allocate_from_heap();
 	parent_fiber = cl->fiber;
 	
@@ -339,7 +339,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	 * the parent
 	 */
 	child = promote_child(ws, victim_ws, cl, &res);
-        __cilkrts_alert(ALERT_STEAL, "[%d]: promote gave cl/res = %p/%p\n", ws->self, cl, res);
+        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) promote gave cl/res = %p/%p\n", ws->self, cl, res);
 
 	/* detach the parent */
 	// ANGE: the top of the deque could have changed in the
@@ -405,7 +405,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
   }
  
   if (success) {
-    __cilkrts_alert(ALERT_STEAL, "[%d]: stole from W%d; res=%p\n", ws->self, victim, res);
+    __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) stole from [%d]; res=%p\n", ws->self, victim, res);
     // Since our steal was successful, finish initialization of
     // the fiber.
     cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);

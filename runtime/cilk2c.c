@@ -176,7 +176,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     if(sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
       // leaving a full frame, need to get the full frame for its call
       // parent back onto the deque
-      __cilkrts_alert(ALERT_RETURN, "[%d]: parent is call_parent!\n", ws->self);
+      __cilkrts_alert(ALERT_RETURN, "[%d]: (__cilkrts_leave_frame) parent is call_parent!\n", ws->self);
       Cilk_set_return(ws); 
     }
   }

@@ -35,7 +35,7 @@ int Cilk_sync(__cilkrts_worker *const ws,
 
   if(Closure_has_children(t)) {
     // MAK: FIBER-SYNC GUESS
-    __cilkrts_alert(3, "[%d]: (Cilk_sync) outstanding children\n", ws->self, frame);
+    __cilkrts_alert(ALERT_SYNC, "[%d]: (Cilk_sync) outstanding children\n", ws->self, frame);
 
     ws->l->fiber_to_free = t->fiber;
     t->fiber = NULL;

@@ -77,8 +77,8 @@ void invoke_main(cilk_fiber * f) {
   char **args = ws->g->cilk_main_args;
 
   ASM_GET_SP(rsp);
-  __cilkrts_alert(2, "[%d]: invoke_main.\n", ws->self);
-  __cilkrts_alert(3, "[%d]: invoke_main rsp = %p.\n", ws->self, rsp);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main).\n", ws->self);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) rsp = %p.\n", ws->self, rsp);
 
   alloca(ZERO);
 
@@ -91,10 +91,10 @@ void invoke_main(cilk_fiber * f) {
     // ANGE: Important to reset using sf->worker;
     // otherwise ws gets cached in a register 
     ws = sf->worker;
-    __cilkrts_alert(3, "[%d]: invoke_main corrected worker after spawn.\n", ws->self);
+    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after spawn.\n", ws->self);
   }
   ASM_GET_SP(nsp);
-  __cilkrts_alert(3, "[%d]: invoke_main rsp = %p.\n", ws->self, nsp);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", ws->self, nsp);
 
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
 
@@ -105,7 +105,7 @@ void invoke_main(cilk_fiber * f) {
       // ANGE: Important to reset using sf->worker; 
       // otherwise ws gets cached in a register
       ws = sf->worker;
-      __cilkrts_alert(3, "[%d]: invoke_main corrected worker after sync.\n", ws->self);
+      __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after sync.\n", ws->self);
     }
   }
   
