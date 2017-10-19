@@ -162,13 +162,16 @@ int cilk_fiber_remove_reference(cilk_fiber * fiber)
 
 void cilk_fiber_do_post_switch_actions(cilk_fiber * self)
 {
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) fiber %p\n", self->owner->self, self);
   if (self->m_post_switch_proc) {
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_post_switch_proc\n", self->owner->self);
     cilk_fiber_proc proc = self->m_post_switch_proc;
     self->m_post_switch_proc = NULL;
     proc(self);
   }
 
   if (self->m_pending_remove_ref) {
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_pending_remove_ref\n", self->owner->self);
     cilk_fiber_remove_reference(self->m_pending_remove_ref); //m_pending_pool);
 
     // Even if we don't free it,
@@ -229,7 +232,7 @@ void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, c
   fprintf(stderr, "remove_reference_from_self_and_resume_other: self =%p, other=%p [owner=%p, resume_sf=%p]\n",
 	  self, other, other->owner, other->resume_sf);
 #endif
-  __cilkrts_alert(ALERT_FIBER, "[%d]: switching from fiber %p to %p\n", self->owner->self, self, other);
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (remove_reference_from_self_and_resume_other) switching from fiber %p to %p\n", self->owner->self, self, other);
 
   // Decrement my reference count (to suspend)
   // Increment other's count (to resume)

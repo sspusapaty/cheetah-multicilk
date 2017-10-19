@@ -38,8 +38,8 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     // should have a NULL owner.
     CILK_ASSERT(NULL == w->l->runtime_fiber->owner);
 
-    cilk_fiber_suspend_self_and_resume_other(current_fiber,
-					     w->l->runtime_fiber);
+    cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
+							   w->l->runtime_fiber);
     // We should never come back here!
     CILK_ASSERT(0);
   } else {        
