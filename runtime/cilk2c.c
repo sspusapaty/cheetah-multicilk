@@ -46,7 +46,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
   // MK: not supporting slow path yet
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame) frame %p\n", ws->self, sf);
-  DUMP_STACK(ALERT_CFRAME, ws->self);
+  //DUMP_STACK(ALERT_CFRAME, ws->self);
 
   /*
 
@@ -74,7 +74,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame_fast) frame %p\n", ws->self, sf);
-  DUMP_STACK(ALERT_CFRAME, ws->self);
+  //DUMP_STACK(ALERT_CFRAME, ws->self);
 
   sf->flags = 0;
   sf->call_parent = ws->current_stack_frame; 
@@ -92,7 +92,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
 void __cilkrts_detach(__cilkrts_stack_frame * self) {
   struct __cilkrts_worker * ws = self->worker;
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_detach) frame %p\n", ws->self, self);
-  DUMP_STACK(ALERT_CFRAME, ws->self);
+  //DUMP_STACK(ALERT_CFRAME, ws->self);
 
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
   CILK_ASSERT(ws->current_stack_frame == self);
@@ -115,7 +115,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) syncing frame %p\n", ws->self, sf);
-  DUMP_STACK(ALERT_CFRAME, ws->self);
+  //DUMP_STACK(ALERT_CFRAME, ws->self);
 
   // CILK_ASSERT(ws, sf->magic == CILK_STACKFRAME_MAGIC);
   CILK_ASSERT(sf->worker == ws);
@@ -147,7 +147,7 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame * sf) {
 void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_leave_frame) leaving frame %p\n", ws->self, sf);
-  DUMP_STACK(ALERT_CFRAME, ws->self);
+  //DUMP_STACK(ALERT_CFRAME, ws->self);
 
   CILK_ASSERT(sf->worker == ws);
   // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);

@@ -79,9 +79,6 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
   // The rows of C, A, and B, each contain n elements.
   static const int threshold = 16;
   char * rsp;
-    
-  PREAMBLE
-    __cilkrts_enter_frame(sf);
 
   ASM_GET_SP(rsp);
     
@@ -90,6 +87,7 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
     return;
   } else if (length == 1) {
     C[0] += A[0] * B[0];
+    return;
 #ifdef USE_LOOPS_FOR_SMALL_MATRICES
   } else if (length < threshold) {
     // Use a loop for small matrices
@@ -97,67 +95,70 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
       for (int j = 0; j < length; j++)
         for (int k = 0; k < length; k++)
           C[i*n+j] += A[i*n+k] * B[k*n+j];
+    return;
 #endif  // USE_LOOPS_FOR_SMALL_MATRICES
-  } else {
-    // Partition the matrices
-    int mid = length / 2;
-
-    int *C11 = C;
-    int *C12 = C + mid;
-    int *C21 = C + n*mid;
-    int *C22 = C + n*mid + mid;
-
-    int const *A11 = A;
-    int const *A12 = A + mid;
-    int const *A21 = A + n*mid;
-    int const *A22 = A + n*mid + mid;
-
-    int const *B11 = B;
-    int const *B12 = B + mid;
-    int const *B21 = B + n*mid;
-    int const *B22 = B + n*mid + mid;
-
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C11, A11, B11, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C12, A11, B12, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C21, A21, B11, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C22, A21, B12, n, mid);
-    }
-    
-    if(__cilkrts_unsynced(sf)) {
-      if(!__builtin_setjmp(sf->ctx)) {
-	__cilkrts_sync(sf);
-      }
-    }
-    ASM_SET_SP(rsp);
-
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C11, A12, B21, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C12, A12, B22, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C21, A22, B21, n, mid);
-    }
-    if(!__builtin_setjmp(sf->ctx)) {
-      mm_internal_spawn_helper(C22, A22, B22, n, mid);
-    }
-    
-    if(__cilkrts_unsynced(sf)) {
-      if(!__builtin_setjmp(sf->ctx)) {
-	__cilkrts_sync(sf);
-      }
-    }
-    ASM_SET_SP(rsp);
-
   }
+    
+  PREAMBLE
+  __cilkrts_enter_frame(sf);
+  
+  // Partition the matrices
+  int mid = length / 2;
+
+  int *C11 = C;
+  int *C12 = C + mid;
+  int *C21 = C + n*mid;
+  int *C22 = C + n*mid + mid;
+
+  int const *A11 = A;
+  int const *A12 = A + mid;
+  int const *A21 = A + n*mid;
+  int const *A22 = A + n*mid + mid;
+
+  int const *B11 = B;
+  int const *B12 = B + mid;
+  int const *B21 = B + n*mid;
+  int const *B22 = B + n*mid + mid;
+
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C11, A11, B11, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C12, A11, B12, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C21, A21, B11, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C22, A21, B12, n, mid);
+  }
+    
+  if(__cilkrts_unsynced(sf)) {
+    if(!__builtin_setjmp(sf->ctx)) {
+      __cilkrts_sync(sf);
+    }
+  }
+  ASM_SET_SP(rsp);
+
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C11, A12, B21, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C12, A12, B22, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C21, A22, B21, n, mid);
+  }
+  if(!__builtin_setjmp(sf->ctx)) {
+    mm_internal_spawn_helper(C22, A22, B22, n, mid);
+  }
+    
+  if(__cilkrts_unsynced(sf)) {
+    if(!__builtin_setjmp(sf->ctx)) {
+      __cilkrts_sync(sf);
+    }
+  }
+  ASM_SET_SP(rsp);
   
   __cilkrts_pop_frame(sf);
   // ANGE: the Intel CC will put a flag here 
@@ -166,12 +167,12 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
 
 static void mm_internal_spawn_helper(int *C, const int *A, const int *B, int n, int length) {
 
-    HELPER_PREAMBLE
+  HELPER_PREAMBLE
     __cilkrts_enter_frame_fast(sf);
-    __cilkrts_detach(sf);
-    mm_internal(C, A, B, n, length);
-    __cilkrts_pop_frame(sf);
-    __cilkrts_leave_frame(sf); 
+  __cilkrts_detach(sf);
+  mm_internal(C, A, B, n, length);
+  __cilkrts_pop_frame(sf);
+  __cilkrts_leave_frame(sf); 
 }
 
 // This is the public interface to mm_internal.
