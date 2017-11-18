@@ -65,6 +65,7 @@ static inline void Closure_init(Closure *t) {
   t->owner_ready_deque = NOBODY;
 
   t->join_counter = 0;
+  t->orig_rsp = NULL;
 
   t->has_cilk_callee = 0;
   t->callee = NULL;

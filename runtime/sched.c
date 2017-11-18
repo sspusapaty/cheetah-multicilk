@@ -113,7 +113,8 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     setup_for_execution(ws, t);
     f = t->frame;
     t->fiber->resume_sf = f; // I THINK this works
-    
+    __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) resume_sf = %p\n", ws->self, f);
+
     CILK_ASSERT(f);
 	  
     Closure_unlock(ws, t);

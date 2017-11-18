@@ -32,7 +32,7 @@ static void fib_spawn_helper(int *x, int n);
 
 int fib(int n) {
     int x, y, _tmp;
-    char * rsp;
+    char * rsp, * nsp;
 
     if(n < 2) {
         return n;
@@ -54,6 +54,9 @@ int fib(int n) {
 	__cilkrts_sync(sf);
       }
     }
+    ASM_GET_SP(nsp);
+    fprintf(stderr, "RSP TEST: %ld - %p/%p\n", nsp-rsp, nsp, rsp);
+
     ASM_SET_SP(rsp);
     
     _tmp = x + y;

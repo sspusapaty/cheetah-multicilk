@@ -1,3 +1,8 @@
+
+Upon any function's promotion to closure (i.e., the first time it's stolen), get the %rsp from the ctx buffer in the shadow frame and store this %rsp value into the closure.  That is the %rsp you want to use to longjmp for resuming the continuation after a successful sync.  Note that you want to do this regardless of whether you happen to be the one who passes the sync or the one that did a  provably good steal.  Even in the first case (the Cilk_sync(ws, sf) == SYNC_READY case in your __cilkrts_sync), if you simply do a longjmp, you may be implicitly switching fibers, but then you are not freeing the fiber that you are switching away from.  The right thing to do is to go back to runtime fiber, and check if you are the left-most child, and if you are not, you should jmp to the runtime fiber, free your other fiber, and resume the sync on the left-most child's fiber.   (As an optimization, you would do what you are doing if you know you are the left-most child, but let's get it to run correctly first.)
+
+----------
+
 NORETURN __cilkrts_c_sync(__cilkrts_worker *w,
                           __cilkrts_stack_frame *sf_at_sync)
 {

@@ -36,6 +36,8 @@ struct Closure {
   
   int join_counter; /* number of spawned outstanding children */
 
+  char * orig_rsp;
+
   enum ClosureStatus status;
 
   int has_cilk_callee; // MAK: Can delete

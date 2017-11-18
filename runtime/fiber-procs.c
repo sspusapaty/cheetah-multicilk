@@ -29,6 +29,9 @@ char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
 
 void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
 
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP/SP/PC: %p/%p/%p\n", sf->worker->self, FP(sf), SP(sf), PC(sf));
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) New SP: %p\n", sf->worker->self, new_sp);
+
   // Set the stack pointer.
   SP(sf) = new_sp;
 
@@ -41,8 +44,6 @@ void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
   restore_x86_fp_state(sf);
 #endif
   //__cilkrts_alert(3, "[%d]: jmping to %p.\n", sf->worker->self, PC(sf));
-
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP/SP/PC: %p/%p/%p\n", sf->worker->self, FP(sf), SP(sf), PC(sf));
     
   __builtin_longjmp(sf->ctx, 1);
 }
@@ -51,6 +52,7 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   __cilkrts_stack_frame* sf = fiber->resume_sf;
   __cilkrts_worker* ws = sf->worker;
   Closure *t;
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (fiber_proc_to_resume_user_code_for_random_steal) fiber/resume_sf: %p/%p\n", ws->self, fiber, sf);
 
   CILK_ASSERT(sf);
 
@@ -93,7 +95,9 @@ void user_code_resume_after_switch_into_runtime(cilk_fiber *fiber) {
   __cilkrts_worker *w = fiber->owner;
   __cilkrts_stack_frame *sf;
   char* sync_sp;
-  
+
+  __cilkrts_alert(ALERT_FIBER, "[%d]: (user_code_resume_after_switch_into_runtime) fiber: %p\n", w->self, fiber);
+
   sf = w->current_stack_frame;
   sync_sp = sysdep_reset_jump_buffers_for_resume(fiber, sf); // MAK: only on spawn return--gets reset ASAP
 

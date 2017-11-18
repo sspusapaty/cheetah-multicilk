@@ -47,6 +47,7 @@ Closure * setup_call_parent_closure_helper(__cilkrts_worker *const ws,
   __cilkrts_set_stolen(frame);
   curr_cl = Closure_create(ws);    
   curr_cl->frame = frame;
+  curr_cl->orig_rsp = SP(frame); //MAK: RSP management
 
   CILK_ASSERT(frame->worker == victim_ws); 
   curr_cl->status = CLOSURE_SUSPENDED;
@@ -88,6 +89,7 @@ void setup_closures_in_stacklet(__cilkrts_worker *const ws,
     CILK_ASSERT(oldest->flags & CILK_FRAME_DETACHED);
     __cilkrts_set_stolen(oldest); 
     oldest_cl->frame = oldest;
+    oldest_cl->orig_rsp = SP(oldest); //MAK: RSP management
   }
   CILK_ASSERT(oldest->worker == victim_ws); 
   oldest_cl->frame->worker = (__cilkrts_worker *) NOBODY;
@@ -205,8 +207,9 @@ Closure *promote_child(__cilkrts_worker *const ws,
     // thief's stack.
     spawn_parent = Closure_create(ws);
     spawn_parent->frame = frame_to_steal;
+    spawn_parent->orig_rsp = SP(frame_to_steal); //MAK: RSP management
     spawn_parent->status = CLOSURE_RUNNING;
-
+    
     // ANGE: this is only temporary; will reset this after the stack has
     // been remapped; so lets not set the callee in cl yet ... although
     // we do need to set the has_callee in cl, so that cl does not get

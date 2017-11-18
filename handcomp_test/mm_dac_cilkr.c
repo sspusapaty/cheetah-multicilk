@@ -79,8 +79,6 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
   // The rows of C, A, and B, each contain n elements.
   static const int threshold = 16;
   char * rsp;
-
-  ASM_GET_SP(rsp);
     
   // Base cases
   if (length == 0) {
@@ -101,7 +99,9 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
     
   PREAMBLE
   __cilkrts_enter_frame(sf);
-  
+
+  ASM_GET_SP(rsp);
+
   // Partition the matrices
   int mid = length / 2;
 
@@ -168,7 +168,7 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
 static void mm_internal_spawn_helper(int *C, const int *A, const int *B, int n, int length) {
 
   HELPER_PREAMBLE
-    __cilkrts_enter_frame_fast(sf);
+  __cilkrts_enter_frame_fast(sf);
   __cilkrts_detach(sf);
   mm_internal(C, A, B, n, length);
   __cilkrts_pop_frame(sf);
