@@ -15,15 +15,9 @@ struct local_state {
     CilkShadowStack shadow_stack;
   
     size_t deque_depth;
-
-  // jmpbuf rts_env;  // the jmp_buf associated with runtime context
-                      // this should be on worker's private stack (i.e. the
-                      // one assigned during pthread_create)
-
     int provablyGoodSteal;
 
     unsigned int rand_next;
-    int barrier_direction;
 
     cilk_fiber * runtime_fiber;
     cilk_fiber * fiber_to_free;

@@ -8,7 +8,7 @@ TESTS_CILKR    = $(patsubst %,%_cilkr,$(TESTS))
 TESTS_SERIAL   = $(patsubst %,%_serial,$(TESTS))
 TESTS_CILKPLUS = $(patsubst %,%_cilkplus,$(TESTS))
 
-OPTIONS = -Wall
+OPTIONS = -g -Wall -std=gnu99
 
 ifdef O
   OPTIONS += -O$(O) -fno-omit-frame-pointer
@@ -20,7 +20,8 @@ ifeq ($(GDB), 1)
   OPTIONS += -g
 endif
 
-all: $(TESTS_CILKR) $(TESTS_SERIAL) $(TESTS_CILKPLUS)
+# $(TESTS_SERIAL)  $(TESTS_CILKPLUS) 
+all: $(TESTS_CILKR)
 
 $(TESTS_CILKR): %: %.o ktiming.o ../runtime/libcilkr.a
 	gcc $^ -lpthread -o $@
@@ -38,4 +39,4 @@ $(TESTS_CILKPLUS): %: %.o ktiming.o
 	gcc -c $(OPTIONS) $<
 
 clean:
-	rm -f *.o *~ $(TESTS_CILKR) $(TESTS_SERIAL) $(TESTS_CILKPLUS)
+	rm -f *.o *~ $(TESTS_CILKR) $(TESTS_SERIAL) $(TESTS_CILKPLUS) core.*

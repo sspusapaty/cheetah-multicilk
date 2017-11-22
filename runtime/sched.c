@@ -42,7 +42,8 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
 							   w->l->runtime_fiber);
     // We should never come back here!
     CILK_ASSERT(0);
-  } else {        
+
+  } else {
     __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing fiber %p\n", w->self, current_fiber);
     // Case 2: We are passing the fiber to our parent because we
     // are leftmost.  We should come back later to

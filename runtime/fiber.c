@@ -71,18 +71,21 @@ void cilk_fiber_set_allocated_from_thread(cilk_fiber * fiber, int state) {
 }
 
 // Jump to resume other fiber.  We may or may not come back.
-void cilk_fiber_resume_other(cilk_fiber * other)
-{
+void cilk_fiber_resume_other(cilk_fiber * other) {
+
   if (cilk_fiber_is_resumable(other)) {
     cilk_fiber_set_resumable(other, 0);
     // Resume by longjmp'ing to the place where we suspended.
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other) jmping to fiber %p (BP/SP/PC: %p/%p/%p)\n", other->owner->self, other, FP(other), SP(other), PC(other));
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (cilk_fiber_resume_other) jmping to fiber %p (BP/SP/PC: %p/%p/%p)\n", 
+        other->owner->self, other, FP(other), SP(other), PC(other));
     __builtin_longjmp(other->ctx, 1);
-  }
-  else {
+
+  } else {
     // Otherwise, we've never ran this fiber before.  Start the
     // proc method.
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_resume_other) running %p.\n", other->owner->self, other);
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (cilk_fiber_resume_other) running %p.\n", other->owner->self, other);
     cilk_fiber_run(other);
   }
 }
@@ -151,8 +154,8 @@ int cilk_fiber_deallocate_to_heap(cilk_fiber * fiber) {
   return 0;
 }
 
-int cilk_fiber_remove_reference(cilk_fiber * fiber)
-{
+int cilk_fiber_remove_reference(cilk_fiber * fiber) {
+
   int ref_count = cilk_fiber_dec_ref_count(fiber);
   if (ref_count == 0) {
     cilk_fiber_deallocate_to_heap(fiber);
@@ -160,18 +163,25 @@ int cilk_fiber_remove_reference(cilk_fiber * fiber)
   return ref_count;
 }
 
-void cilk_fiber_do_post_switch_actions(cilk_fiber * self)
-{
-  __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) fiber %p\n", self->owner->self, self);
+void cilk_fiber_do_post_switch_actions(cilk_fiber * self) {
+
+  __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (cilk_fiber_do_post_switch_actions) fiber %p\n", 
+        self->owner->self, self);
+
   if (self->m_post_switch_proc) {
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_post_switch_proc\n", self->owner->self);
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_post_switch_proc\n", 
+        self->owner->self);
     cilk_fiber_proc proc = self->m_post_switch_proc;
     self->m_post_switch_proc = NULL;
     proc(self);
   }
 
   if (self->m_pending_remove_ref) {
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_pending_remove_ref\n", self->owner->self);
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (cilk_fiber_do_post_switch_actions) There is an m_pending_remove_ref\n", 
+        self->owner->self);
     cilk_fiber_remove_reference(self->m_pending_remove_ref); //m_pending_pool);
 
     // Even if we don't free it,
@@ -213,8 +223,17 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
 
   // Jump to the other fiber.  We expect to come back.
   if (! __builtin_setjmp(self->ctx)) {
+/*
+    __cilkrts_alert(ALERT_FIBER, 
+         "[%d]: (suspend_self_and_resume_other) setjmp on resume_other %p (BP/SP/PC: %p/%p/%p)\n", 
+        __cilkrts_get_tls_worker()->self, self, FP(self), SP(self), PC(self));
+*/
     cilk_fiber_resume_other(other);
-  }
+  }/* else {
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (suspend_self_and_resume_other) longjmp after resume_other %p\n",
+        __cilkrts_get_tls_worker()->self, self);
+  } */
 
   __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
 
@@ -225,7 +244,11 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
   cilk_fiber_do_post_switch_actions(self);
 }
 
-
+// ANGE XXX: The diff between this one and suspend_self_and_resume_other is
+// that, this one sets m_outstanding_references = self and don't do setjmp on
+// self before longjmp away.   The other one does a setjmp before jumping
+// away, and in the longjmp path that gets back from suspended self calls
+// do_past_switch_actions on self fiber.
 void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, cilk_fiber * other)
 {
 #if FIBER_DEBUG >=1

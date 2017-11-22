@@ -108,8 +108,6 @@ void Cilk_exception_handler() {
         return;
     }
 
-    
-
     // MAK: FIBER-THE CASE
     // Execute left-holder logic for stacks.
     if (t->left_sib || t->spawn_parent->fiber_child) {

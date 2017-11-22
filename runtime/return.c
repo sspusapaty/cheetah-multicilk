@@ -80,10 +80,8 @@ void Cilk_set_return(__cilkrts_worker *const ws) {
 
   } else {
     CILK_ASSERT(t == ws->g->invoke_main);
-        
     Closure_unlock(ws, t);
   }
-
   deque_unlock_self(ws);
 }
 

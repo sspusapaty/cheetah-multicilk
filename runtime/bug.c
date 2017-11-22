@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#define CILK_DEBUG 1
 
 
 const char *const __cilkrts_assertion_failed = "%s:%d: cilk assertion failed: %s\n";
@@ -21,6 +22,8 @@ void __cilkrts_bug(const char *fmt,...) {
 
     exit(1);
 }
+
+#if CILK_DEBUG
 void __cilkrts_alert(const int lvl, const char *fmt,...) {
 
   /* To reduce user confusion, write all user-generated output
@@ -39,3 +42,7 @@ void __cilkrts_alert(const int lvl, const char *fmt,...) {
   }
 #endif
 }
+
+#else
+void __cilkrts_alert(const int lvl, const char *fmt,...) { }
+#endif // CILK_DEBUG

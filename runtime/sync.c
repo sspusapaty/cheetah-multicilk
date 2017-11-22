@@ -48,8 +48,8 @@ int Cilk_sync(__cilkrts_worker *const ws,
   } else {
     __cilkrts_set_synced(t->frame);
     // restore the original rsp 
-    //t->frame->ctx[RSP_INDEX] = (void *) t->frame_rsp;
-
+    SP(t->frame) = (void *) t->orig_rsp;
+    t->orig_rsp = NULL; // unset once we have sync-ed
   }
 
   Closure_unlock(ws, t);

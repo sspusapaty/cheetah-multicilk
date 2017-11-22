@@ -8,10 +8,15 @@
 #include "exception.h"
 #include "return.h"
 
+/* A frame is set to be stolen as long as it has a corresponding Closure */
 void __cilkrts_set_stolen(__cilkrts_stack_frame *sf) {
     sf->flags |= CILK_FRAME_STOLEN;
 }
 
+/* A frame is set to be unsynced only if it has parallel subcomputation
+ * underneathe, i.e., only if it has spawned children executing on a different
+ * worker 
+ */
 void __cilkrts_set_unsynced(__cilkrts_stack_frame *sf) {
     sf->flags |= CILK_FRAME_UNSYNCHED;
 }
@@ -46,17 +51,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
   // MK: not supporting slow path yet
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame) frame %p\n", ws->self, sf);
-  //DUMP_STACK(ALERT_CFRAME, ws->self);
-
-  /*
-
-    if(ws == 0) { // slow path, rare
-    ws = __cilkrts_bind_thread(); 
-    sf->flags = CILK_FRAME_LAST;
-    } else { 
-    sf->flags = 0;
-    }
-  */
+  // DUMP_STACK(ALERT_CFRAME, ws->self);
   
   sf->flags = 0;
   sf->call_parent = ws->current_stack_frame; 
@@ -74,7 +69,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
   __cilkrts_worker * ws = __cilkrts_get_tls_worker();
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame_fast) frame %p\n", ws->self, sf);
-  //DUMP_STACK(ALERT_CFRAME, ws->self);
+  // DUMP_STACK(ALERT_CFRAME, ws->self);
 
   sf->flags = 0;
   sf->call_parent = ws->current_stack_frame; 
@@ -92,7 +87,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
 void __cilkrts_detach(__cilkrts_stack_frame * self) {
   struct __cilkrts_worker * ws = self->worker;
   __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_detach) frame %p\n", ws->self, self);
-  //DUMP_STACK(ALERT_CFRAME, ws->self);
+  // DUMP_STACK(ALERT_CFRAME, ws->self);
 
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
   CILK_ASSERT(ws->current_stack_frame == self);

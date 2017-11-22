@@ -51,7 +51,7 @@ void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
 void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   __cilkrts_stack_frame* sf = fiber->resume_sf;
   __cilkrts_worker* ws = sf->worker;
-  Closure *t;
+
   __cilkrts_alert(ALERT_FIBER, "[%d]: (fiber_proc_to_resume_user_code_for_random_steal) fiber/resume_sf: %p/%p\n", ws->self, fiber, sf);
 
   CILK_ASSERT(sf);

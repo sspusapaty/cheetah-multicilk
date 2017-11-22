@@ -52,7 +52,7 @@ Closure * create_invoke_main(global_state *const g) {
 void spawn_cilk_main(int *res, int argc, char * args[]) {
 
   HELPER_PREAMBLE
-    __cilkrts_enter_frame_fast(sf);
+  __cilkrts_enter_frame_fast(sf);
   __cilkrts_detach(sf);
   *res = cilk_main(argc, args);
   __cilkrts_pop_frame(sf);
@@ -76,7 +76,7 @@ void invoke_main(cilk_fiber * f) {
 
   char * rsp;
   char * nsp;
-  int _tmp, i;
+  int _tmp;
   int argc = ws->g->cilk_main_argc;
   char **args = ws->g->cilk_main_args;
 
@@ -97,6 +97,7 @@ void invoke_main(cilk_fiber * f) {
     ws = sf->worker;
     __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after spawn.\n", ws->self);
   }
+
   ASM_GET_SP(nsp);
   __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", ws->self, nsp);
 
@@ -115,7 +116,7 @@ void invoke_main(cilk_fiber * f) {
   
   CILK_ASSERT(ws == __cilkrts_get_tls_worker());
 
-  ASM_SET_SP(rsp);
+  // ASM_SET_SP(rsp);
   ws->g->cilk_main_return = _tmp;
 
   CILK_WMB();

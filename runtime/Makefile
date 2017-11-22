@@ -2,7 +2,7 @@ MAIN = libcilkr
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
-OPTIONS = -Wall -fpic
+OPTIONS = -g -std=gnu99 -Wall -fpic
 
 ifdef O
   OPTIONS += -O$(O) -fno-omit-frame-pointer

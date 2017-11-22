@@ -47,7 +47,8 @@ Closure * setup_call_parent_closure_helper(__cilkrts_worker *const ws,
   __cilkrts_set_stolen(frame);
   curr_cl = Closure_create(ws);    
   curr_cl->frame = frame;
-  curr_cl->orig_rsp = SP(frame); //MAK: RSP management
+  // ANGE XXX: Don't do this unless we know the frame has spawned
+  // curr_cl->orig_rsp = SP(frame); //MAK: RSP management
 
   CILK_ASSERT(frame->worker == victim_ws); 
   curr_cl->status = CLOSURE_SUSPENDED;
@@ -87,9 +88,10 @@ void setup_closures_in_stacklet(__cilkrts_worker *const ws,
   if( oldest_cl->frame ==  NULL ) {
     CILK_ASSERT(__cilkrts_not_stolen(oldest));
     CILK_ASSERT(oldest->flags & CILK_FRAME_DETACHED);
-    __cilkrts_set_stolen(oldest); 
+    __cilkrts_set_stolen(oldest);
     oldest_cl->frame = oldest;
-    oldest_cl->orig_rsp = SP(oldest); //MAK: RSP management
+    // ANGE XXX: Don't do this unless we know the frame has spawned
+    // oldest_cl->orig_rsp = SP(oldest); //MAK: RSP management
   }
   CILK_ASSERT(oldest->worker == victim_ws); 
   oldest_cl->frame->worker = (__cilkrts_worker *) NOBODY;
@@ -207,7 +209,7 @@ Closure *promote_child(__cilkrts_worker *const ws,
     // thief's stack.
     spawn_parent = Closure_create(ws);
     spawn_parent->frame = frame_to_steal;
-    spawn_parent->orig_rsp = SP(frame_to_steal); //MAK: RSP management
+    // spawn_parent->orig_rsp = SP(frame_to_steal); //MAK: RSP management
     spawn_parent->status = CLOSURE_RUNNING;
     
     // ANGE: this is only temporary; will reset this after the stack has
@@ -224,6 +226,9 @@ Closure *promote_child(__cilkrts_worker *const ws,
 
     Closure_lock(ws, spawn_parent);
     *res = spawn_parent;
+  }
+  if(spawn_parent->orig_rsp == NULL) {
+    spawn_parent->orig_rsp = SP(frame_to_steal); //MAK: RSP management
   }
 
   CILK_ASSERT(spawn_parent->has_cilk_callee == 0);
@@ -332,7 +337,8 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RUNNING:
       /* send the exception to the worker */
       if (do_dekker_on(ws, victim_ws, cl)) {
-        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", ws->self, victim, cl);
+        __cilkrts_alert(ALERT_STEAL, 
+            "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", ws->self, victim, cl);
 	fiber = cilk_fiber_allocate_from_heap();
 	parent_fiber = cl->fiber;
 	
@@ -342,19 +348,17 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	 * the parent
 	 */
 	child = promote_child(ws, victim_ws, cl, &res);
-        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) promote gave cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
+        __cilkrts_alert(ALERT_STEAL, 
+            "[%d]: (Closure_steal) promote gave cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
 
 	/* detach the parent */
-	// ANGE: the top of the deque could have changed in the
-	// else case.
+	// ANGE: the top of the deque could have changed in the else case.
 	if(res == (Closure *) NULL) {
 	  res = deque_xtract_top(ws, victim);
 	  CILK_ASSERT(cl == res);
 	}
 	Closure_assert_ownership(ws, res);
-	    
 	finish_promote(ws, victim_ws, res, child);
-
 	
 	// fiber->resume_sf = res->frame; // MAK: ???
 	// MAK: FIBER-RAND STEAL
@@ -362,9 +366,11 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	cl->fiber = 0;
 	res->fiber = fiber;
 	child->fiber = parent_fiber;
-        __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
-        __cilkrts_alert(ALERT_FIBER, "[%d]: (Closure_steal) cl/res/child now have fiber %p/%p/%p\n", ws->self, 0, fiber, parent_fiber);
-	
+        __cilkrts_alert(ALERT_STEAL, 
+            "[%d]: (Closure_steal) cl/res/child = %p/%p/%p\n", ws->self, cl, res, child);
+        __cilkrts_alert(ALERT_FIBER, 
+            "[%d]: (Closure_steal) cl/res/child now have fiber %p/%p/%p\n", 
+            ws->self, 0, fiber, parent_fiber);
 	deque_unlock(ws, victim); // at this point, more steals can happen from the victim.
 
 	CILK_ASSERT(res->right_most_child == child);
@@ -380,7 +386,6 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 
 	goto give_up;
       }
-
       break;
 
     case CLOSURE_SUSPENDED:
@@ -392,7 +397,6 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       //----- EVENT_STEAL_RETURNING
       __cilkrts_alert(0, "Worker %d: steal failed: returning closure\n", ws->self);
 
-
     give_up:
       // MUST unlock the closure before the queue;
       // see rule D in the file PROTOCOLS
@@ -403,7 +407,6 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     default:
       __cilkrts_bug("Bug: unknown closure status\n");
     }
-
   } else {
     deque_unlock(ws, victim);
     //----- EVENT_STEAL_EMPTY_DEQUE
@@ -431,7 +434,8 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
 
   if (!Closure_has_children(parent) &&
       parent->status == CLOSURE_SUSPENDED) {
-    __cilkrts_alert(ALERT_STEAL | ALERT_SYNC, "[%d]: (provably_good_steal_maybe) completing a sync\n", ws->self);
+    __cilkrts_alert(ALERT_STEAL | ALERT_SYNC, 
+        "[%d]: (provably_good_steal_maybe) completing a sync\n", ws->self);
 
     CILK_ASSERT(parent->frame != NULL);
     CILK_ASSERT(parent->frame->worker == (__cilkrts_worker *) NOBODY);
@@ -442,7 +446,8 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     res->frame->worker = ws;
     // MAK: FIBER-GOOD STEAL
     res->fiber = res->fiber_child;
-    __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, "[%d]: (provably_good_steal_maybe) set res->fiber %p\n", ws->self, res->fiber);
+    __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, 
+        "[%d]: (provably_good_steal_maybe) set res->fiber %p\n", ws->self, res->fiber);
     res->fiber_child = NULL;
     
     //----- EVENT_PROVABLY_GOOD_STEAL
@@ -457,6 +462,7 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
     ws->l->provablyGoodSteal = 0;
   }
 
-  __cilkrts_alert(ALERT_STEAL, "[%d]: (provably_good_steal_maybe) returned %p\n", ws->self, res);
+  __cilkrts_alert(ALERT_STEAL, 
+        "[%d]: (provably_good_steal_maybe) returned %p\n", ws->self, res);
   return res;
 }

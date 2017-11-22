@@ -11,7 +11,7 @@ global_state * global_state_init(int argc, char* argv[]) {
   
   global_state * g = (global_state *) malloc(sizeof(global_state));
 
-  g->active_size = 2;
+  g->active_size = 4;
 
   g->start = 0;
   g->done = 0;
