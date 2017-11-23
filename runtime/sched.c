@@ -1,4 +1,5 @@
 #include "sched.h"
+#include "cilk2c.h"
 #include "jmpbuf.h"
 #include "tls.h"
 #include "fiber-procs.h"
@@ -10,41 +11,69 @@
 
 #include <stdio.h>
 
+__attribute__((noreturn))
+void longjmp_to_user_code(__cilkrts_worker * ws, Closure *t) {
+  __cilkrts_stack_frame *sf = t->frame;
+  cilk_fiber *fiber = t->fiber;
+
+  CILK_ASSERT(sf && fiber);
+
+  if(ws->l->provably_good_steal) {
+    // in this case, we simply longjmp back into the original fiber
+    // the SP(sf) has been updated with the right orig_rsp already
+    CILK_ASSERT(t->orig_rsp == NULL);
+    CILK_ASSERT(((char *)FP(sf) > fiber->m_stack) && ((char *)FP(sf) < fiber->m_stack_base));
+    CILK_ASSERT(((char *)SP(sf) > fiber->m_stack) && ((char *)SP(sf) < fiber->m_stack_base));
+    ws->l->provably_good_steal = 0; // unset
+
+  } else { // this is stolen work; the fiber is a new fiber
+
+    void *new_rsp = sysdep_reset_jump_buffers_for_resume(fiber, sf); 
+    CILK_ASSERT(SP(sf) == new_rsp);
+    CILK_ASSERT(t->orig_rsp != NULL || t == ws->g->invoke_main);
+  }
+
+  __builtin_longjmp(sf->ctx, 1);
+}
+
+__attribute__((noreturn))
 void longjmp_to_runtime(__cilkrts_worker * w) {
-  Closure * cl;
+
   __cilkrts_alert(ALERT_SCHED | ALERT_FIBER, "[%d]: (longjmp_to_runtime)\n", w->self);
 
   // Current fiber is either the (1) one we are about to free,
   // or (2) it has been passed up to the parent.
-  
-  cilk_fiber *current_fiber = __cilkrts_get_tls_cilk_fiber();
+  // cilk_fiber *current_fiber = __cilkrts_get_tls_cilk_fiber();
 
   // Clear the sf in the current fiber for cleanliness, to prevent
   // us from accidentally resuming a bad sf.
   // Technically, resume_sf gets overwritten for a fiber when
   // we are about to resume it anyway.
-  current_fiber->resume_sf = NULL;
-  CILK_ASSERT(current_fiber->owner == w);
+  // current_fiber->resume_sf = NULL;
+  // CILK_ASSERT(current_fiber->owner == w);
 
   if (w->l->fiber_to_free) {
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) freeing fiber %p\n", w->self, current_fiber);
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) freeing fiber %p\n", 
+                    w->self, w->l->fiber_to_free);
     // Case 1: we are freeing this fiber.  We never
     // resume this fiber again after jumping into the runtime.
-    CILK_ASSERT(current_fiber == w->l->fiber_to_free);
-
-    w->l->fiber_to_free = NULL;
+    // CILK_ASSERT(current_fiber == w->l->fiber_to_free);
+    // w->l->fiber_to_free = NULL;
 
     // Extra check. Normally, the fiber we are about to switch to
     // should have a NULL owner.
-    CILK_ASSERT(NULL == w->l->runtime_fiber->owner);
+    // CILK_ASSERT(NULL == w->l->runtime_fiber->owner);
 
+    /*
     cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
 							   w->l->runtime_fiber);
     // We should never come back here!
     CILK_ASSERT(0);
+    */
 
-  } else {
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing fiber %p\n", w->self, current_fiber);
+  } /* else {
+    __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing fiber %p\n", 
+                    w->self, current_fiber);
     // Case 2: We are passing the fiber to our parent because we
     // are leftmost.  We should come back later to
     // resume execution of user code.
@@ -68,7 +97,7 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     // jumping back here, and then jumping back to user code.
 
     user_code_resume_after_switch_into_runtime(current_fiber);
-  }
+  } */
 
   // __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
 
@@ -79,7 +108,9 @@ void longjmp_to_runtime(__cilkrts_worker * w) {
     worker_scheduler(w);
     ASM_SET_SP(rsp);
     */
-  __cilkrts_alert(3, "[%d]: (longjmp_to_runtime) exit\n", w->self);
+  // __cilkrts_alert(3, "[%d]: (longjmp_to_runtime) exit\n", w->self);
+
+  __builtin_longjmp(w->l->rts_ctx, 1);
 }
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
@@ -98,26 +129,57 @@ Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t) {
   return t;
 }
 
+// ANGE: When this is called, either a) a worker is about to pass a sync (though not on
+// the right fiber), or b) a worker just performed a provably good steal
+// successfully
+Closure *setup_for_sync(__cilkrts_worker *ws, Closure *t) {
+  Closure_assert_ownership(ws, t);
+  // MAK: FIBER-GOOD STEAL
+  CILK_ASSERT(ws->l->fiber_to_free == NULL);
+  CILK_ASSERT(t->fiber != t->fiber_child);
+  
+  // ANGE: note that in case a) this fiber won't get freed for awhile 
+  // effectively we will longjmp back to the original function's fiber 
+  // and never go back to the runtime; only when we get back to runtime next
+  // we will free this fiber.  It's ok, however, since we shouldn't need to
+  // store another fiber to free before that happens --- the only time we are
+  // executing user code and get a fiber to free is when we suspend on a sync,
+  // but since this worker is about to resume the left-most fiber, it cannot 
+  // possibly encounter a sync and need to suspend w/out returning to runtime
+  // first. 
+  ws->l->fiber_to_free = t->fiber; 
+  t->fiber = t->fiber_child;
+  t->fiber_child = NULL;
+  __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, 
+      "[%d]: (setup_for_sync) set t->fiber %p\n", ws->self, t->fiber);
+  __cilkrts_set_synced(t->frame);
+
+  SP(t->frame) = (void *) t->orig_rsp;
+  t->orig_rsp = NULL; // unset once we have sync-ed
+
+  return t;
+}
+
 Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
 
   Closure *res = NULL;
   __cilkrts_stack_frame *f;
 
-  
   __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) closure %p\n", ws->self, t);
   Closure_lock(ws, t);
 
   switch (t->status) {
   case CLOSURE_READY:
+    // ANGE: anything we need to free must have been freed at this point
+    CILK_ASSERT(ws->l->fiber_to_free == NULL);
+
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) CLOSURE_READY\n", ws->self);
     /* just execute it */
     setup_for_execution(ws, t);
     f = t->frame;
-    t->fiber->resume_sf = f; // I THINK this works
+    // t->fiber->resume_sf = f; // I THINK this works
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) resume_sf = %p\n", ws->self, f);
-
     CILK_ASSERT(f);
-	  
     Closure_unlock(ws, t);
     
     // MUST unlock the closure before locking the queue 
@@ -129,12 +191,17 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     /* now execute it */
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) Jump into user code.\n", ws->self);
 
-    CILK_ASSERT(ws->l->runtime_fiber != t->fiber);
+    // CILK_ASSERT(ws->l->runtime_fiber != t->fiber);
+    // cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
+    // __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) Back from user code.\n", ws->self);
+    if( __builtin_setjmp(ws->l->rts_ctx) == 0 ) {
+      longjmp_to_user_code(ws, t);
+    } else {
+      CILK_ASSERT(ws == __cilkrts_get_tls_worker());
+      if(ws->l->fiber_to_free) { cilk_fiber_deallocate_to_heap(ws->l->fiber_to_free); }
+      ws->l->fiber_to_free = NULL;
+    }
 
-    cilk_fiber_suspend_self_and_resume_other(ws->l->runtime_fiber, t->fiber);
-
-    __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) Back from user code.\n", ws->self);
-	    
     break; // ?
 
   case CLOSURE_RETURNING:
@@ -142,10 +209,10 @@ Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t) {
     // the return protocol assumes t is not locked, and everybody 
     // will respect the fact that t is returning
     Closure_unlock(ws, t);
-
     res = return_value(ws, t);
-	    
+
     break; // ?
+
   default:
     __cilkrts_bug("BUG in do_what_it_says()\n");
     break;

@@ -31,7 +31,8 @@ local_state * worker_local_init() {
   local_state * l = (local_state *) malloc(sizeof(local_state));
   l->deque_depth = 10000;
   l->shadow_stack = (CilkShadowStack) malloc(l->deque_depth * sizeof(struct __cilkrts_stack_frame *));
-  l->runtime_fiber = NULL;
+  for(int i=0; i < JMPBUF_SIZE; i++) { l->rts_ctx[i] = NULL; }
+  // l->runtime_fiber = NULL;
   l->fiber_to_free = NULL;
 
   return l;
@@ -70,9 +71,9 @@ void* scheduler_thread_proc(void * arg) {
   __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc)\n", w->self);
   __cilkrts_set_tls_worker(w);
   // Create a cilk fiber for this worker on this thread.
-  w->l->runtime_fiber = cilk_fiber_allocate_from_thread();
-  cilk_fiber_set_owner(w->l->runtime_fiber, w);
-  __cilkrts_alert(ALERT_BOOT | ALERT_BOOT, "[%d]: (scheduler_thread_proc) runtime_fiber = %p\n", w->self, w->l->runtime_fiber);
+  // w->l->runtime_fiber = cilk_fiber_allocate_from_thread();
+  // cilk_fiber_set_owner(w->l->runtime_fiber, w);
+  // __cilkrts_alert(ALERT_BOOT | ALERT_BOOT, "[%d]: (scheduler_thread_proc) runtime_fiber = %p\n", w->self, w->l->runtime_fiber);
 
   while(!w->g->start) {
     usleep(1);
@@ -87,11 +88,10 @@ void* scheduler_thread_proc(void * arg) {
     worker_scheduler(w, NULL);
   }
   
-  
-  int ref_count = cilk_fiber_deallocate_from_thread(w->l->runtime_fiber);
+  // int ref_count = cilk_fiber_deallocate_from_thread(w->l->runtime_fiber);
 
-  CILK_ASSERT(0 == ref_count);
-  w->l->runtime_fiber = NULL;
+  // CILK_ASSERT(0 == ref_count);
+  // w->l->runtime_fiber = NULL;
     
   return 0;
 }

@@ -1,4 +1,5 @@
 #include "invoke_main.h"
+#include "fiber-procs.h"
 #include "cilk2c.h"
 #include "tls.h"
 #include "sched.h"
@@ -12,7 +13,7 @@ Closure * create_invoke_main(global_state *const g) {
 
   Closure *t;
   __cilkrts_stack_frame * sf;
-  cilk_fiber * f;
+  cilk_fiber *fiber;
 
   t = Closure_create();
   t->status = CLOSURE_READY;
@@ -21,19 +22,17 @@ Closure * create_invoke_main(global_state *const g) {
 
   sf = (__cilkrts_stack_frame *)malloc(sizeof(__cilkrts_stack_frame));
 
-  f = cilk_fiber_allocate_from_heap();
-  cilk_fiber_reset_state(f, invoke_main);
+  fiber = cilk_fiber_allocate_from_heap();
+  // cilk_fiber_reset_state(f, invoke_main);
   
   // it's important to set the following fields for the root closure, 
   // because we use the info to jump to the right stack position and start
   // executing user code.  For any other frames, these fields get setup 
   // in user code before a spawn and when it gets stolen the first time.
-  // sf->ctx[RSP_INDEX] = (void *) stack_top;
-  // sf->ctx[RBP_INDEX] = (void *) stack_top;
-  // sf->ctx[RIP_INDEX] = (void *) invoke_main;
-
-  // t->frame_rsp = stack_top;
-  // t->assumed_frame_rsp = UNSET_ADDR;
+  void *new_rsp = (void *)sysdep_reset_jump_buffers_for_resume(fiber, sf);
+  CILK_ASSERT(SP(sf) == new_rsp);
+  FP(sf) = new_rsp;
+  PC(sf) = (void *) invoke_main;
 
   sf->flags = 0;
   __cilkrts_set_stolen(sf);
@@ -42,9 +41,9 @@ Closure * create_invoke_main(global_state *const g) {
     
   t->frame = sf;
   sf->worker = (__cilkrts_worker *) NOBODY;
-  t->fiber = f;
+  t->fiber = fiber;
   
-  __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", f);
+  __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", fiber);
     
   return t;
 }

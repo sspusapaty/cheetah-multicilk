@@ -5,8 +5,8 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 
-void make_stack(cilk_fiber * f, size_t stack_size)
-{
+void make_stack(cilk_fiber * f, size_t stack_size) {
+
   char* p;
   // We've already validated that the stack size is page-aligned and
   // is a reasonable value.  No need to do any extra rounding here.
@@ -20,8 +20,8 @@ void make_stack(cilk_fiber * f, size_t stack_size)
     // If the specified stack size is too small, round up to 3
     // pages.  We need at least 2 extra for the guard pages.
     rounded_stack_size = 3 * (size_t)PAGE_SIZE;
-  }
-  else {
+
+  } else {
     // Otherwise, the stack size is large enough, but might not be
     // a multiple of page size.  Round up to nearest multiple of
     // s_page_size, just to be safe.
@@ -41,6 +41,7 @@ void make_stack(cilk_fiber * f, size_t stack_size)
     // There is no stack to return, so the program loses parallelism.
     f->m_stack = NULL;
     f->m_stack_base = NULL;
+
     return;
   }
 
@@ -52,9 +53,8 @@ void make_stack(cilk_fiber * f, size_t stack_size)
   f->m_stack_base = p + rounded_stack_size - PAGE_SIZE;
 }
 
+void free_stack(cilk_fiber * f) {
 
-void free_stack(cilk_fiber * f)
-{
   if (f->m_stack) {
     size_t rounded_stack_size = f->m_stack_base - f->m_stack + PAGE_SIZE;
     if (munmap(f->m_stack, rounded_stack_size) < 0)
@@ -63,14 +63,18 @@ void free_stack(cilk_fiber * f)
 }
 
 void cilk_fiber_set_resumable(cilk_fiber * fiber, int state) {
-  fiber->m_flags = state ?  (fiber->m_flags | RESUMABLE) : (fiber->m_flags & (~RESUMABLE));
+  fiber->m_flags = state ?  
+      (fiber->m_flags | RESUMABLE) : (fiber->m_flags & (~RESUMABLE));
 }
 
 void cilk_fiber_set_allocated_from_thread(cilk_fiber * fiber, int state) {
-  fiber->m_flags = state ?  (fiber->m_flags | ALLOCATED_FROM_THREAD) : (fiber->m_flags & (~ALLOCATED_FROM_THREAD));
+  fiber->m_flags = state ?  
+      (fiber->m_flags | ALLOCATED_FROM_THREAD) : 
+      (fiber->m_flags & (~ALLOCATED_FROM_THREAD));
 }
 
 // Jump to resume other fiber.  We may or may not come back.
+/*
 void cilk_fiber_resume_other(cilk_fiber * other) {
 
   if (cilk_fiber_is_resumable(other)) {
@@ -89,38 +93,42 @@ void cilk_fiber_resume_other(cilk_fiber * other) {
     cilk_fiber_run(other);
   }
 }
+*/
 
 void cilk_fiber_init(cilk_fiber * fiber) {
   fiber->m_stack = NULL;
   fiber->m_stack_base = NULL;
   
   fiber->owner = NULL;
-  fiber->resume_sf = NULL;
+  // fiber->resume_sf = NULL;
   
+  /*
   fiber->m_start_proc = NULL;
   fiber->m_post_switch_proc = NULL;
 
   fiber->m_pending_remove_ref = NULL;
+  fiber->m_outstanding_references = 0;
+  */
   
   fiber->m_flags = 0;
-
-  fiber->m_outstanding_references = 0;
 }
 
 // ----------
 
+/*
 cilk_fiber * cilk_fiber_allocate_from_thread() {
   cilk_fiber * f = (cilk_fiber *) malloc(sizeof(cilk_fiber));
   cilk_fiber_init(f);
   
   cilk_fiber_set_allocated_from_thread(f, 1);
-  __cilkrts_set_tls_cilk_fiber(f);
+  // __cilkrts_set_tls_cilk_fiber(f);
 
-  f->m_outstanding_references = 2;
+  // f->m_outstanding_references = 2;
   
   __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_thread) Allocated fiber %p (base: %p)\n", f, f->m_stack_base);
   return f;
 }
+*/
 
 cilk_fiber * cilk_fiber_allocate_from_heap() {
   cilk_fiber * f = (cilk_fiber *) malloc(sizeof(cilk_fiber));
@@ -128,15 +136,16 @@ cilk_fiber * cilk_fiber_allocate_from_heap() {
   
   make_stack(f, 8000000); // ~8MB stack
 
-  f->m_outstanding_references = 1;
+  // f->m_outstanding_references = 1;
   
   __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_allocate_from_heap) Allocated fiber %p (base/top: %p/%p)\n", f, f->m_stack_base, f->m_stack);
   
   return f;
 }
 
+/*
 int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber) {
-  CILK_ASSERT(fiber->m_outstanding_references >= 2);
+  // CILK_ASSERT(fiber->m_outstanding_references >= 2);
   
   // Suspending the fiber should conceptually decrement the ref
   // count by 1.  Then, freeing the fiber itself decrements the
@@ -145,8 +154,9 @@ int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber) {
   if (ref_count == 0) {
     free(fiber);
   }
+  free(fiber);
   return ref_count;
-}
+}*/
 
 int cilk_fiber_deallocate_to_heap(cilk_fiber * fiber) {
   free_stack(fiber);
@@ -154,6 +164,7 @@ int cilk_fiber_deallocate_to_heap(cilk_fiber * fiber) {
   return 0;
 }
 
+/*
 int cilk_fiber_remove_reference(cilk_fiber * fiber) {
 
   int ref_count = cilk_fiber_dec_ref_count(fiber);
@@ -223,17 +234,15 @@ void cilk_fiber_suspend_self_and_resume_other(cilk_fiber * self, cilk_fiber * ot
 
   // Jump to the other fiber.  We expect to come back.
   if (! __builtin_setjmp(self->ctx)) {
-/*
     __cilkrts_alert(ALERT_FIBER, 
          "[%d]: (suspend_self_and_resume_other) setjmp on resume_other %p (BP/SP/PC: %p/%p/%p)\n", 
         __cilkrts_get_tls_worker()->self, self, FP(self), SP(self), PC(self));
-*/
     cilk_fiber_resume_other(other);
-  }/* else {
+  } else {
     __cilkrts_alert(ALERT_FIBER, 
         "[%d]: (suspend_self_and_resume_other) longjmp after resume_other %p\n",
         __cilkrts_get_tls_worker()->self, self);
-  } */
+  }
 
   __cilkrts_alert(ALERT_FIBER, "[%d]: (suspend_self_and_resume_other) returned to fiber %p\n", self->owner->self, self);
 
@@ -288,7 +297,9 @@ void cilk_fiber_remove_reference_from_self_and_resume_other(cilk_fiber * self, c
   __cilkrts_bug("Deallocating fiber.  We should never come back here.");
   
 }
+*/
 
+/*
 void cilk_fiber_run(cilk_fiber * fiber) {
   // Only fibers created from a pool have a proc method to run and execute. 
   CILK_ASSERT(fiber->m_start_proc);
@@ -362,3 +373,4 @@ void cilk_fiber_run(cilk_fiber * fiber) {
   // User proc should never return.
   __cilkrts_bug("Should not get here");
 }
+*/

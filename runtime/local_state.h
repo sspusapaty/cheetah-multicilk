@@ -15,11 +15,12 @@ struct local_state {
     CilkShadowStack shadow_stack;
   
     size_t deque_depth;
-    int provablyGoodSteal;
+    int provably_good_steal;
 
     unsigned int rand_next;
 
-    cilk_fiber * runtime_fiber;
+    // cilk_fiber * runtime_fiber;
+    jmpbuf rts_ctx;
     cilk_fiber * fiber_to_free;
   
     volatile unsigned int magic;

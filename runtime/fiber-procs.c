@@ -26,7 +26,6 @@ char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
   return sp;
 }
 
-
 void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
 
     __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP/SP/PC: %p/%p/%p\n", sf->worker->self, FP(sf), SP(sf), PC(sf));
@@ -48,6 +47,7 @@ void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
   __builtin_longjmp(sf->ctx, 1);
 }
 
+/*
 void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   __cilkrts_stack_frame* sf = fiber->resume_sf;
   __cilkrts_worker* ws = sf->worker;
@@ -74,9 +74,10 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   // longjmp to user code.  Don't process exceptions here,
   // because we are resuming a stolen frame.
   sysdep_longjmp_to_sf(new_sp, sf);
-  /*NOTREACHED*/
+  // NOTREACHED
   CILK_ASSERT(0);
 }
+*/
 
 
 void cilkrts_resume(__cilkrts_stack_frame *sf, char* sync_sp) {

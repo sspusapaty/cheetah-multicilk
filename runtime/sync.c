@@ -1,4 +1,5 @@
 #include "sync.h"
+#include "sched.h"
 #include "closure.h"
 #include "readydeque.h"
 #include "tls.h"
@@ -37,6 +38,7 @@ int Cilk_sync(__cilkrts_worker *const ws,
     // MAK: FIBER-SYNC GUESS
     __cilkrts_alert(ALERT_SYNC, "[%d]: (Cilk_sync) outstanding children\n", ws->self, frame);
 
+    CILK_ASSERT(ws->l->fiber_to_free == NULL);
     ws->l->fiber_to_free = t->fiber;
     t->fiber = NULL;
     // place holder for reducer map; the views in tlmm (if any) are updated 
@@ -44,17 +46,12 @@ int Cilk_sync(__cilkrts_worker *const ws,
     // these when successful provably good steal occurs
     Closure_suspend(ws, t);
     res = SYNC_NOT_READY;
-
   } else {
-    __cilkrts_set_synced(t->frame);
-    // restore the original rsp 
-    SP(t->frame) = (void *) t->orig_rsp;
-    t->orig_rsp = NULL; // unset once we have sync-ed
+    setup_for_sync(ws, t);
   }
 
   Closure_unlock(ws, t);
   deque_unlock_self(ws);
-
 
   return res;
 }

@@ -1,5 +1,6 @@
 #include "cilk.h"
 #include "invoke_main.h"
+#include "membar.h"
 
 #include <stdio.h>
 
@@ -10,6 +11,8 @@ void main_thread_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (main_thread_init) Setting up main thread's closure.\n");
 
   g->invoke_main = create_invoke_main(g);
+  // ANGE: the order here is important!
+  Cilk_membar_StoreStore();
   g->start = 1;
 }
 

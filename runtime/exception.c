@@ -100,14 +100,18 @@ void Cilk_exception_handler() {
             t->status = CLOSURE_RETURNING;
         }
 
-    } else { // not steal, not abort; false alarm
+    } 
+/*
+    else { // not steal, not abort; false alarm
         //----- EVENT_EXCEPTION_OTHER
         Closure_unlock(ws, t);
         deque_unlock_self(ws);
 
         return;
     }
+*/
 
+/*
     // MAK: FIBER-THE CASE
     // Execute left-holder logic for stacks.
     if (t->left_sib || t->spawn_parent->fiber_child) {
@@ -128,6 +132,7 @@ void Cilk_exception_handler() {
     }
 
     t->fiber = NULL;
+*/
 
     Closure_unlock(ws, t);
     deque_unlock_self(ws);

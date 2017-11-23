@@ -143,7 +143,24 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
   Closure_lock(ws, child);
   Closure_remove_child(ws, parent, child);
 
+  // MAK: FIBER-THE CASE
+  // Execute left-holder logic for stacks.
+  if(child->left_sib || parent->fiber_child) {
+    // Case where we are not the leftmost stack.
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (Closure_return) we are not the leftmost stack.\n", ws->self);
+    CILK_ASSERT(parent->fiber_child != child->fiber);
+    cilk_fiber_deallocate_to_heap(child->fiber);
+  } else {
+    // We are leftmost, pass stack/fiber up to parent.
+    __cilkrts_alert(ALERT_FIBER, 
+        "[%d]: (Cilk_exception_handler) we are the leftmost stack!\n", ws->self);
+    // Thus, no stack/fiber to free.
+    parent->fiber_child = child->fiber;
+  }
+
   /* now the child is no longer needed */
+  child->fiber = NULL;
   Closure_unlock(ws, child);
   Closure_destroy(ws, child);
 
@@ -174,15 +191,16 @@ Closure *return_value(__cilkrts_worker *const ws, Closure *t) {
 
   Closure *res = NULL;
   CILK_ASSERT(t->status == CLOSURE_RETURNING);
+  CILK_ASSERT(t->call_parent == NULL);
   
   if(t->call_parent == NULL) {
     res = Closure_return(ws, t);
 
-  } else {
+  }/* else {
     // ANGE: the ONLY way a closure with call parent can reach here
     // is when the user program calls Cilk_exit, leading to global abort
     // MAK: We don't support this!!!
-  }
+  }*/
 
   __cilkrts_alert(ALERT_RETURN, "[%d]: (return_value) returning closure %p\n", ws->self, t);
 

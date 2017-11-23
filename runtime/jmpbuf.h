@@ -35,8 +35,8 @@ enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,
 #endif
 */
 
-
-typedef void * jmpbuf[5];
+#define JMPBUF_SIZE 5
+typedef void * jmpbuf[JMPBUF_SIZE];
 
     /* word 0 is frame address
      * word 1 is resume address

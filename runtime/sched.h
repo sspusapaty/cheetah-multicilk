@@ -7,6 +7,7 @@
 void longjmp_to_runtime(__cilkrts_worker * w);
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t);
+Closure *setup_for_sync(__cilkrts_worker * ws, Closure *t);
 
 Closure *do_what_it_says(__cilkrts_worker * ws, Closure *t);
 

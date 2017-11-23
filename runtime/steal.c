@@ -1,4 +1,5 @@
 #include "steal.h"
+#include "sched.h"
 #include "cilk2c.h"
 #include "common.h"
 #include "exception.h"
@@ -416,7 +417,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) stole from [%d]; res=%p\n", ws->self, victim, res);
     // Since our steal was successful, finish initialization of
     // the fiber.
-    cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);
+    // cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);
   }
 
   return res;
@@ -442,27 +443,28 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) 
 
     /* do a provably-good steal; this is *really* simple */
     res = parent;
-    ws->l->provablyGoodSteal = 1;
     res->frame->worker = ws;
+    ws->l->provably_good_steal = 1;
+
+    setup_for_sync(ws, res);
     // MAK: FIBER-GOOD STEAL
-    res->fiber = res->fiber_child;
-    __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, 
-        "[%d]: (provably_good_steal_maybe) set res->fiber %p\n", ws->self, res->fiber);
-    res->fiber_child = NULL;
+    // res->fiber = res->fiber_child;
+    // __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, 
+    //     "[%d]: (provably_good_steal_maybe) set res->fiber %p\n", ws->self, res->fiber);
+    // res->fiber_child = NULL;
     
     //----- EVENT_PROVABLY_GOOD_STEAL
 
     /* debugging stuff */
     CILK_ASSERT(parent->owner_ready_deque == NOBODY);
 
-    __cilkrts_set_synced(parent->frame);
+    // __cilkrts_set_synced(parent->frame);
     Closure_make_ready(parent);
-
-  } else {
-    ws->l->provablyGoodSteal = 0;
   }
-
+  
+  CILK_ASSERT(res || ws->l->provably_good_steal == 0);
   __cilkrts_alert(ALERT_STEAL, 
         "[%d]: (provably_good_steal_maybe) returned %p\n", ws->self, res);
+
   return res;
 }
