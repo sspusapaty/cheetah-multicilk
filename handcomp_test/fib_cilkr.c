@@ -3,6 +3,8 @@
 #include "../runtime/cilk.h"
 #include "ktiming.h"
 
+#define MAGIC 0x2afe6748
+
 #ifndef TIMES_TO_RUN
 #define TIMES_TO_RUN 1 
 #endif
@@ -40,24 +42,27 @@ int fib(int n) {
     
     PREAMBLE
     __cilkrts_enter_frame(sf);
+    sf->magic = MAGIC;
 
     ASM_GET_SP(rsp);
     
+    __cilkrts_save_fp_ctrl_state(sf);
     if(!__builtin_setjmp(sf->ctx)) {
         fib_spawn_helper(&x, n-1);
     }
+    CILK_ASSERT(sf->magic == MAGIC);
 
     y = fib(n - 2);
 
     if(__cilkrts_unsynced(sf)) {
+      __cilkrts_save_fp_ctrl_state(sf);
       if(!__builtin_setjmp(sf->ctx)) {
 	__cilkrts_sync(sf);
       }
     }
+    CILK_ASSERT(sf->magic == MAGIC);
     ASM_GET_SP(nsp);
-    fprintf(stderr, "RSP TEST: %ld - %p/%p\n", nsp-rsp, nsp, rsp);
-
-    ASM_SET_SP(rsp);
+    CILK_ASSERT(nsp-rsp == 0);
     
     _tmp = x + y;
 
@@ -86,6 +91,8 @@ int cilk_main(int argc, char * args[]) {
     clockmark_t begin, end; 
     uint64_t running_time[TIMES_TO_RUN];
 
+    fprintf(stderr, "running_time: %p\n", running_time);
+
     if(argc != 2) {
         fprintf(stderr, "Usage: fib [<cilk-options>] <n>\n");
         exit(1);
@@ -100,7 +107,8 @@ int cilk_main(int argc, char * args[]) {
         running_time[i] = ktiming_diff_usec(&begin, &end);
     }
 
-    printf("Result: %d\n", res);
+    fprintf(stderr, "Result: %d\n", res);
+    fprintf(stderr, "running_time: %p\n", running_time);
 
     if( TIMES_TO_RUN > 10 ) 
         print_runtime_summary(running_time, TIMES_TO_RUN); 

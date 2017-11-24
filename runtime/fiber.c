@@ -159,8 +159,10 @@ int cilk_fiber_deallocate_from_thread(cilk_fiber * fiber) {
 }*/
 
 int cilk_fiber_deallocate_to_heap(cilk_fiber * fiber) {
+/*
   free_stack(fiber);
   free(fiber);
+*/
   return 0;
 }
 

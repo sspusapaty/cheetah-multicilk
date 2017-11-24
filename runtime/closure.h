@@ -34,7 +34,7 @@ struct Closure {
   int mutex_owner;
   int owner_ready_deque;
   
-  int join_counter; /* number of spawned outstanding children + itself */
+  int join_counter; /* number of spawned outstanding children */
 
   char * orig_rsp;
 

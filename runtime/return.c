@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "return.h"
 #include "readydeque.h"
 #include "tls.h"
@@ -68,7 +69,11 @@ void Cilk_set_return(__cilkrts_worker *const ws) {
     Closure_lock(ws, call_parent);
 
     // MAK: FIBER-RETURN
-    call_parent->fiber = t->fiber;
+    // call_parent->fiber = t->fiber;
+    if(call_parent->fiber != t->fiber) {
+        fprintf(stderr, "[%d]: parent: %p, t: %p.\n", ws->self, call_parent->fiber, t->fiber);
+    }
+    CILK_ASSERT(call_parent->fiber == t->fiber);
     t->fiber = NULL;
     
     Closure_remove_callee(ws, call_parent); 
@@ -128,9 +133,10 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
   CILK_ASSERT(child->call_parent == NULL);
   CILK_ASSERT(child->spawn_parent != NULL);
 
-  __cilkrts_alert(ALERT_RETURN, "[%d]: (Closure_return) child %o\n", ws->self, child);
-
   parent = child->spawn_parent;
+
+  __cilkrts_alert(ALERT_RETURN, "[%d]: (Closure_return) child %p, parent %p\n", 
+                  ws->self, child, parent);
 
   // At this point the status is as follows: the child is in no deque 
   // and unlocked.  However, the child is still linked with its siblings, 
@@ -141,25 +147,21 @@ Closure *Closure_return(__cilkrts_worker *const ws, Closure *child) {
   // CILK_ASSERT(parent->frame->magic == CILK_STACKFRAME_MAGIC);
 
   Closure_lock(ws, child);
-  Closure_remove_child(ws, parent, child);
 
   // MAK: FIBER-THE CASE
   // Execute left-holder logic for stacks.
   if(child->left_sib || parent->fiber_child) {
     // Case where we are not the leftmost stack.
-    __cilkrts_alert(ALERT_FIBER, 
-        "[%d]: (Closure_return) we are not the leftmost stack.\n", ws->self);
     CILK_ASSERT(parent->fiber_child != child->fiber);
     cilk_fiber_deallocate_to_heap(child->fiber);
   } else {
-    // We are leftmost, pass stack/fiber up to parent.
-    __cilkrts_alert(ALERT_FIBER, 
-        "[%d]: (Cilk_exception_handler) we are the leftmost stack!\n", ws->self);
+    // We are leftmost, pass stack/fiber up to parent.  
     // Thus, no stack/fiber to free.
     parent->fiber_child = child->fiber;
   }
 
   /* now the child is no longer needed */
+  Closure_remove_child(ws, parent, child);
   child->fiber = NULL;
   Closure_unlock(ws, child);
   Closure_destroy(ws, child);

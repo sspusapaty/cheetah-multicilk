@@ -34,6 +34,24 @@ struct __cilkrts_stack_frame
     // Before every spawn and nontrivial sync the client function
     // saves its continuation here.
     jmpbuf ctx;
+
+    // ANGE: need the follwoing fields for storing / restoring floating point
+    // states.  For linux / x86_64 platforms only.
+    /**
+     * Architecture-specific floating point state.  mxcsr and fpcsr should be
+     * set when CILK_SETJMP is called in client code.  Note that the Win64
+     * jmpbuf for the Intel64 architecture already contains this information
+     * so there is no need to use these fields on that OS/architecture.
+     */
+    uint32_t mxcsr;
+    uint16_t fpcsr;         /**< @copydoc mxcsr */
+
+    /**
+     * reserved is not used at this time.  Client code should initialize it
+     * to 0 before the first Cilk operation
+     */
+    uint16_t reserved;      // ANGE: leave it to make it 8-byte aligned.
+    uint32_t magic;
 };
 
 #endif

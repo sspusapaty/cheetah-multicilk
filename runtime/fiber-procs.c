@@ -1,5 +1,25 @@
 #include "fiber-procs.h"
 
+/*
+ * Restore the floating point state that is stored in a stack frame at each
+ * spawn.  This should be called each time a frame is resumed.
+ *
+ * Only valid for IA32 and Intel64 processors.
+ */
+void restore_x86_fp_state (__cilkrts_stack_frame *sf) {
+  // if (__builtin_cpu_supports("sse")) {
+    asm volatile ("ldmxcsr %0" : : "m" (sf->mxcsr));
+  // }
+  asm volatile ("fnclex\n\t" "fldcw %0" : : "m" (sf->fpcsr));
+}
+
+void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
+  // if (__builtin_cpu_supports("sse")) {
+    asm volatile ("stmxcsr %0" : "=m" (sf->mxcsr));
+  // }
+  asm volatile ("fnstcw %0" : "=m" (sf->fpcsr));
+}
+
 char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
                                            __cilkrts_stack_frame *sf) {
   CILK_ASSERT(fiber);
@@ -26,24 +46,20 @@ char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
   return sp;
 }
 
-void sysdep_longjmp_to_sf(char* new_sp, __cilkrts_stack_frame *sf) {
+__attribute__((noreturn))
+void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 
     __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) BP/SP/PC: %p/%p/%p\n", sf->worker->self, FP(sf), SP(sf), PC(sf));
-    __cilkrts_alert(ALERT_FIBER, "[%d]: (sysdep_longjmp_to_sf) New SP: %p\n", sf->worker->self, new_sp);
 
   // Set the stack pointer.
-  SP(sf) = new_sp;
+  // SP(sf) = new_sp;
 
-#ifdef RESTORE_X86_FP_STATE
   // Restore the floating point state that was set in this frame at the
   // last spawn.
   //
   // This feature is only available in ABI 1 or later frames, and only
   // needed on IA64 or Intel64 processors.
   restore_x86_fp_state(sf);
-#endif
-  //__cilkrts_alert(3, "[%d]: jmping to %p.\n", sf->worker->self, PC(sf));
-    
   __builtin_longjmp(sf->ctx, 1);
 }
 
@@ -77,7 +93,6 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber) {
   // NOTREACHED
   CILK_ASSERT(0);
 }
-*/
 
 
 void cilkrts_resume(__cilkrts_stack_frame *sf, char* sync_sp) {
@@ -105,3 +120,4 @@ void user_code_resume_after_switch_into_runtime(cilk_fiber *fiber) {
   // Actually jump to user code.
   cilkrts_resume(sf, sync_sp);
 }
+*/

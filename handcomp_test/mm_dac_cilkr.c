@@ -120,40 +120,50 @@ void mm_internal(int *C, const int *A, const int *B, int n, int length) {
   int const *B21 = B + n*mid;
   int const *B22 = B + n*mid + mid;
 
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C11, A11, B11, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C12, A11, B12, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C21, A21, B11, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C22, A21, B12, n, mid);
   }
     
   if(__cilkrts_unsynced(sf)) {
+    __cilkrts_save_fp_ctrl_state(sf);
     if(!__builtin_setjmp(sf->ctx)) {
       __cilkrts_sync(sf);
     }
   }
   ASM_SET_SP(rsp);
 
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C11, A12, B21, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C12, A12, B22, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C21, A22, B21, n, mid);
   }
+  __cilkrts_save_fp_ctrl_state(sf);
   if(!__builtin_setjmp(sf->ctx)) {
     mm_internal_spawn_helper(C22, A22, B22, n, mid);
   }
     
   if(__cilkrts_unsynced(sf)) {
+    __cilkrts_save_fp_ctrl_state(sf);
     if(!__builtin_setjmp(sf->ctx)) {
       __cilkrts_sync(sf);
     }

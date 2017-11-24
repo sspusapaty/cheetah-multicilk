@@ -99,17 +99,13 @@ void Cilk_exception_handler() {
             CILK_ASSERT(Closure_has_children(t) == 0);
             t->status = CLOSURE_RETURNING;
         }
-
-    } 
-/*
-    else { // not steal, not abort; false alarm
+    } else { // not steal, not abort; false alarm
         //----- EVENT_EXCEPTION_OTHER
         Closure_unlock(ws, t);
         deque_unlock_self(ws);
 
         return;
     }
-*/
 
 /*
     // MAK: FIBER-THE CASE

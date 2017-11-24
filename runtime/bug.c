@@ -4,7 +4,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define CILK_DEBUG 1
+#define CILK_DEBUG 0
+#define ALERT_LVL ALERT_SCHED 
 
 
 const char *const __cilkrts_assertion_failed = "%s:%d: cilk assertion failed: %s\n";

@@ -64,7 +64,7 @@ static inline void Closure_init(Closure *t) {
   t->mutex_owner = NOBODY;
   t->owner_ready_deque = NOBODY;
 
-  t->join_counter = 1; // counting the execution of itself
+  t->join_counter = 0;
   t->orig_rsp = NULL;
 
   t->has_cilk_callee = 0;
@@ -328,5 +328,5 @@ void Closure_destroy(struct __cilkrts_worker *const ws, Closure *t) {
 
   t->magic = ~CILK_CLOSURE_MAGIC;
   Closure_clean(ws, t);
-  free(t);
+  // free(t);
 }

@@ -53,4 +53,6 @@ global_state * __cilkrts_init(int argc, char* argv[]);
 void __cilkrts_run(global_state * g);
 
 void __cilkrts_exit(global_state * g);
+
+void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf);
 #endif

@@ -33,12 +33,22 @@ int Cilk_sync(__cilkrts_worker *const ws,
   CILK_ASSERT(__cilkrts_stolen(t->frame));
   CILK_ASSERT(t->has_cilk_callee == 0);
   // CILK_ASSERT(ws, t->frame->magic == CILK_STACKFRAME_MAGIC);
+ 
+  // ANGE: we might have passed a sync successfully before and never gotten back to
+  // runtime but returning to another ancestor that needs to sync ... in which
+  // case we might have a fiber to free, but it's never the same fiber that we
+  // are on right now.
+  if(ws->l->fiber_to_free) {
+      CILK_ASSERT(ws->l->fiber_to_free != t->fiber);
+      // we should free this fiber now and we can as long as we are not on it
+      cilk_fiber_deallocate_to_heap(ws->l->fiber_to_free);
+      ws->l->fiber_to_free = NULL;
+  }
 
   if(Closure_has_children(t)) {
     // MAK: FIBER-SYNC GUESS
     __cilkrts_alert(ALERT_SYNC, "[%d]: (Cilk_sync) outstanding children\n", ws->self, frame);
 
-    CILK_ASSERT(ws->l->fiber_to_free == NULL);
     ws->l->fiber_to_free = t->fiber;
     t->fiber = NULL;
     // place holder for reducer map; the views in tlmm (if any) are updated 

@@ -40,20 +40,23 @@ Closure * setup_call_parent_closure_helper(__cilkrts_worker *const ws,
 
   if(oldest->frame == frame) {
     CILK_ASSERT(__cilkrts_stolen(oldest->frame));
+    CILK_ASSERT(oldest->fiber);
     return oldest;
   }
  
   call_parent = setup_call_parent_closure_helper(ws, victim_ws, 
 						 frame->call_parent, oldest);
   __cilkrts_set_stolen(frame);
-  curr_cl = Closure_create(ws);    
+  curr_cl = Closure_create(ws);
   curr_cl->frame = frame;
   // ANGE XXX: Don't do this unless we know the frame has spawned
   // curr_cl->orig_rsp = SP(frame); //MAK: RSP management
 
   CILK_ASSERT(frame->worker == victim_ws); 
+  CILK_ASSERT(call_parent->fiber);
   curr_cl->status = CLOSURE_SUSPENDED;
   curr_cl->frame->worker = (__cilkrts_worker *) NOBODY;
+  curr_cl->fiber = call_parent->fiber;
     
   Closure_add_callee(ws, call_parent, curr_cl);
 
@@ -100,6 +103,8 @@ void setup_closures_in_stacklet(__cilkrts_worker *const ws,
   call_parent = setup_call_parent_closure_helper(ws, 
 						 victim_ws, youngest->call_parent, oldest_cl);
   __cilkrts_set_stolen(youngest);
+  // ANGE: right now they are not the same, but when the youngest returns they should be.
+  CILK_ASSERT(youngest_cl->fiber != oldest_cl->fiber);
 
   Closure_add_callee(ws, call_parent, youngest_cl);
 }
@@ -327,7 +332,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
       return NULL;
     }
 
-    __cilkrts_alert(0, "[%d]: trying steal from W%d; cl=%p\n", ws->self, victim, cl);
+    __cilkrts_alert(ALERT_STEAL, "[%d]: trying steal from W%d; cl=%p\n", ws->self, victim, cl);
     victim_ws = ws->g->workers[victim];
 
     switch (cl->status) {
@@ -364,7 +369,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 	// fiber->resume_sf = res->frame; // MAK: ???
 	// MAK: FIBER-RAND STEAL
 	// I think this is an okay place
-	cl->fiber = 0;
+	// cl->fiber = 0; // ANGE: why do this?  Keep the fiber; it won't change
 	res->fiber = fiber;
 	child->fiber = parent_fiber;
         __cilkrts_alert(ALERT_STEAL, 
@@ -383,7 +388,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 
       } else {
 	//----- EVENT_STEAL_NO_DEKKER
-        __cilkrts_alert(0, "Worker %d: steal failed: dekker fail\n", ws->self);
+        // __cilkrts_alert(ALERT_STEAL, "Worker %d: steal failed: dekker fail\n", ws->self);
 
 	goto give_up;
       }
@@ -396,7 +401,7 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
     case CLOSURE_RETURNING:
       /* ok, let it leave alone */
       //----- EVENT_STEAL_RETURNING
-      __cilkrts_alert(0, "Worker %d: steal failed: returning closure\n", ws->self);
+      // __cilkrts_alert(ALERT_STEAL, "Worker %d: steal failed: returning closure\n", ws->self);
 
     give_up:
       // MUST unlock the closure before the queue;
@@ -428,11 +433,10 @@ Closure *Closure_steal(__cilkrts_worker *const ws, int victim) {
 Closure *provably_good_steal_maybe(__cilkrts_worker *const ws, Closure *parent) {
 
   Closure *res = (Closure *) NULL;
-
   Closure_assert_ownership(ws, parent);
 
   __cilkrts_alert(ALERT_STEAL, "[%d]: (provably_good_steal_maybe) cl %p\n", ws->self, parent);
-
+  
   if (!Closure_has_children(parent) &&
       parent->status == CLOSURE_SUSPENDED) {
     __cilkrts_alert(ALERT_STEAL | ALERT_SYNC, 

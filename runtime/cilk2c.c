@@ -6,6 +6,7 @@
 #include "sched.h"
 #include "sync.h"
 #include "exception.h"
+#include "fiber-procs.h"
 #include "return.h"
 
 /* A frame is set to be stolen as long as it has a corresponding Closure */
@@ -106,6 +107,10 @@ void __cilkrts_detach(__cilkrts_stack_frame * self) {
   self->flags |= CILK_FRAME_DETACHED;
 }
 
+void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
+  sysdep_save_fp_ctrl_state(sf);
+}
+
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
@@ -120,7 +125,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
     __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) synced frame %p!\n", ws->self, sf);
     // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
     // if this frame is ready to sync.
-    __builtin_longjmp(sf->ctx, 1);
+    sysdep_longjmp_to_sf(sf);
   } else {
     __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n", ws->self, sf);
     longjmp_to_runtime(ws);                        
