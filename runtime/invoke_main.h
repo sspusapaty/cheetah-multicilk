@@ -8,5 +8,5 @@ Closure * create_invoke_main(global_state *const g);
 
 void spawn_cilk_main(int *res, int argc, char * args[]);
 
-void invoke_main(cilk_fiber * f);
+void invoke_main();
 #endif

@@ -26,17 +26,20 @@ void longjmp_to_user_code(__cilkrts_worker * ws, Closure *t) {
         fprintf(stderr, "%d: bp: %p, sp: %p, m_stack: %p, m_stack_base %p\n", 
                 ws->self, FP(sf), SP(sf), fiber->m_stack, fiber->m_stack_base); 
     }
-    CILK_ASSERT(((char *)FP(sf) > fiber->m_stack) && ((char *)FP(sf) < fiber->m_stack_base));
-    CILK_ASSERT(((char *)SP(sf) > fiber->m_stack) && ((char *)SP(sf) < fiber->m_stack_base));
+    CILK_ASSERT(((char *)FP(sf) > fiber->m_stack) 
+             && ((char *)FP(sf) < fiber->m_stack_base));
+    CILK_ASSERT(((char *)SP(sf) > fiber->m_stack) 
+             && ((char *)SP(sf) < fiber->m_stack_base));
     ws->l->provably_good_steal = 0; // unset
-
   } else { // this is stolen work; the fiber is a new fiber
-
-    void *new_rsp = sysdep_reset_jump_buffers_for_resume(fiber, sf); 
-    CILK_ASSERT(SP(sf) == new_rsp);
-    CILK_ASSERT(t->orig_rsp != NULL || t == ws->g->invoke_main);
+    if(t == ws->g->invoke_main && ws->g->invoke_main_initialized == 0) {
+        ws->g->invoke_main_initialized = 1; 
+        init_fiber_run(fiber, sf);
+    } else {
+      void *new_rsp = sysdep_reset_jump_buffers_for_resume(fiber, sf); 
+      CILK_ASSERT(SP(sf) == new_rsp);
+    }
   }
-
   sysdep_longjmp_to_sf(sf);
 }
 
@@ -232,10 +235,12 @@ void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
   rts_srand(ws, ws->self * 162347);
 
   while (!ws->g->done) {
-    __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) Looking for work\n", ws->self);
+    __cilkrts_alert(ALERT_SCHED, 
+            "[%d]: (worker_scheduler) Looking for work\n", ws->self);
     if (!t) {
       // try to get work from our local queue
-      __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) No pre-existing work!  Checking local deque\n", ws->self);
+      __cilkrts_alert(ALERT_SCHED, 
+            "[%d]: (worker_scheduler) No pre-existing work!  Checking local deque\n", ws->self);
       deque_lock_self(ws);
       t = deque_xtract_bottom(ws, ws->self);
       deque_unlock_self(ws);
@@ -244,7 +249,6 @@ void worker_scheduler(__cilkrts_worker * ws, Closure * t) {
     if (!t) __cilkrts_alert(ALERT_SCHED, "[%d]: (worker_scheduler) Nothing in local deque!  Trying to steal\n", ws->self);
 
     while (!t && !ws->g->done) {
-
       int victim = rts_rand(ws) % ws->g->active_size;
       if( victim != ws->self ) {
 	t = Closure_steal(ws, victim);

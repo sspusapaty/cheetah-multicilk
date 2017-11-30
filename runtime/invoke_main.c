@@ -67,10 +67,9 @@ void spawn_cilk_main(int *res, int argc, char * args[]) {
  * - the sync point after spawn of cilk_main provides a natural point to
  *   resume if user ever calls Cilk_exit and abort the entire computation.
  */
-void invoke_main(cilk_fiber * f) {
+void invoke_main() {
    
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  // Closure * t = ws->g->invoke_main;
   __cilkrts_stack_frame *sf = ws->current_stack_frame;
 
   char * rsp;
@@ -85,11 +84,8 @@ void invoke_main(cilk_fiber * f) {
 
   alloca(ZERO);
 
-  cilk_fiber_set_owner(f, ws);
-    
   __cilkrts_save_fp_ctrl_state(sf);
   if(__builtin_setjmp(sf->ctx) == 0) {
-    //ws->g->invoke_main->frame_rsp = (AddrType) sf->ctx[RSP_INDEX];
     spawn_cilk_main(&_tmp, argc, args);
   } else {
     // ANGE: Important to reset using sf->worker;

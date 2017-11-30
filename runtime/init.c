@@ -13,6 +13,7 @@ global_state * global_state_init(int argc, char* argv[]) {
 
   g->active_size = 32;
 
+  g->invoke_main_initialized = 0;
   g->start = 0;
   g->done = 0;
   

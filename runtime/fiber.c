@@ -1,8 +1,10 @@
 #include "fiber.h"
 #include "common.h"
+#include "invoke_main.h"
 #include "tls.h"
 
 #include <sys/mman.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 void make_stack(cilk_fiber * f, size_t stack_size) {
@@ -71,6 +73,43 @@ void cilk_fiber_set_allocated_from_thread(cilk_fiber * fiber, int state) {
   fiber->m_flags = state ?  
       (fiber->m_flags | ALLOCATED_FROM_THREAD) : 
       (fiber->m_flags & (~ALLOCATED_FROM_THREAD));
+}
+
+__attribute__((noreturn))
+void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
+
+  // owner of fiber not set at the moment
+  __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_run) starting fiber %p\n", fiber);
+
+  if( __builtin_setjmp(sf->ctx) == 0 ) {
+    size_t frame_size = (size_t)FP(sf) - (size_t)SP(sf);
+    // Macs require 16-byte alignment.  Do it always because it just
+    // doesn't matter
+    if (frame_size & (16-1))
+      frame_size += 16 - (frame_size  & (16-1));
+
+    // Assert that we are getting a reasonable frame size out of
+    // it.  If this run() function is using more than 4096 bytes
+    // of space for its local variables / any state that spills to
+    // registers, something is probably *very* wrong here...
+    //
+    // 4096 bytes just happens to be a number that seems "large
+    // enough" --- for an example GCC 32-bit compilation, the
+    // frame size was 48 bytes.
+    CILK_ASSERT(frame_size < 4096);
+
+    // Change stack pointer to fiber stack.  Offset the
+    // calculation by the frame size, so that we've allocated
+    // enough extra space from the top of the stack we are
+    // switching to for any temporaries required for this run()
+    // function.
+    SP(sf) = fiber->m_stack_base - frame_size;
+    __builtin_longjmp(sf->ctx, 1);
+  } else {
+    invoke_main();
+  }
+
+  CILK_ASSERT(0); // should never get here
 }
 
 // Jump to resume other fiber.  We may or may not come back.

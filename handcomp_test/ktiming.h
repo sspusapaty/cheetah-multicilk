@@ -29,7 +29,7 @@ typedef uint64_t clockmark_t;
 
 uint64_t 
 ktiming_diff_usec(const clockmark_t* const start, const clockmark_t* const end);
-float 
+double
 ktiming_diff_sec(const clockmark_t* const start, const clockmark_t* const end);
 clockmark_t ktiming_getmark(void);
 void print_runtime(uint64_t *tm_elapsed, int size); 

@@ -108,7 +108,6 @@ int cilk_main(int argc, char * args[]) {
     }
 
     fprintf(stderr, "Result: %d\n", res);
-    fprintf(stderr, "running_time: %p\n", running_time);
 
     if( TIMES_TO_RUN > 10 ) 
         print_runtime_summary(running_time, TIMES_TO_RUN); 

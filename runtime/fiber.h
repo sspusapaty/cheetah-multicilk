@@ -76,6 +76,9 @@ static inline void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * o
   fiber->owner = owner;
 }
 
+__attribute__((noreturn))
+void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf); 
+
 /** @brief Set the proc method to execute immediately after a switch
  * to this fiber.
  */

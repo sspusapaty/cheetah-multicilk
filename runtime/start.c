@@ -16,7 +16,6 @@ void main_thread_init(global_state * g) {
   g->start = 1;
 }
 
-
 void threads_join(global_state * g) {
   for (int i = 0; i < g->active_size; i++) {
     void * ret;
