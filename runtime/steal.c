@@ -184,8 +184,8 @@ Closure *promote_child(__cilkrts_worker *const ws,
   CILK_ASSERT(cl == ws->g->invoke_main || cl->spawn_parent || cl->call_parent);
 
   Closure *spawn_parent = NULL;
-  __cilkrts_stack_frame **head =  victim_ws->head;  
-  __cilkrts_stack_frame *frame_to_steal = *head;  
+  __cilkrts_stack_frame *volatile *volatile head =  victim_ws->head;  
+  __cilkrts_stack_frame *volatile frame_to_steal = *head;  
 
   /* can't promote until we are sure nobody works on the frame */
   /* ANGE: Why does checking H <= E  ensures that nobody works on the

@@ -10,10 +10,7 @@ handcomp_test/*
 *.o
 *.a
 
-# Scratch
-runtime/cilk_types.h
-*.t
-
-# Future proofing
+# lib 
+*.a
 *.so
 *.so.*

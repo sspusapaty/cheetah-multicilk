@@ -67,6 +67,7 @@ void spawn_cilk_main(int *res, int argc, char * args[]) {
  * - the sync point after spawn of cilk_main provides a natural point to
  *   resume if user ever calls Cilk_exit and abort the entire computation.
  */
+__attribute__((noreturn))
 void invoke_main() {
    
   __cilkrts_worker *ws = __cilkrts_get_tls_worker();

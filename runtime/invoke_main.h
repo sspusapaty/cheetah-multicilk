@@ -5,8 +5,6 @@
 #include "closure.h"
 
 Closure * create_invoke_main(global_state *const g);
-
 void spawn_cilk_main(int *res, int argc, char * args[]);
-
-void invoke_main();
+__attribute__((noreturn)) void invoke_main();
 #endif

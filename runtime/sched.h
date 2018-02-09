@@ -4,6 +4,7 @@
 #include "worker.h"
 #include "closure.h"
 
+__attribute__((noreturn))
 void longjmp_to_runtime(__cilkrts_worker * w);
 
 Closure *setup_for_execution(__cilkrts_worker * ws, Closure *t);

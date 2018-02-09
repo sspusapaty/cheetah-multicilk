@@ -8,7 +8,7 @@
 int main(int argc, char* argv[]) {
   int ret;
 
-  fprintf(stderr, "Running the real main()\n"); 
+  fprintf(stderr, "Cheetah: invoking user main.\n"); 
 
   global_state * g = __cilkrts_init(argc, argv);
 
