@@ -275,6 +275,7 @@ void Closure_suspend_victim(__cilkrts_worker *const w,
 
   cl1 = deque_xtract_bottom(w, victim);
   CILK_ASSERT(w, cl == cl1);
+  USE_UNUSED(cl1);
 }
 
 void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
@@ -299,6 +300,7 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
   cl1 = deque_xtract_bottom(w, w->self);
 
   CILK_ASSERT(w, cl == cl1);
+  USE_UNUSED(cl1);
 }
 
 void Closure_make_ready(Closure *cl) {

@@ -70,6 +70,7 @@ static void workers_init(global_state * g) {
     w->tail = w->l->shadow_stack + 1;
     w->head = w->l->shadow_stack + 1;
     w->exc = w->head;
+    w->current_stack_frame = NULL;
   }
 }
 

@@ -9,6 +9,8 @@
 #include "membar.h"
 #include "fiber.h"
 
+__thread __cilkrts_worker *tls_self = NULL;
+
 // ==============================================
 // Misc. helper functions 
 // ==============================================
@@ -127,8 +129,8 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
 static pthread_key_t worker_key;
 
 void __cilkrts_init_tls_variables() {
-  int status;
-  status = pthread_key_create(&worker_key, NULL);
+  int status = pthread_key_create(&worker_key, NULL);
+  USE_UNUSED(status);
   CILK_ASSERT_G(status == 0);   
 }
 
@@ -137,14 +139,11 @@ void * __cilkrts_get_current_thread_id() {
 }
 
 __cilkrts_worker * __cilkrts_get_tls_worker() {
-  return (__cilkrts_worker *)pthread_getspecific(worker_key);
+  return tls_worker;
 }
 
 void __cilkrts_set_tls_worker(__cilkrts_worker *w) {
-    int status;
-    status = pthread_setspecific(worker_key, w);
-    CILK_ASSERT_G(status == 0);
-    return;
+  tls_worker = w;
 }
 
 
@@ -1000,6 +999,7 @@ static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
     // t->fiber->resume_sf = f; // I THINK this works
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) resume_sf = %p\n", w->self, f);
     CILK_ASSERT(w, f);
+    USE_UNUSED(f);
     Closure_unlock(w, t);
     
     // MUST unlock the closure before locking the queue 

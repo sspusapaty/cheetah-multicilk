@@ -142,6 +142,7 @@ void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const w,
   t = deque_xtract_bottom(w, pn);
 
   CILK_ASSERT(w, t->frame == f);
+  USE_UNUSED(t); 
   deque_unlock(w, pn);
 
   /* ANGE: there is no splitter logging in the invoke_main frame */
