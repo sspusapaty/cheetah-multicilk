@@ -49,6 +49,7 @@ void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf);
 
 cilk_fiber * cilk_main_fiber_allocate(); 
 cilk_fiber * cilk_fiber_allocate(__cilkrts_worker *w);
-int cilk_fiber_deallocate(cilk_fiber * fiber);
+void cilk_fiber_deallocate(cilk_fiber * fiber);
+void cilk_main_fiber_deallocate(cilk_fiber * fiber);
 
 #endif

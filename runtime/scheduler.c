@@ -593,7 +593,7 @@ Closure *promote_child(__cilkrts_worker *const w,
   if(cl->frame == frame_to_steal) {
     spawn_parent = cl;
 
-  } else { 
+  } else {
     // cl->frame could either be NULL or some older frame (e.g., 
     // cl->frame was stolen and resumed, it calls another frame which spawned,
     // and the spawned frame is the frame_to_steal now). 
@@ -635,6 +635,9 @@ Closure *promote_child(__cilkrts_worker *const w,
    ***/
   Closure_add_child(w, spawn_parent, spawn_child);
 
+  /* join counter update */
+  spawn_parent->join_counter++;
+
   (victim_w->head)++;
   // ANGE: we set this frame lazily 
   spawn_child->frame = (__cilkrts_stack_frame *) NULL; 
@@ -652,9 +655,8 @@ Closure *promote_child(__cilkrts_worker *const w,
  * the child).  This function does some more work on the parent to make
  * the promotion complete.
  *
- * ANGE: This includes remapping the thief's stack, promote everything along
- * the stolen stacklet into full closures, and finally fix up the stack
- * mapping if we mapped too much or too little the first time around.
+ * ANGE: This includes promoting everything along the stolen stacklet 
+ * into full closures.
  ***/
 void finish_promote(__cilkrts_worker *const w, 
 		    __cilkrts_worker *const victim_w,
@@ -665,10 +667,6 @@ void finish_promote(__cilkrts_worker *const w,
   Closure_assert_ownership(w, parent);
   Closure_assert_alienation(w, child);
   CILK_ASSERT(w, parent->has_cilk_callee == 0);
-
-  /* the parent is still locked; we still need to update it */
-  /* join counter update */
-  parent->join_counter++;
 
   // ANGE: the "else" case applies to a closure which has its frame 
   // set, but not its frame_rsp.  These closures may have been stolen 
@@ -734,20 +732,21 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 	parent_fiber = cl->fiber;
 	
 	/* 
-	 * if we could send the exception, promote
-	 * the child to a full closure, and steal
-	 * the parent
+	 * if dekker passes, promote the child to a full closure, 
+	 * and steal the parent
 	 */
 	child = promote_child(w, victim_w, cl, &res);
         __cilkrts_alert(ALERT_STEAL, 
             "[%d]: (Closure_steal) promote gave cl/res/child = %p/%p/%p\n", w->self, cl, res, child);
 
 	/* detach the parent */
-	// ANGE: the top of the deque could have changed in the else case.
 	if(res == (Closure *) NULL) {
 	  res = deque_xtract_top(w, victim);
+	  // ANGE: the top of the deque could have changed in the else case.
 	  CILK_ASSERT(w, cl == res);
 	}
+	deque_unlock(w, victim); // at this point, more steals can happen from the victim.
+
         CILK_ASSERT(w, res->frame->worker == victim_w); 
 	Closure_assert_ownership(w, res);
 	finish_promote(w, victim_w, res, child);
@@ -759,7 +758,6 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
         __cilkrts_alert(ALERT_FIBER, 
             "[%d]: (Closure_steal) cl/res/child now have fiber %p/%p/%p\n", 
             w->self, 0, fiber, parent_fiber);
-	deque_unlock(w, victim); // at this point, more steals can happen from the victim.
 
 	CILK_ASSERT(w, res->right_most_child == child);
 	CILK_ASSERT(w, res->frame->worker == victim_w); 

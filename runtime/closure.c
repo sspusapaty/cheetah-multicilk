@@ -101,12 +101,10 @@ Closure * Closure_create(__cilkrts_worker *const w) {
 
 /* 
  * ANGE: Same thing as Cilk_Closure_create, except this function uses system
- *       malloc, while Cilk_Closure_create uses internal_malloc.
- *       This seems to be used only for create_initial_thread from
- *       inovke-main.c.
- *       Unused for the moment, until we put in mem pool
+ *       malloc, while Cilk_Closure_create will eventually use internal_malloc.
+ *       To be used only for creating the initial closure in inovke-main.c.
  */
-Closure *Closure_create_malloc() {
+Closure *Closure_create_main() {
 
   Closure *new_closure = (Closure *) malloc(sizeof(Closure));
   CILK_ASSERT_G(new_closure != NULL);
@@ -311,11 +309,27 @@ void Closure_make_ready(Closure *cl) {
 static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
 
   // sanity checks
-  CILK_ASSERT(w, t->left_sib == (Closure *)NULL);
-  CILK_ASSERT(w, t->right_sib == (Closure *)NULL);
-  CILK_ASSERT(w, t->right_most_child == (Closure *)NULL);
+  if(w) {
+    CILK_ASSERT(w, t->left_sib == (Closure *)NULL);
+    CILK_ASSERT(w, t->right_sib == (Closure *)NULL);
+    CILK_ASSERT(w, t->right_most_child == (Closure *)NULL);
+  } else {
+    CILK_ASSERT_G(t->left_sib == (Closure *)NULL);
+    CILK_ASSERT_G(t->right_sib == (Closure *)NULL);
+    CILK_ASSERT_G(t->right_most_child == (Closure *)NULL);
+  }
     
   Cilk_mutex_destroy(&t->mutex);
+}
+
+/* ANGE: destroy the closure and internally free it (put back to global
+ * pool)
+ */
+void Closure_destroy_main(Closure *t) {
+
+  WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
+  Closure_clean(NULL, t);
+  free(t);
 }
 
 /* ANGE: destroy the closure and internally free it (put back to global
@@ -326,5 +340,5 @@ void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
   Closure_checkmagic(w, t);
   WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
   Closure_clean(w, t);
-  // free(t);
+  free(t);
 }

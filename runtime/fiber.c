@@ -161,13 +161,11 @@ cilk_fiber * cilk_main_fiber_allocate() {
   return fiber;
 }
 
-int cilk_main_fiber_deallocate(cilk_fiber * fiber) {
+void cilk_main_fiber_deallocate(cilk_fiber * fiber) {
   __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate main fiber %p [%p--%p]\n", 
                   fiber, fiber->m_stack_base, fiber->m_stack);
   free_stack(fiber);
   free(fiber);
-
-  return 0;
 }
 
 cilk_fiber * cilk_fiber_allocate(__cilkrts_worker *w) {
@@ -180,9 +178,8 @@ cilk_fiber * cilk_fiber_allocate(__cilkrts_worker *w) {
   return fiber;
 }
 
-int cilk_fiber_deallocate(cilk_fiber * fiber) {
+void cilk_fiber_deallocate(cilk_fiber * fiber) {
   free_stack(fiber);
   free(fiber);
-  return 0;
 }
 

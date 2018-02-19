@@ -197,9 +197,9 @@ static void test_mm(int n, int check) {
 
     rand_matrix(A, n);
     rand_matrix(B, n);
-    zero_matrix(C, n);
 
     for(int i = 0; i < TIMING_COUNT; i++) {
+        zero_matrix(C, n);
         begin = ktiming_getmark();
         mm_dac(C, A, B, n, n);
         end = ktiming_getmark();
@@ -208,6 +208,7 @@ static void test_mm(int n, int check) {
     print_runtime(running_time, TIMING_COUNT);
 
     if(check) {
+        fprintf(stderr, "Checking result ...\n");
         int * Cs = (int*) malloc(sizeof(int) * (n*n));
         zero_matrix(Cs, n);
         mm_dac_serial(Cs, A, B, n, n);

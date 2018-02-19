@@ -10,6 +10,7 @@ extern unsigned long ZERO;
 
 extern int cilk_main(int argc, char * argv[]);
 extern global_state * __cilkrts_init(int argc, char* argv[]);
+extern void __cilkrts_cleanup(global_state *g);
 
 __attribute__((noreturn)) void invoke_main(); // forward decl
 
@@ -19,7 +20,7 @@ Closure * create_invoke_main(global_state *const g) {
   __cilkrts_stack_frame * sf;
   cilk_fiber *fiber;
 
-  t = Closure_create_malloc();
+  t = Closure_create_main();
   t->status = CLOSURE_READY;
 
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n", t);
@@ -50,6 +51,12 @@ Closure * create_invoke_main(global_state *const g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", fiber);
     
   return t;
+}
+
+void cleanup_invoke_main(Closure *invoke_main) {
+  cilk_main_fiber_deallocate(invoke_main->fiber); 
+  free(invoke_main->frame);
+  Closure_destroy_main(invoke_main);
 }
 
 void spawn_cilk_main(int *res, int argc, char * args[]) {
@@ -154,7 +161,7 @@ static void __cilkrts_run(global_state * g) {
 }
 
 static void __cilkrts_exit(global_state * g) {
-  
+  __cilkrts_cleanup(g);
 }
 
 #undef main
@@ -165,8 +172,9 @@ int main(int argc, char* argv[]) {
   fprintf(stderr, "Cheetah: invoking user main with %d workers.\n", g->options.nproc);
 
   __cilkrts_run(g);
-  __cilkrts_exit(g);
   ret = g->cilk_main_return;
+
+  __cilkrts_exit(g);
 
   return ret;
 }

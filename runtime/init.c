@@ -6,9 +6,10 @@
 #include "readydeque.h"
 #include "scheduler.h"
 
+extern void cleanup_invoke_main(Closure *invoke_main);
 extern int parse_command_line(struct rts_options *options, int *argc, char *argv[]);
 
-global_state * global_state_init(int argc, char* argv[]) {
+static global_state * global_state_init(int argc, char* argv[]) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_init) Initializing global state.\n");
   global_state * g = (global_state *) malloc(sizeof(global_state));
   
@@ -34,19 +35,18 @@ global_state * global_state_init(int argc, char* argv[]) {
   return g;
 }
 
-local_state * worker_local_init(global_state *g) {
+static local_state * worker_local_init(global_state *g) {
   local_state * l = (local_state *) malloc(sizeof(local_state));
   l->shadow_stack = (__cilkrts_stack_frame **) 
       malloc(g->options.deqdepth * sizeof(struct __cilkrts_stack_frame *));
   for(int i=0; i < JMPBUF_SIZE; i++) { l->rts_ctx[i] = NULL; }
   l->fiber_to_free = NULL;
   l->provably_good_steal = 0;
-  l->test = 0;
 
   return l;
 }
 
-void deques_init(global_state * g) {
+static void deques_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (deques_init) Initializing deques.\n");
   for (int i = 0; i < g->options.nproc; i++) {
     g->deques[i].top = NULL;
@@ -56,7 +56,7 @@ void deques_init(global_state * g) {
   }
 }
 
-void workers_init(global_state * g) {
+static void workers_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing workers.\n");
   for (int i = 0; i < g->options.nproc; i++) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing worker %d.\n", i);
@@ -73,7 +73,7 @@ void workers_init(global_state * g) {
   }
 }
 
-void* scheduler_thread_proc(void * arg) {
+static void* scheduler_thread_proc(void * arg) {
   __cilkrts_worker * w = (__cilkrts_worker *)arg;
   long long idle = 0;
   __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc)\n", w->self);
@@ -90,7 +90,7 @@ void* scheduler_thread_proc(void * arg) {
   return 0;
 }
 
-void threads_init(global_state * g) {
+static void threads_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (threads_init) Setting up threads.\n");
   for (int i = 0; i < g->options.nproc; i++) {
     int status = pthread_create(&g->threads[i],
@@ -112,4 +112,41 @@ global_state * __cilkrts_init(int argc, char* argv[]) {
   threads_init(g);
 
   return g;
+}
+
+static void global_state_deinit(global_state *g) {
+  __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_deinit) Clean up global state.\n");
+
+  cleanup_invoke_main(g->invoke_main);
+  free(g->workers);
+  free(g->deques);
+  free(g->threads);
+  free(g);
+}
+
+static void deques_deinit(global_state * g) {
+  __cilkrts_alert(ALERT_BOOT, "[M]: (deques_deinit) Clean up deques.\n");
+  for (int i = 0; i < g->options.nproc; i++) {
+    CILK_ASSERT_G(g->deques[i].mutex_owner == NOBODY);
+    Cilk_mutex_destroy(&(g->deques[i].mutex));
+  }
+}
+
+static void workers_deinit(global_state * g) {
+  __cilkrts_alert(ALERT_BOOT, "[M]: (workers_deinit) Clean up workers.\n");
+  for(int i = 0; i < g->options.nproc; i++) {
+    __cilkrts_worker *w = g->workers[i];
+    CILK_ASSERT(w, w->l->fiber_to_free == NULL);
+
+    free(w->l->shadow_stack);
+    free(w->l);
+    free(w);
+    g->workers[i] = NULL;
+  }
+}
+
+void __cilkrts_cleanup(global_state *g) {
+  workers_deinit(g);
+  deques_deinit(g);
+  global_state_deinit(g);
 }

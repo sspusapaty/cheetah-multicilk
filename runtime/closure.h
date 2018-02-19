@@ -104,7 +104,7 @@ int Closure_at_top_of_stack(__cilkrts_worker *const w);
 int Closure_has_children(Closure *cl);
 
 Closure *Closure_create(__cilkrts_worker *const w);
-Closure *Closure_create_malloc();
+Closure *Closure_create_main();
 
 void Closure_add_child(__cilkrts_worker *const w,
 		       Closure *parent, Closure *child);
@@ -122,4 +122,5 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl);
 
 void Closure_make_ready(Closure *cl);
 void Closure_destroy(__cilkrts_worker *const w, Closure *t);
+void Closure_destroy_main(Closure *t);
 #endif
