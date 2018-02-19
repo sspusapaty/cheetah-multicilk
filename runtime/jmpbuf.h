@@ -5,45 +5,12 @@
 #include <setjmp.h>
 #include "common.h"
 
-// REALLY uncomfortable here
-enum CtxIndex {RBP_INDEX = 0, RIP_INDEX = 1, RSP_INDEX = 2,  
-               UNUSED_INDEX1 = 3, UNUSED_INDEX2 = 4, CTX_SIZE = 5};
-
-/*
-#define JB_RBX    0
-#define JB_RBP    1
-#define JB_R12    2
-#define JB_R13    3
-#define JB_R14    4
-#define JB_R15    5
-#define JB_RSP    6
-#define JB_PC    7
-#define JB_SIZE (8*8)
-
-
-#if defined JB_RSP
-
-#define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_RSP]
-#define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_RBP]
-#define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
-
-#elif  defined JB_SP
-#define JMPBUF_SP(ctx) (ctx)[0].__jmpbuf[JB_SP]
-#define JMPBUF_FP(ctx) (ctx)[0].__jmpbuf[JB_BP]
-#define JMPBUF_PC(ctx) (ctx)[0].__jmpbuf[JB_PC]
-
-#endif
-*/
-
 #define JMPBUF_SIZE 5
 typedef void * jmpbuf[JMPBUF_SIZE];
 
-    /* word 0 is frame address
-     * word 1 is resume address
-     * word 2 is stack address */
-#define JMPBUF_FP(ctx) (ctx)[0]
-#define JMPBUF_PC(ctx) (ctx)[1]
-#define JMPBUF_SP(ctx) (ctx)[2]
+#define JMPBUF_FP(ctx) (ctx)[0] // frame addr, i.e., %rbp
+#define JMPBUF_PC(ctx) (ctx)[1] // PC counter, i.e., %rip
+#define JMPBUF_SP(ctx) (ctx)[2] // stack addr, i.e., %rsp
 
 /**
  * @brief Get frame pointer from jump buffer in__cilkrts_stack_frame.

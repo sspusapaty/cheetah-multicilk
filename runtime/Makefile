@@ -3,8 +3,8 @@ include ../config.mk
 MAIN = libcheetah
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
-OBJS = $(patsubst %.c,%.o,$(SRCS))
-OPTIONS = -g -Werror -Wall -fpic -g # -std=gnu99 -fno-omit-frame-pointer
+OBJS = $(patsubst %.c,build/%.o,$(SRCS))
+OPTIONS = -g -Werror -Wall -fpic -g
 
 .PHONY: all clean
  
@@ -16,8 +16,8 @@ $(MAIN).a: $(OBJS)
 $(MAIN).so: $(OBJS)
 	$(CC) -shared -o $@ $^
 
-%.o: %.c $(HDRS)
-	$(CC) -c $(OPTIONS) $<
+build/%.o: %.c $(HDRS)
+	$(CC) -c $(OPTIONS) -o $@ $<
 
 clean:
-	rm -f *.o *.a *~
+	rm -f $(OBJS) *.a *.so *~

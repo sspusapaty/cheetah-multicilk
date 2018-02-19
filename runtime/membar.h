@@ -5,7 +5,7 @@
  * memory barriers
  \***********************************************************/
 
-#define CILK_MB() asm volatile ("mfence":::"memory");
+#define CILK_MB()  asm volatile ("mfence":::"memory");
 #define CILK_RB()  asm volatile ("lfence": : :"memory") 
 #define CILK_RMB() CILK_MB()
 #define CILK_WMB() asm volatile ("": : :"memory")

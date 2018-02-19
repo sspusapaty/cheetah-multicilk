@@ -1,13 +1,17 @@
-#include "invoke_main.h"
-#include "fiber-procs.h"
+#include <stdio.h>
+
+#include "cilk-internal.h"
+#include "cilk.h"
 #include "cilk2c.h"
-#include "tls.h"
-#include "sched.h"
+#include "fiber.h"
 #include "membar.h"
+#include "scheduler.h"
 
 extern unsigned long ZERO;
 
 extern int cilk_main(int argc, char * argv[]);
+
+__attribute__((noreturn)) void invoke_main(); // forward decl
 
 Closure * create_invoke_main(global_state *const g) {
 
@@ -22,8 +26,7 @@ Closure * create_invoke_main(global_state *const g) {
 
   sf = (__cilkrts_stack_frame *)malloc(sizeof(__cilkrts_stack_frame));
 
-  fiber = cilk_fiber_allocate_from_heap();
-  // cilk_fiber_reset_state(f, invoke_main);
+  fiber = cilk_main_fiber_allocate();
   
   // it's important to set the following fields for the root closure, 
   // because we use the info to jump to the right stack position and start
@@ -34,7 +37,7 @@ Closure * create_invoke_main(global_state *const g) {
   FP(sf) = new_rsp;
   PC(sf) = (void *) invoke_main;
 
-  sf->flags = 0;
+  sf->flags = CILK_FRAME_VERSION;
   __cilkrts_set_stolen(sf);
   // FIXME
   sf->flags |= CILK_FRAME_DETACHED;
@@ -58,11 +61,10 @@ void spawn_cilk_main(int *res, int argc, char * args[]) {
   __cilkrts_leave_frame(sf);
 }
 
-
 /*
  * ANGE: strictly speaking, we could just call cilk_main instead of spawn,
  * but spawning has a couple advantages: 
- * - it allows us to do tlmm_set_closure_stack_mapping in a natural way 
+ * - it allow us to do tlmm_set_closure_stack_mapping in a natural way 
  for the invoke_main closure (otherwise would need to setup it specially).
  * - the sync point after spawn of cilk_main provides a natural point to
  *   resume if user ever calls Cilk_exit and abort the entire computation.
@@ -70,18 +72,18 @@ void spawn_cilk_main(int *res, int argc, char * args[]) {
 __attribute__((noreturn))
 void invoke_main() {
    
-  __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_stack_frame *sf = ws->current_stack_frame;
+  __cilkrts_worker *w = __cilkrts_get_tls_worker();
+  __cilkrts_stack_frame *sf = w->current_stack_frame;
 
   char * rsp;
   char * nsp;
   int _tmp;
-  int argc = ws->g->cilk_main_argc;
-  char **args = ws->g->cilk_main_args;
+  int argc = w->g->cilk_main_argc;
+  char **args = w->g->cilk_main_args;
 
   ASM_GET_SP(rsp);
-  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main).\n", ws->self);
-  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) rsp = %p.\n", ws->self, rsp);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main).\n", w->self);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) rsp = %p.\n", w->self, rsp);
 
   alloca(ZERO);
 
@@ -90,15 +92,15 @@ void invoke_main() {
     spawn_cilk_main(&_tmp, argc, args);
   } else {
     // ANGE: Important to reset using sf->worker;
-    // otherwise ws gets cached in a register 
-    ws = sf->worker;
-    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after spawn.\n", ws->self);
+    // otherwise w gets cached in a register 
+    w = sf->worker;
+    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after spawn.\n", w->self);
   }
 
   ASM_GET_SP(nsp);
-  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", ws->self, nsp);
+  __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", w->self, nsp);
 
-  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
+  CILK_ASSERT(w == __cilkrts_get_tls_worker());
 
   if(__cilkrts_unsynced(sf)) {
     __cilkrts_save_fp_ctrl_state(sf);
@@ -106,23 +108,65 @@ void invoke_main() {
       __cilkrts_sync(sf);
     } else {
       // ANGE: Important to reset using sf->worker; 
-      // otherwise ws gets cached in a register
-      ws = sf->worker;
-      __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after sync.\n", ws->self);
+      // otherwise w gets cached in a register
+      w = sf->worker;
+      __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) corrected worker after sync.\n", w->self);
     }
   }
   
-  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
+  CILK_ASSERT(w == __cilkrts_get_tls_worker());
 
   // ASM_SET_SP(rsp);
-  ws->g->cilk_main_return = _tmp;
+  w->g->cilk_main_return = _tmp;
 
   CILK_WMB();
 		   
-  ws->g->done = 1;
+  w->g->done = 1;
 
-  // Cilk_remove_and_free_closure_and_frame(ws, sf, ws->self);
+  // Cilk_remove_and_free_closure_and_frame(w, sf, w->self);
 
   // done; go back to runtime
-  longjmp_to_runtime(ws);
+  longjmp_to_runtime(w);
+}
+
+static void main_thread_init(global_state * g) {
+  __cilkrts_alert(ALERT_BOOT, "[M]: (main_thread_init) Setting up main thread's closure.\n");
+
+  g->invoke_main = create_invoke_main(g);
+  // ANGE: the order here is important!
+  Cilk_membar_StoreStore();
+  g->start = 1;
+}
+
+static void threads_join(global_state * g) {
+  for (int i = 0; i < g->options.nproc; i++) {
+    int status = pthread_join(g->threads[i], NULL);
+    if(status != 0)
+      __cilkrts_bug("Cilk runtime error: thread join (%d) failed: %d\n", i, status);
+  }
+  __cilkrts_alert(ALERT_BOOT, "[M]: (threads_join) All workers joined!\n");
+}
+
+static void __cilkrts_run(global_state * g) {
+  main_thread_init(g);
+  // Sleeping
+  threads_join(g);
+}
+
+static void __cilkrts_exit(global_state * g) {
+  
+}
+
+#undef main
+int main(int argc, char* argv[]) {
+  int ret;
+
+  global_state * g = __cilkrts_init(argc, argv);
+  fprintf(stderr, "Cheetah: invoking user main with %d workers.\n", g->options.nproc);
+
+  __cilkrts_run(g);
+  __cilkrts_exit(g);
+  ret = g->cilk_main_return;
+
+  return ret;
 }

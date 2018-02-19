@@ -1,13 +1,11 @@
+#include <stdio.h>
+
 #include "cilk2c.h"
 
-#include "tls.h"
-//#include "common.h"
+#include "cilk-internal.h"
 #include "membar.h"
-#include "sched.h"
-#include "sync.h"
-#include "exception.h"
-#include "fiber-procs.h"
-#include "return.h"
+#include "fiber.h"
+#include "scheduler.h"
 
 /* A frame is set to be stolen as long as it has a corresponding Closure */
 void __cilkrts_set_stolen(__cilkrts_stack_frame *sf) {
@@ -24,6 +22,7 @@ void __cilkrts_set_unsynced(__cilkrts_stack_frame *sf) {
 
 void __cilkrts_set_synced(__cilkrts_stack_frame *sf) {
     sf->flags &= ~CILK_FRAME_UNSYNCHED;
+    CILK_ASSERT(sf->flags & CILK_FRAME_VERSION);
 }
 
 /* Returns nonzero if the frame is not synched. */
@@ -50,61 +49,62 @@ int __cilkrts_not_stolen(__cilkrts_stack_frame *sf) {
 // use the version that the compiler knows of (i.e., Cilk Plus version); 
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
   // MK: not supporting slow path yet
-  __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame) frame %p\n", ws->self, sf);
-  // DUMP_STACK(ALERT_CFRAME, ws->self);
+  __cilkrts_worker *w = __cilkrts_get_tls_worker();
+  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame) frame %p\n", w->self, sf);
+  // DUMP_STACK(ALERT_CFRAME, w->self);
   
-  sf->flags = 0;
-  sf->call_parent = ws->current_stack_frame; 
+  sf->flags = CILK_FRAME_VERSION;
+  sf->call_parent = w->current_stack_frame; 
 
   // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
-  // WHEN_CILK_DEBUG(sf->debug_call_parent = ws->current_stack_frame;)
+  // WHEN_CILK_DEBUG(sf->debug_call_parent = w->current_stack_frame;)
 
-  sf->worker = ws;
-  ws->current_stack_frame = sf;
+  sf->worker = w;
+  w->current_stack_frame = sf;
 }
 
 // This function is actually inlined by the compiler, so user code actually
 // use the version that the compiler knows of (i.e., Cilk Plus version); 
 // this version of the function is actually used only in tlmm-invoke-main.c
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame * sf) {
-  __cilkrts_worker * ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame_fast) frame %p\n", ws->self, sf);
-  // DUMP_STACK(ALERT_CFRAME, ws->self);
+  __cilkrts_worker * w = __cilkrts_get_tls_worker();
+  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame_fast) frame %p\n", w->self, sf);
+  // DUMP_STACK(ALERT_CFRAME, w->self);
 
-  sf->flags = 0;
-  sf->call_parent = ws->current_stack_frame; 
+  sf->flags = CILK_FRAME_VERSION;
+  sf->call_parent = w->current_stack_frame; 
 
   // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
-  // WHEN_CILK_DEBUG(sf->debug_call_parent = ws->current_stack_frame;)
+  // WHEN_CILK_DEBUG(sf->debug_call_parent = w->current_stack_frame;)
 
-  sf->worker = ws;
-  ws->current_stack_frame = sf;
+  sf->worker = w;
+  w->current_stack_frame = sf;
 }
 
 // This function is actually inlined by the compiler, so user code actually
 // use the version that the compiler knows of (i.e., Cilk Plus version); 
 // this version of the function is actually used only in tlmm-invoke-main.c
-void __cilkrts_detach(__cilkrts_stack_frame * self) {
-  struct __cilkrts_worker * ws = self->worker;
-  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_detach) frame %p\n", ws->self, self);
-  // DUMP_STACK(ALERT_CFRAME, ws->self);
+void __cilkrts_detach(__cilkrts_stack_frame * sf) {
+  struct __cilkrts_worker * w = sf->worker;
+  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_detach) frame %p\n", w->self, sf);
+  // DUMP_STACK(ALERT_CFRAME, w->sf);
 
-  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
-  CILK_ASSERT(ws->current_stack_frame == self);
-  // CILK_ASSERT(ws, self->magic == CILK_STACKFRAME_MAGIC);
+  CILK_ASSERT(sf->flags & CILK_FRAME_VERSION);
+  CILK_ASSERT(w == __cilkrts_get_tls_worker());
+  CILK_ASSERT(w->current_stack_frame == sf);
+  // CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC);
 
-  struct __cilkrts_stack_frame * parent = self->call_parent;
-  struct __cilkrts_stack_frame * volatile * tail = ws->tail;
+  struct __cilkrts_stack_frame * parent = sf->call_parent;
+  struct __cilkrts_stack_frame * volatile * tail = w->tail;
     
   Cilk_membar_StoreStore();
   // store parent at *tail, and then increment tail
   *tail++ = parent;
 
-  CILK_ASSERT(tail < ws->ltq_limit);
+  CILK_ASSERT(tail < w->ltq_limit);
  
-  ws->tail = tail;
-  self->flags |= CILK_FRAME_DETACHED;
+  w->tail = tail;
+  sf->flags |= CILK_FRAME_DETACHED;
 }
 
 void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
@@ -113,22 +113,28 @@ void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
-  __cilkrts_worker *ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) syncing frame %p\n", ws->self, sf);
-  //DUMP_STACK(ALERT_CFRAME, ws->self);
+  CILK_ASSERT(sf->flags & CILK_FRAME_VERSION);
 
-  // CILK_ASSERT(ws, sf->magic == CILK_STACKFRAME_MAGIC);
-  CILK_ASSERT(sf->worker == ws);
-  CILK_ASSERT(sf == ws->current_stack_frame);
+  __cilkrts_worker *w = __cilkrts_get_tls_worker();
+  __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) syncing frame %p\n", w->self, sf);
+  //DUMP_STACK(ALERT_CFRAME, w->self);
 
-  if( Cilk_sync(ws, sf) == SYNC_READY ) {
-    __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) synced frame %p!\n", ws->self, sf);
-    // ANGE: the Cilk_sync restores the original rsp in sf->ctx[RSP_INDEX]
+  // CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC);
+  if(sf->worker != w) {
+    fprintf(stderr, "[%d]: sf: %p, sf->worker: %p, w: %p.\n", w->self, sf, sf->worker, w);
+    fprintf(stderr, "[%d]: test: %d.\n", w->self, w->l->test);
+  }
+  CILK_ASSERT(sf == w->current_stack_frame);
+  CILK_ASSERT(sf->worker == w);
+
+  if( Cilk_sync(w, sf) == SYNC_READY ) {
+    __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) synced frame %p!\n", w->self, sf);
+    // ANGE: the Cilk_sync restores the original rsp stored in sf->ctx
     // if this frame is ready to sync.
     sysdep_longjmp_to_sf(sf);
   } else {
-    __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n", ws->self, sf);
-    longjmp_to_runtime(ws);                        
+    __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n", w->self, sf);
+    longjmp_to_runtime(w);                        
   }
 }
 
@@ -136,32 +142,44 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 // use the version that the compiler knows of (i.e., Cilk Plus version); 
 // this version of the function is actually used only in tlmm-invoke-main.c
 void __cilkrts_pop_frame(__cilkrts_stack_frame * sf) {
-  __cilkrts_worker * ws = sf->worker;
-  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_pop_frame) frame %p\n", ws->self, sf);
+  CILK_ASSERT(sf->flags & CILK_FRAME_VERSION);
 
-  CILK_ASSERT(ws == __cilkrts_get_tls_worker());
-  ws->current_stack_frame = sf->call_parent;
+  __cilkrts_worker * w = sf->worker;
+  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_pop_frame) frame %p\n", w->self, sf);
+
+  CILK_ASSERT(w == __cilkrts_get_tls_worker());
+  w->current_stack_frame = sf->call_parent;
   sf->call_parent = 0;
 }
 
 void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
-  __cilkrts_worker * ws = __cilkrts_get_tls_worker();
-  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_leave_frame) leaving frame %p\n", ws->self, sf);
-  //DUMP_STACK(ALERT_CFRAME, ws->self);
+  CILK_ASSERT(sf->flags & CILK_FRAME_VERSION);
 
-  CILK_ASSERT(sf->worker == ws);
+  __cilkrts_worker * w = __cilkrts_get_tls_worker();
+  __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_leave_frame) leaving frame %p\n", w->self, sf);
+
+  w->l->test = 0;
+
+  //DUMP_STACK(ALERT_CFRAME, w->self);
+  /*
+  if(sf->flags & CILK_FRAME_STOLEN) {
+    fprintf(stderr, "[%d]: (__cilkrts_leave_frame) leaving frame %p, flags %x, stolen\n", 
+        w->self, sf, sf->flags);
+  } */
+
+  CILK_ASSERT(sf->worker == w);
   // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
   if(sf->flags & CILK_FRAME_DETACHED) { // if this frame is detached
-    ws->tail--;
+    w->tail--;
     Cilk_membar_StoreLoad();
 
-    if( ws->exc > ws->tail ) {
+    if( w->exc > w->tail ) {
       // this may not return if last work item has been stolen
       Cilk_exception_handler(); 
     }
     
-    CILK_ASSERT(*(ws->tail) == ws->current_stack_frame);
+    CILK_ASSERT(*(w->tail) == w->current_stack_frame);
 
   } else {
     // We use else instead of if here, because a detached frame 
@@ -174,10 +192,13 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
     // the frame that spawned it would be the last frame).
 
     if(sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
+  // fprintf(stderr, "[%d]: calling set return\n", w->self);
+
       // leaving a full frame, need to get the full frame for its call
       // parent back onto the deque
-      __cilkrts_alert(ALERT_RETURN, "[%d]: (__cilkrts_leave_frame) parent is call_parent!\n", ws->self);
-      Cilk_set_return(ws); 
+      __cilkrts_alert(ALERT_RETURN, "[%d]: (__cilkrts_leave_frame) parent is call_parent!\n", w->self);
+      Cilk_set_return(w);
+      CILK_ASSERT(w->current_stack_frame->flags & CILK_FRAME_VERSION);
     }
   }
 }

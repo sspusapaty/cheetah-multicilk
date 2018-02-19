@@ -1,26 +1,31 @@
-#include "cilk.h"
-#include "tls.h"
-#include "sched.h"
-
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "cilk.h"
+#include "global_state.h"
+#include "scheduler.h"
+#include "readydeque.h"
+
 global_state * global_state_init(int argc, char* argv[]) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_init) Initializing global state.\n");
-  
   global_state * g = (global_state *) malloc(sizeof(global_state));
+  
+  if(parse_command_line(&g->options, &argc, argv)) {
+    // user invoked --help; quit
+    free(g);
+    exit(0);
+  }
 
-  g->active_size = 32;
-
+  int active_size = g->options.nproc;
   g->invoke_main_initialized = 0;
   g->start = 0;
   g->done = 0;
   
-  g->workers = (__cilkrts_worker **) malloc(g->active_size * sizeof(__cilkrts_worker *));
-  g->deques = (ReadyDeque *) malloc(g->active_size * sizeof(ReadyDeque));
+  g->workers = (__cilkrts_worker **) malloc(active_size * sizeof(__cilkrts_worker *));
+  g->deques = (ReadyDeque *) malloc(active_size * sizeof(ReadyDeque));
   
-  g->threads = (pthread_t *) malloc(g->active_size * sizeof(pthread_t));
+  g->threads = (pthread_t *) malloc(active_size * sizeof(pthread_t));
     
   g->cilk_main_argc = argc;
   g->cilk_main_args = argv;
@@ -28,20 +33,21 @@ global_state * global_state_init(int argc, char* argv[]) {
   return g;
 }
 
-local_state * worker_local_init() {
+local_state * worker_local_init(global_state *g) {
   local_state * l = (local_state *) malloc(sizeof(local_state));
-  l->deque_depth = 10000;
-  l->shadow_stack = (CilkShadowStack) malloc(l->deque_depth * sizeof(struct __cilkrts_stack_frame *));
+  l->shadow_stack = (__cilkrts_stack_frame **) 
+      malloc(g->options.deqdepth * sizeof(struct __cilkrts_stack_frame *));
   for(int i=0; i < JMPBUF_SIZE; i++) { l->rts_ctx[i] = NULL; }
-  // l->runtime_fiber = NULL;
   l->fiber_to_free = NULL;
+  l->provably_good_steal = 0;
+  l->test = 0;
 
   return l;
 }
 
 void deques_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (deques_init) Initializing deques.\n");
-  for (int i = 0; i < g->active_size; i++) {
+  for (int i = 0; i < g->options.nproc; i++) {
     g->deques[i].top = NULL;
     g->deques[i].bottom = NULL;
     g->deques[i].mutex_owner = NOBODY;
@@ -51,14 +57,14 @@ void deques_init(global_state * g) {
 
 void workers_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing workers.\n");
-  for (int i = 0; i < g->active_size; i++) {
+  for (int i = 0; i < g->options.nproc; i++) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing worker %d.\n", i);
     __cilkrts_worker * w = (__cilkrts_worker *) malloc(sizeof(__cilkrts_worker));
-    w->self = i; // i + 1?
+    w->self = i;
     w->g = g;
-    w->l = worker_local_init();
+    w->l = worker_local_init(g);
     
-    w->ltq_limit = w->l->shadow_stack + w->l->deque_depth;
+    w->ltq_limit = w->l->shadow_stack + g->options.deqdepth;
     g->workers[i] = w;
     w->tail = w->l->shadow_stack + 1;
     w->head = w->l->shadow_stack + 1;
@@ -71,40 +77,27 @@ void* scheduler_thread_proc(void * arg) {
   long long idle = 0;
   __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc)\n", w->self);
   __cilkrts_set_tls_worker(w);
-  // Create a cilk fiber for this worker on this thread.
-  // w->l->runtime_fiber = cilk_fiber_allocate_from_thread();
-  // cilk_fiber_set_owner(w->l->runtime_fiber, w);
-  // __cilkrts_alert(ALERT_BOOT | ALERT_BOOT, "[%d]: (scheduler_thread_proc) runtime_fiber = %p\n", w->self, w->l->runtime_fiber);
 
   while(!w->g->start) {
     usleep(1);
     idle++;
   }
-  __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc) idled for %d loops\n", w->self, idle);
 
-
-  if (w->self == 0) {
-    worker_scheduler(w, w->g->invoke_main);
-  } else {
-    worker_scheduler(w, NULL);
-  }
-  
-  // int ref_count = cilk_fiber_deallocate_from_thread(w->l->runtime_fiber);
-
-  // CILK_ASSERT(0 == ref_count);
-  // w->l->runtime_fiber = NULL;
+  if (w->self == 0) { worker_scheduler(w, w->g->invoke_main); } 
+  else { worker_scheduler(w, NULL); }
     
   return 0;
 }
 
 void threads_init(global_state * g) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (threads_init) Setting up threads.\n");
-  for (int i = 0; i < g->active_size; i++) {
+  for (int i = 0; i < g->options.nproc; i++) {
     int status = pthread_create(&g->threads[i],
                                 NULL,
                                 scheduler_thread_proc,
                                 g->workers[i]);
-    if (status != 0) __cilkrts_bug("Cilk runtime error: thread creation (%d) failed: %d\n", i, status);
+    if (status != 0) 
+      __cilkrts_bug("Cilk: thread creation (%d) failed: %d\n", i, status);
   }
   usleep(10);
 }
@@ -114,6 +107,7 @@ global_state * __cilkrts_init(int argc, char* argv[]) {
   global_state * g = global_state_init(argc, argv);
   __cilkrts_init_tls_variables();
   workers_init(g);
+  deques_init(g);
   threads_init(g);
 
   return g;

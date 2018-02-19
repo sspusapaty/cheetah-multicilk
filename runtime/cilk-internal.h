@@ -1,22 +1,22 @@
-#ifndef _STACK_FRAME_H
-#define _STACK_FRAME_H
-
-// Forward declaration
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
+#ifndef _CILK_INTERNAL_H
+#define _CILK_INTERNAL_H
 
 // Includes
 #include <stdint.h>
-#include "worker.h"
+#include "common.h"
+#include "global_state.h"
 #include "jmpbuf.h"
 
+//===============================================
+// Cilk stack frame related defs
+//===============================================
 
 /**
  * Every spawning function has a frame descriptor.  A spawning function
  * is a function that spawns or detaches.  Only spawning functions
  * are visible to the Cilk runtime.
  */
-struct __cilkrts_stack_frame
-{
+struct __cilkrts_stack_frame {
     // Flags is a bitfield with values defined below. Client code
     /// initializes flags to 0 before the first Cilk operation.
     uint32_t flags;
@@ -54,4 +54,48 @@ struct __cilkrts_stack_frame
     uint32_t magic;
 };
 
-#endif
+//===============================================
+// Worker definition 
+//===============================================
+
+// Forward declaration
+typedef struct local_state local_state;
+typedef struct __cilkrts_stack_frame **CilkShadowStack;
+
+// Actual declaration
+struct local_state {
+  __cilkrts_stack_frame **shadow_stack;
+
+  int provably_good_steal;
+  unsigned int rand_next;
+
+  jmpbuf rts_ctx;
+  struct cilk_fiber * fiber_to_free;
+  volatile unsigned int magic;
+  int test;
+};
+
+// Actual definitions
+struct __cilkrts_worker {
+  // T and H pointers in the THE protocol
+  __cilkrts_stack_frame * volatile * volatile tail;
+  __cilkrts_stack_frame * volatile * volatile head;
+  __cilkrts_stack_frame * volatile * volatile exc;
+
+  // Limit of the Lazy Task Queue, to detect queue overflow
+  __cilkrts_stack_frame * volatile *ltq_limit;
+
+  // Worker id.
+  int32_t self;
+
+  // Global state of the runtime system, opaque to the client.
+  global_state * g;
+
+  // Additional per-worker state hidden from the client.
+  local_state * l;
+
+  // A slot that points to the currently executing Cilk frame.
+  __cilkrts_stack_frame * current_stack_frame;
+};
+
+#endif // _CILK_INTERNAL_H

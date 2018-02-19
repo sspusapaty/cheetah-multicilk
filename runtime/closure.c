@@ -1,35 +1,37 @@
-#include "closure.h"
 #include "common.h"
+#include "cilk-internal.h"
+#include "closure.h"
 #include "cilk2c.h"
+#include "readydeque.h"
 
-void Closure_assert_ownership(__cilkrts_worker *const ws, Closure *t) {
-  CILK_ASSERT(t->mutex_owner == ws->self);
+void Closure_assert_ownership(__cilkrts_worker *const w, Closure *t) {
+  CILK_ASSERT(t->mutex_owner == w->self);
 }
 
-void Closure_assert_alienation(__cilkrts_worker *const ws, Closure *t) {
-  CILK_ASSERT(t->mutex_owner != ws->self);
+void Closure_assert_alienation(__cilkrts_worker *const w, Closure *t) {
+  CILK_ASSERT(t->mutex_owner != w->self);
 }
 
-int Closure_trylock(__cilkrts_worker *const ws, Closure *t) {
-  //Closure_checkmagic(ws, t);
+int Closure_trylock(__cilkrts_worker *const w, Closure *t) {
+  //Closure_checkmagic(w, t);
   int ret = Cilk_mutex_try(&(t->mutex)); 
   if(ret) {
-    t->mutex_owner = ws->self;
+    t->mutex_owner = w->self;
   }
   return ret;
 }
 
-void Closure_lock(__cilkrts_worker *const ws, Closure *t) {
-  //Closure_checkmagic(ws, t);
-  Cilk_mutex_wait(&(t->mutex));
-  t->mutex_owner = ws->self;
+void Closure_lock(__cilkrts_worker *const w, Closure *t) {
+  //Closure_checkmagic(w, t);
+  Cilk_mutex_lock(&(t->mutex));
+  t->mutex_owner = w->self;
 }
 
-void Closure_unlock(__cilkrts_worker *const ws, Closure *t) {
-  //Closure_checkmagic(ws, t);
-  Closure_assert_ownership(ws, t);
+void Closure_unlock(__cilkrts_worker *const w, Closure *t) {
+  //Closure_checkmagic(w, t);
+  Closure_assert_ownership(w, t);
   t->mutex_owner = NOBODY;
-  Cilk_mutex_signal(&(t->mutex));
+  Cilk_mutex_unlock(&(t->mutex));
 }
 
 /********************************************
@@ -43,10 +45,10 @@ void Closure_unlock(__cilkrts_worker *const ws, Closure *t) {
 // because the flag field is stored in the frame on the TLMM stack.  That
 // means, a frame can be stolen, in the process of being promoted, and
 // mean while, the stolen flag is not set until finish_promote.
-int Closure_at_top_of_stack(__cilkrts_worker *const ws) {
+int Closure_at_top_of_stack(__cilkrts_worker *const w) {
 
-  return( ws->head == ws->tail && 
-	  __cilkrts_stolen(ws->current_stack_frame) );
+  return( w->head == w->tail && 
+	  __cilkrts_stolen(w->current_stack_frame) );
 }
 
 int Closure_has_children(Closure *cl) {
@@ -100,8 +102,7 @@ Closure * Closure_create() {
  *       This seems to be used only for create_initial_thread from
  *       inovke-main.c.
  */
-Closure *Cilk_Closure_create_malloc(global_state *const g, 
-                                    __cilkrts_worker *const ws) {
+Closure *Cilk_Closure_create_malloc(__cilkrts_worker *const w) {
 
   Closure *new_closure = (Closure *) malloc(sizeof(Closure));
   CILK_ASSERT(new_closure != NULL);
@@ -158,13 +159,13 @@ static inline void unlink_child(Closure *cl) {
  * we are holding.  The pointer to new right most child is not visible
  * to anyone yet, so we don't need to lock that, either.  
  ***/
-void Closure_add_child(__cilkrts_worker *const ws,
+void Closure_add_child(__cilkrts_worker *const w,
 		       Closure *parent, Closure *child) {
 
-  /* ANGE: ws must have the lock on parent */
-  Closure_assert_ownership(ws, parent);
-  /* ANGE: ws must NOT have the lock on child */
-  Closure_assert_alienation(ws, child);
+  /* ANGE: w must have the lock on parent */
+  Closure_assert_ownership(w, parent);
+  /* ANGE: w must NOT have the lock on child */
+  Closure_assert_alienation(w, child);
 
   // setup sib links between parent's right most child and the new child
   double_link_children(parent->right_most_child, child);
@@ -184,13 +185,13 @@ void Closure_add_child(__cilkrts_worker *const ws,
  * child gets unlinked at a time, and one child gets to modify the steal
  * tree at a time.  
  ***/
-void Closure_remove_child(__cilkrts_worker *const ws,
+void Closure_remove_child(__cilkrts_worker *const w,
 			  Closure *parent, Closure *child) {
   CILK_ASSERT(child);
   CILK_ASSERT(parent == child->spawn_parent);
 
-  Closure_assert_ownership(ws, parent);
-  Closure_assert_ownership(ws, child);
+  Closure_assert_ownership(w, parent);
+  Closure_assert_ownership(w, child);
 
   if( child == parent->right_most_child ) {
     CILK_ASSERT(child->right_sib == (Closure *)NULL);
@@ -212,7 +213,7 @@ void Closure_remove_child(__cilkrts_worker *const ws,
  * outstanding call children, so it won't resume the suspended old closure
  * by mistake.
  ***/ 
-void Closure_add_temp_callee(__cilkrts_worker *const ws, 
+void Closure_add_temp_callee(__cilkrts_worker *const w, 
 			     Closure *caller, Closure *callee) {
   CILK_ASSERT(!(caller->has_cilk_callee));
   CILK_ASSERT(callee->spawn_parent == NULL);
@@ -221,7 +222,7 @@ void Closure_add_temp_callee(__cilkrts_worker *const ws,
   caller->has_cilk_callee = 1;
 }
 
-void Closure_add_callee(__cilkrts_worker *const ws, 
+void Closure_add_callee(__cilkrts_worker *const w, 
 			Closure *caller, Closure *callee) {
   CILK_ASSERT(callee->frame->call_parent == caller->frame);
 
@@ -237,7 +238,7 @@ void Closure_add_callee(__cilkrts_worker *const ws,
   caller->has_cilk_callee = 1;
 }
 
-void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller) {
+void Closure_remove_callee(__cilkrts_worker *const w, Closure *caller) {
 
   // A child is not double linked with siblings if it is called
   // so there is no need to unlink it.  
@@ -248,7 +249,7 @@ void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller) {
 }
 
 /*
- * ANGE: ws must have locks on closure and its own deque. 
+ * ANGE: w must have locks on closure and its own deque. 
  * Ws first sets cl from RUNNING to SUSPENDED, then removes closure 
  * cl from the ready deque.  Since this function is called from 
  * promote_child (steal), the thief's stack is not remapped yet, so we can't
@@ -256,46 +257,46 @@ void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller) {
  * separate and distinctly different function from Closure_suspend (which 
  * suspend a closure owned by the worker with appropriate stack mapping). 
  */
-void Closure_suspend_victim(__cilkrts_worker *const ws, 
+void Closure_suspend_victim(__cilkrts_worker *const w, 
 			    int victim, Closure *cl) {
 
   Closure *cl1;
 
-  // Closure_checkmagic(ws, cl);
-  Closure_assert_ownership(ws, cl);
-  deque_assert_ownership(ws, victim);
+  // Closure_checkmagic(w, cl);
+  Closure_assert_ownership(w, cl);
+  deque_assert_ownership(w, victim);
 
   CILK_ASSERT(cl->status == CLOSURE_RUNNING);
-  CILK_ASSERT(cl == ws->g->invoke_main || cl->spawn_parent || cl->call_parent);
+  CILK_ASSERT(cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
 
   cl->status = CLOSURE_SUSPENDED;
 
   //----- EVENT_SUSPEND
-  cl1 = deque_xtract_bottom(ws, victim);
+  cl1 = deque_xtract_bottom(w, victim);
   CILK_ASSERT(cl == cl1);
 }
 
-void Closure_suspend(__cilkrts_worker *const ws, Closure *cl) {
+void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 
   Closure *cl1;
 
-  __cilkrts_alert(ALERT_SCHED, "[%d]: (Closure_suspend) %p\n", ws->self, cl);
+  __cilkrts_alert(ALERT_SCHED, "[%d]: (Closure_suspend) %p\n", w->self, cl);
   
-  // Closure_checkmagic(ws, cl);
-  Closure_assert_ownership(ws, cl);
-  deque_assert_ownership(ws, ws->self);
+  // Closure_checkmagic(w, cl);
+  Closure_assert_ownership(w, cl);
+  deque_assert_ownership(w, w->self);
 
   CILK_ASSERT(cl->status == CLOSURE_RUNNING);
-  CILK_ASSERT(cl == ws->g->invoke_main || cl->spawn_parent || cl->call_parent);
+  CILK_ASSERT(cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
   CILK_ASSERT(cl->frame != NULL);
   CILK_ASSERT(__cilkrts_stolen(cl->frame));
-  CILK_ASSERT(cl->frame->worker->self == ws->self);
+  CILK_ASSERT(cl->frame->worker->self == w->self);
 
   cl->status = CLOSURE_SUSPENDED;
   cl->frame->worker = (__cilkrts_worker *) NOBODY;
 
   //----- EVENT_SUSPEND
-  cl1 = deque_xtract_bottom(ws, ws->self);
+  cl1 = deque_xtract_bottom(w, w->self);
 
   CILK_ASSERT(cl == cl1);
 }
@@ -309,7 +310,7 @@ void Closure_checkmagic(Closure *t) {
   CILK_ASSERT(t->magic == CILK_CLOSURE_MAGIC);
 }
 
-static inline void Closure_clean(__cilkrts_worker *const ws, Closure *t) {
+static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
 
   // sanity checks
   CILK_ASSERT(t->left_sib == (Closure *)NULL);
@@ -322,11 +323,11 @@ static inline void Closure_clean(__cilkrts_worker *const ws, Closure *t) {
 /* ANGE: destroy the closure and internally free it (put back to global
  * pool)
  */
-void Closure_destroy(struct __cilkrts_worker *const ws, Closure *t) {
+void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
 
-  // Closure_checkmagic(ws, t);
+  // Closure_checkmagic(w, t);
 
   t->magic = ~CILK_CLOSURE_MAGIC;
-  Closure_clean(ws, t);
+  Closure_clean(w, t);
   // free(t);
 }

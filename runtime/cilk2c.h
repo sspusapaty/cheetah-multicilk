@@ -1,8 +1,8 @@
 #ifndef _CILK2C_H
 #define _CILK2C_H
 
-#include "cilk.h"
 #include <stdlib.h>
+#include "cilk.h"
 
 extern unsigned long ZERO;
 

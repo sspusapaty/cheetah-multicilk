@@ -1,5 +1,6 @@
 #include "common.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ void __cilkrts_bug(const char *fmt,...) {
     va_end(l);
     fflush(stderr);
 
-    exit(1);
+    assert(0); // generate core file
 }
 
 #if CILK_DEBUG

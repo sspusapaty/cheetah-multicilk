@@ -1,6 +1,8 @@
 #ifndef _CILK_H
 #define _CILK_H
 
+#define __CILKRTS_ABI_VERSION 0x1
+
 #define SYNC_READY 0
 #define SYNC_NOT_READY 1
 
@@ -30,6 +32,8 @@
    sync when it can no longer do any Cilk operations? */
 #define CILK_FRAME_EXITING 0x0100
 
+#define CILK_FRAME_VERSION (__CILKRTS_ABI_VERSION << 24)
+
 /* CILK_FRAME_MBZ bits must be zero ("MBZ" = "Must Be Zero") */
 /* TBD: Should all unused bits be zero? If so, this value is wrong and
    should instead be computed as the compliment of the OR of all other bits.
@@ -41,18 +45,11 @@
 */
 
 // Includes
-#include "worker.h"
-#include "stack_frame.h"
 #include "global_state.h"
-#include "local_state.h"
 #include "cilk2c.h"
 
 // Funcs
 global_state * __cilkrts_init(int argc, char* argv[]);
-
-void __cilkrts_run(global_state * g);
-
-void __cilkrts_exit(global_state * g);
 
 void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf);
 #endif

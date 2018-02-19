@@ -1,19 +1,16 @@
 #ifndef _CLOSURE_H
 #define _CLOSURE_H
 
+// Includes
+#include "common.h"
+#include "cilk_mutex.h"
+#include "fiber.h"
+
 // Forward declaration
 typedef struct Closure Closure;
+
 enum ClosureStatus { CLOSURE_RUNNING = 42, CLOSURE_SUSPENDED,
                      CLOSURE_RETURNING, CLOSURE_READY };
-/* The order is important here. */
-enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
-
-// Includes
-#include "cilk_mutex.h"
-#include "stack_frame.h"
-#include "fiber.h"
-#include "types.h"
-#include "common.h"
 
 #define CILK_CLOSURE_MAGIC 0xDEADFACE
 
@@ -78,46 +75,33 @@ struct Closure {
 };
 
 void Closure_assert_ownership(__cilkrts_worker *const ws, Closure *t);
-
 void Closure_assert_alienation(__cilkrts_worker *const ws, Closure *t);
 
 int Closure_trylock(__cilkrts_worker *const ws, Closure *t);
-
 void Closure_lock(__cilkrts_worker *const ws, Closure *t);
-
 void Closure_unlock(__cilkrts_worker *const ws, Closure *t);
 
 int Closure_at_top_of_stack(__cilkrts_worker *const ws);
-
 int Closure_has_children(Closure *cl);
 
 Closure *Closure_create(); // __cilkrts_worker *const ws);
-
-Closure *Cilk_Closure_create_malloc(global_state *const g, 
-                                    __cilkrts_worker *const ws);
+Closure *Cilk_Closure_create_malloc(__cilkrts_worker *const ws);
 
 void Closure_add_child(__cilkrts_worker *const ws,
 		       Closure *parent, Closure *child);
-
 void Closure_remove_child(__cilkrts_worker *const ws,
 			  Closure *parent, Closure *child);
-
 void Closure_add_temp_callee(__cilkrts_worker *const ws, 
 			     Closure *caller, Closure *callee);
-
 void Closure_add_callee(__cilkrts_worker *const ws, 
 			Closure *caller, Closure *callee);
-
 void Closure_remove_callee(__cilkrts_worker *const ws, Closure *caller);
 
 void Closure_suspend_victim(__cilkrts_worker *const ws, 
 			    int victim, Closure *cl);
-
 void Closure_suspend(__cilkrts_worker *const ws, Closure *cl);
 
 void Closure_make_ready(Closure *cl);
-
 void Closure_checkmagic(Closure *t);
-
 void Closure_destroy(__cilkrts_worker *const ws, Closure *t);
 #endif

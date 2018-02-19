@@ -7,7 +7,7 @@ typedef union Cilk_mutex Cilk_mutex;
 // Includes
 #include <pthread.h>
 
-#define USE_SPINLOCK 0
+#define USE_SPINLOCK 1
 
 #if USE_SPINLOCK
 union Cilk_mutex {
@@ -23,9 +23,9 @@ union Cilk_mutex {
 
 void Cilk_mutex_init(Cilk_mutex *lock);
 
-void Cilk_mutex_wait(Cilk_mutex *lock);
+void Cilk_mutex_lock(Cilk_mutex *lock);
 
-void Cilk_mutex_signal(Cilk_mutex *lock);
+void Cilk_mutex_unlock(Cilk_mutex *lock);
 
 int Cilk_mutex_try(Cilk_mutex *lock);
 

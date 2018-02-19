@@ -1,12 +1,16 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+// Forward declaration for commonly used types that are opaque pointers
+struct __cilkrts_worker;
+typedef struct __cilkrts_worker __cilkrts_worker;
+
+struct __cilkrts_stack_frame;
+typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
+
+
 #define NOBODY -1
-
-#define PAGE_SIZE 4096
-
 #define CILK_CACHE_LINE 64
-
 #define CILK_CACHE_LINE_PAD  char __dummy[CILK_CACHE_LINE]
 
 #define ALERT_FIBER  0x1

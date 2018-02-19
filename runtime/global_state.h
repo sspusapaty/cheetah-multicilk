@@ -5,15 +5,30 @@
 typedef struct global_state global_state;
 
 // Includes
-#include "cilk_options.h"
-#include "readydeque.h"
-#include "worker.h"
-#include "closure.h"
+#include <pthread.h>
+#include "rts-config.h"
+#include "common.h"
+
+// Actual declaration
+struct rts_options {
+  int nproc;
+  int deqdepth;
+  int stacksize;
+  int alloc_batch_size;
+};
+
+#define DEFAULT_OPTIONS \
+{                                                        \
+  DEFAULT_NPROC,       /* num of workers to create */    \
+  DEFAULT_DEQ_DEPTH,   /* num of entries in deque */     \
+  DEFAULT_STACK_SIZE,  /* stack size to use for fiber */ \
+  DEFAULT_ALLOC_BATCH, /* alloc_batch_size */            \
+}
 
 // Actual declaration
 struct global_state {
-  /* globally-visible options (read-only in child processes) */
-  Cilk_options *options;
+  /* globally-visible options (read-only after init) */
+  struct rts_options options;
 
   /*
    * this string is printed when an assertion fails.  If we just inline
@@ -22,16 +37,12 @@ struct global_state {
   const char *assertion_failed_msg;
   const char *stack_overflow_msg;
 
-  /* Number of processors Cilk is running on */
-  int active_size;
-  int pthread_stacksize;
-
   /* dynamically-allocated array of deques, one per processor */
-  ReadyDeque *deques;
+  struct ReadyDeque *deques;
   __cilkrts_worker **workers;
   pthread_t * threads;
 
-  Closure *invoke_main;
+  struct Closure *invoke_main;
 
   volatile int invoke_main_initialized;
   volatile int start;
@@ -43,4 +54,7 @@ struct global_state {
   int cilk_main_return;
   int cilk_main_exit;
 };
-#endif
+
+int parse_command_line(struct rts_options *options, int *argc, char *argv[]);
+
+#endif // _GLOBAL_STATE_H

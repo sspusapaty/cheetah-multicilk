@@ -1,14 +1,22 @@
 #include "cilk_mutex.h"
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void Cilk_mutex_init(Cilk_mutex *lock) {
 #if USE_SPINLOCK
-  pthread_spin_init(&(lock->posix), PTHREAD_PROCESS_PRIVATE);
+  int ret = pthread_spin_init(&(lock->posix), PTHREAD_PROCESS_PRIVATE);
+  if(ret != 0) { 
+    errno = ret;
+    perror("Pthread_spin_init failed"); 
+    exit(-1); 
+  }
 #else
   pthread_mutex_init(&(lock->posix), NULL);
 #endif
 }
 
-void Cilk_mutex_wait(Cilk_mutex *lock) {
+void Cilk_mutex_lock(Cilk_mutex *lock) {
 #if USE_SPINLOCK
   pthread_spin_lock(&(lock->posix));
 #else
@@ -16,7 +24,7 @@ void Cilk_mutex_wait(Cilk_mutex *lock) {
 #endif
 }
 
-void Cilk_mutex_signal(Cilk_mutex *lock) {
+void Cilk_mutex_unlock(Cilk_mutex *lock) {
 #if USE_SPINLOCK
   pthread_spin_unlock(&(lock->posix));
 #else

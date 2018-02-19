@@ -2,10 +2,11 @@
 #include <stdlib.h>
 
 #include "../runtime/cilk.h"
+#include "../runtime/cilk-internal.h"
 #include "ktiming.h"
 
-#ifndef TIMES_TO_RUN
-#define TIMES_TO_RUN 1 
+#ifndef TIMING_COUNT 
+#define TIMING_COUNT 1 
 #endif
 
 /* 
@@ -54,6 +55,7 @@ int fib(int n) {
 
     /* cilk_sync */
     if(sf.flags & CILK_FRAME_UNSYNCHED) {
+        __cilkrts_save_fp_ctrl_state(&sf);
         if(!__builtin_setjmp(sf.ctx)) {
             __cilkrts_sync(&sf);
         }
@@ -80,7 +82,7 @@ int cilk_main(int argc, char * args[]) {
     int i;
     int n, res;
     clockmark_t begin, end; 
-    uint64_t running_time[TIMES_TO_RUN];
+    uint64_t running_time[TIMING_COUNT];
 
     if(argc != 2) {
         fprintf(stderr, "Usage: fib [<cilk-options>] <n>\n");
@@ -89,14 +91,14 @@ int cilk_main(int argc, char * args[]) {
     
     n = atoi(args[1]);
 
-    for(i = 0; i < TIMES_TO_RUN; i++) {
+    for(i = 0; i < TIMING_COUNT; i++) {
         begin = ktiming_getmark();
         res = fib(n);
         end = ktiming_getmark();
         running_time[i] = ktiming_diff_usec(&begin, &end);
     }
     printf("Result: %d\n", res);
-    print_runtime(running_time, TIMES_TO_RUN); 
+    print_runtime(running_time, TIMING_COUNT); 
 
     return 0;
 }

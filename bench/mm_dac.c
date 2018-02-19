@@ -3,10 +3,11 @@
 #include <stdlib.h>
 
 #include "ktiming.h"
+#include "getoptions.h"
 
 
-#ifndef TIMES_TO_RUN
-#define TIMES_TO_RUN 1 
+#ifndef TIMING_COUNT
+#define TIMING_COUNT 1 
 #endif
 
 #define CHECK_RESULT 1
@@ -124,9 +125,9 @@ static int are_equal_matrices(const int *a, const int *b, int n) {
 }
 #endif
 
-static void test_mm(int n) {
+static void test_mm(int n, int check) {
     clockmark_t begin, end;
-    uint64_t running_time[TIMES_TO_RUN];
+    uint64_t running_time[TIMING_COUNT];
 
     int *A = (int *) malloc(sizeof(int)*(n*n));
     int *B = (int *) malloc(sizeof(int)*(n*n));
@@ -136,24 +137,26 @@ static void test_mm(int n) {
     rand_matrix(B, n);
     zero_matrix(C, n);
 
-    for(int i = 0; i < TIMES_TO_RUN; i++) {
+    for(int i = 0; i < TIMING_COUNT; i++) {
         begin = ktiming_getmark();
         mm_dac(C, A, B, n, n);
         end = ktiming_getmark();
         running_time[i] = ktiming_diff_usec(&begin, &end);
     }
-    print_runtime(running_time, TIMES_TO_RUN);
+    print_runtime(running_time, TIMING_COUNT);
 
-#if CHECK_RESULT
-    int * Cs = (int*) malloc(sizeof(int) * (n*n));
-    zero_matrix(Cs, n);
-    mm_dac_serial(Cs, A, B, n, n);
-    if(!are_equal_matrices(C, Cs, n)) {
-        fprintf(stderr, ">>>> MM_dac FAILED.\n");
+        if(check) {
+        fprintf(stderr, "Checking result.\n");
+    
+        int * Cs = (int*) malloc(sizeof(int) * (n*n));
+        zero_matrix(Cs, n);
+        mm_dac_serial(Cs, A, B, n, n);
+        if(!are_equal_matrices(C, Cs, n)) {
+            fprintf(stderr, ">>>> MM_dac FAILED.\n");
+        }
+        fprintf(stderr, "MM_dac test passed.\n");
+        free(Cs);
     }
-    fprintf(stderr, "MM_dac test passed.\n");
-    free(Cs);
-#endif
 
     free(C);
     free(B);
@@ -165,20 +168,33 @@ static int is_power_of_2(int n) {
     return (n & (n-1)) == 0;
 }
 
+const char *specifiers[] = {"-n", "-c", "-h", 0};
+int opt_types[] = {LONGARG, BOOLARG, BOOLARG, 0};
+
 int cilk_main(int argc, char *argv[]) {
-    int N = -1;
 
-    if(argc != 2) {
-        fprintf(stderr, "Usage: mm_dac <n>\n");
-        exit(1);
+    long size;
+    int help, check;
+
+    /* standard benchmark options */
+    size = 1024;
+    check = 0;
+    help = 0;
+
+    get_options(argc, argv, specifiers, opt_types, &size, &check, &help);
+
+    if(help) {
+        fprintf(stderr, "Usage: mm_dac [cilk options] -n <size> [-c|-h]\n");
+        fprintf(stderr, "   when -c is set, check result against sequential MM (slow).\n");
+        fprintf(stderr, "   when -h is set, print this message and quit.\n");
+        exit(0);
     }
 
-    N = atoi(argv[1]);
-    if(!is_power_of_2(N)) {
-        fprintf(stderr, "N must be a power of 2 \n");
+    if(!is_power_of_2(size)) {
+        fprintf(stderr, "Input size must be a power of 2 \n");
         exit(1);
     }
-    test_mm(N);
+    test_mm(size, check);
 
     return 0;
 }
