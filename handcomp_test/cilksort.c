@@ -58,8 +58,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../runtime/cilk.h"
-#include "../runtime/cilk-internal.h"
+#include "../runtime/cilk2c.h"
 #include "ktiming.h"
 #include "getoptions.h"
 

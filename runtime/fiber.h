@@ -1,11 +1,9 @@
 #ifndef _FIBER_H
 #define _FIBER_H
 
-#include "common.h"
-
 typedef struct cilk_fiber cilk_fiber;
-
-// typedef void (*cilk_fiber_proc)(cilk_fiber*);
+typedef struct __cilkrts_worker __cilkrts_worker;
+typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 
 /*
 struct cilk_fiber_pool {
@@ -32,7 +30,7 @@ struct cilk_fiber {
   char * m_stack;        // stack low addr, including the mprotected page
   char * m_stack_base;   // the usable portion where it can start grow downward
   
-  __cilkrts_worker * owner; // orker using this fiber 
+  __cilkrts_worker * owner; // worker using this fiber 
 };
 
 static inline void cilk_fiber_set_owner(cilk_fiber * fiber, __cilkrts_worker * owner)  {

@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "cilk-internal.h"
-#include "cilk.h"
 #include "cilk2c.h"
 #include "fiber.h"
 #include "membar.h"
@@ -10,6 +9,7 @@
 extern unsigned long ZERO;
 
 extern int cilk_main(int argc, char * argv[]);
+extern global_state * __cilkrts_init(int argc, char* argv[]);
 
 __attribute__((noreturn)) void invoke_main(); // forward decl
 
@@ -19,7 +19,7 @@ Closure * create_invoke_main(global_state *const g) {
   __cilkrts_stack_frame * sf;
   cilk_fiber *fiber;
 
-  t = Closure_create();
+  t = Closure_create_malloc();
   t->status = CLOSURE_READY;
 
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n", t);
@@ -33,7 +33,7 @@ Closure * create_invoke_main(global_state *const g) {
   // executing user code.  For any other frames, these fields get setup 
   // in user code before a spawn and when it gets stolen the first time.
   void *new_rsp = (void *)sysdep_reset_jump_buffers_for_resume(fiber, sf);
-  CILK_ASSERT(SP(sf) == new_rsp);
+  CILK_ASSERT_G(SP(sf) == new_rsp);
   FP(sf) = new_rsp;
   PC(sf) = (void *) invoke_main;
 
@@ -45,6 +45,7 @@ Closure * create_invoke_main(global_state *const g) {
   t->frame = sf;
   sf->worker = (__cilkrts_worker *) NOBODY;
   t->fiber = fiber;
+  WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
   
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", fiber);
     
@@ -100,7 +101,7 @@ void invoke_main() {
   ASM_GET_SP(nsp);
   __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", w->self, nsp);
 
-  CILK_ASSERT(w == __cilkrts_get_tls_worker());
+  CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
 
   if(__cilkrts_unsynced(sf)) {
     __cilkrts_save_fp_ctrl_state(sf);
@@ -114,10 +115,9 @@ void invoke_main() {
     }
   }
   
-  CILK_ASSERT(w == __cilkrts_get_tls_worker());
-
-  // ASM_SET_SP(rsp);
+  CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
   w->g->cilk_main_return = _tmp;
+  WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
   CILK_WMB();
 		   

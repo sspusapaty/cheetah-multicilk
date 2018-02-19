@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "cilk.h"
-#include "global_state.h"
-#include "scheduler.h"
+#include "debug.h"
 #include "readydeque.h"
+#include "scheduler.h"
+
+extern int parse_command_line(struct rts_options *options, int *argc, char *argv[]);
 
 global_state * global_state_init(int argc, char* argv[]) {
   __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_init) Initializing global state.\n");
@@ -50,7 +51,7 @@ void deques_init(global_state * g) {
   for (int i = 0; i < g->options.nproc; i++) {
     g->deques[i].top = NULL;
     g->deques[i].bottom = NULL;
-    g->deques[i].mutex_owner = NOBODY;
+    WHEN_CILK_DEBUG(g->deques[i].mutex_owner = NOBODY);
     Cilk_mutex_init(&(g->deques[i].mutex));
   }
 }

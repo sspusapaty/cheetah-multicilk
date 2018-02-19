@@ -1,15 +1,12 @@
-#include "common.h"
+#include "debug.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define CILK_DEBUG 0
-#define ALERT_LVL ALERT_SCHED 
-
-
-const char *const __cilkrts_assertion_failed = "%s:%d: cilk assertion failed: %s\n";
+const char *const __cilkrts_assertion_failed = "[%d]: %s:%d: cilk assertion failed: %s\n";
+const char *const __cilkrts_assertion_failed_g = "[M]: %s:%d: cilk assertion failed: %s\n";
 
 void __cilkrts_bug(const char *fmt,...) {
 
@@ -44,7 +41,4 @@ void __cilkrts_alert(const int lvl, const char *fmt,...) {
   }
 #endif
 }
-
-#else
-void __cilkrts_alert(const int lvl, const char *fmt,...) { }
-#endif // CILK_DEBUG
+#endif

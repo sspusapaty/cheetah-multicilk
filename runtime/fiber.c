@@ -86,7 +86,7 @@ void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 
 char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
                                            __cilkrts_stack_frame *sf) {
-  CILK_ASSERT(fiber);
+  CILK_ASSERT_G(fiber);
   char* new_stack_base = fiber->m_stack_base - 256;
     
   // Whatever correction we choose, align the final stack top.
@@ -135,7 +135,7 @@ void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
     // it.  If this run() function is using more than 4096 bytes
     // of space for its local variables / any state that spills to
     // registers, something is probably *very* wrong here...
-    CILK_ASSERT(frame_size < PAGE_SIZE);
+    CILK_ASSERT_G(frame_size < PAGE_SIZE);
 
     // Change stack pointer to fiber stack.  Offset the
     // calculation by the frame size, so that we've allocated
@@ -148,7 +148,7 @@ void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
     invoke_main();
   }
 
-  CILK_ASSERT(0); // should never get here
+  CILK_ASSERT_G(0); // should never get here
 }
 
 cilk_fiber * cilk_main_fiber_allocate() {

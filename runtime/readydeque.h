@@ -5,73 +5,57 @@
 typedef struct ReadyDeque ReadyDeque;
 
 // Includes
-#include "common.h"
+#include "debug.h"
+
 #include "cilk_mutex.h"
-#include "closure.h"
 #include "cilk-internal.h"
-#include "global_state.h"
+#include "closure.h"
 
 // Actual declaration
 struct ReadyDeque {
   Cilk_mutex mutex;
-  int mutex_owner; // WHEN_CILK_DEBUG
   Closure *top, *bottom;
+  WHEN_CILK_DEBUG(int mutex_owner);
   CILK_CACHE_LINE_PAD;
 };
 
 // assert that pn's deque be locked by ourselves 
 static inline void deque_assert_ownership(__cilkrts_worker *const w, int pn) {
-    CILK_ASSERT(w->g->deques[pn].mutex_owner == w->self);
+    CILK_ASSERT(w, w->g->deques[pn].mutex_owner == w->self);
 }
 
 static inline void deque_lock_self(__cilkrts_worker *const w) {
   int pn = w->self;
   Cilk_mutex_lock(&w->g->deques[pn].mutex);
-  w->g->deques[pn].mutex_owner = w->self; // WHEN_CILK_DEBUG
+  WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
 }
 
 static inline void deque_unlock_self(__cilkrts_worker *const w) {
   int pn = w->self;
-  w->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
+  WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = NOBODY);
   Cilk_mutex_unlock(&w->g->deques[pn].mutex);
 }
 
 static inline int deque_trylock(__cilkrts_worker *const w, int pn) {
   int ret = Cilk_mutex_try(&w->g->deques[pn].mutex);
   if(ret) {
-    w->g->deques[pn].mutex_owner = w->self;
+    WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
   }
   return ret;
 }
 
 static inline void deque_lock(__cilkrts_worker *const w, int pn) {
   Cilk_mutex_lock(&w->g->deques[pn].mutex);
-  w->g->deques[pn].mutex_owner = w->self; // WHEN_CILK_DEBUG
+  WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
 }
 
 static inline void deque_unlock(__cilkrts_worker *const w, int pn) {
-  w->g->deques[pn].mutex_owner = NOBODY; // WHEN_CILK_DEBUG
+  WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = NOBODY); 
   Cilk_mutex_unlock(&w->g->deques[pn].mutex);
 }
 
-// assert that pn's deque be locked by ourselves 
-/*
-void deque_assert_ownership(__cilkrts_worker *const w, int pn);
-
-void deque_lock_self(__cilkrts_worker *const w);
-
-void deque_unlock_self(__cilkrts_worker *const w);
-
-int deque_trylock(__cilkrts_worker *const w, int pn);
-
-void deque_lock(__cilkrts_worker *const w, int pn);
-
-void deque_unlock(__cilkrts_worker *const w, int pn);
-*/
-
 /* 
- * functions that add/remove elements from the top/bottom
- * of deques
+ * functions that add/remove elements from the top/bottom of deques
  *
  * ANGE: the precondition of these functions is that the worker w -> self 
  * must have locked worker pn's deque before entering the function

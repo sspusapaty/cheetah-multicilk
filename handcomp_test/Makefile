@@ -13,6 +13,8 @@ OPTIONS = -g -Wall $(OPT) -fno-omit-frame-pointer
 RTS_LIBS = ../runtime/libcheetah.a
 TIMING_COUNT := 1
 
+.PHONY: all check clean
+
 all: $(TESTS)
 
 $(TESTS): %: %.o ktiming.o getoptions.o
@@ -20,6 +22,11 @@ $(TESTS): %: %.o ktiming.o getoptions.o
 
 %.o: %.c
 	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
+
+check:
+	./fib --nproc 16 40
+	./mm_dac --nproc 16 -n 1024 -c
+	./cilksort --nproc 16 -n 30000000 -c
 
 clean:
 	rm -f *.o *~ $(TESTS) core.*

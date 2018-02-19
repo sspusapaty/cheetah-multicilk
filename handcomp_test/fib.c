@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../runtime/cilk.h"
-#include "../runtime/cilk-internal.h"
+#include "../runtime/cilk2c.h"
 #include "ktiming.h"
 
 #ifndef TIMING_COUNT 
@@ -39,33 +38,34 @@ int fib(int n) {
 
     if(n < 2) {
         return n;
-    }
-    
-    alloca(ZERO);
-    __cilkrts_stack_frame sf;
-    __cilkrts_enter_frame(&sf);
 
-    /* x = spawn fib(n-1) */
-    __cilkrts_save_fp_ctrl_state(&sf);
-    if(!__builtin_setjmp(sf.ctx)) {
-        fib_spawn_helper(&x, n-1);
-    }
+    } else {
+        alloca(ZERO);
+        __cilkrts_stack_frame sf;
+        __cilkrts_enter_frame(&sf);
 
-    y = fib(n - 2);
-
-    /* cilk_sync */
-    if(sf.flags & CILK_FRAME_UNSYNCHED) {
+        /* x = spawn fib(n-1) */
         __cilkrts_save_fp_ctrl_state(&sf);
         if(!__builtin_setjmp(sf.ctx)) {
-            __cilkrts_sync(&sf);
+            fib_spawn_helper(&x, n-1);
         }
+
+        y = fib(n - 2);
+
+        /* cilk_sync */
+        if(sf.flags & CILK_FRAME_UNSYNCHED) {
+            __cilkrts_save_fp_ctrl_state(&sf);
+            if(!__builtin_setjmp(sf.ctx)) {
+                __cilkrts_sync(&sf);
+            }
+        }
+        _tmp = x + y;
+
+        __cilkrts_pop_frame(&sf);
+        __cilkrts_leave_frame(&sf);
+
+        return _tmp;
     }
-    _tmp = x + y;
-
-    __cilkrts_pop_frame(&sf);
-    __cilkrts_leave_frame(&sf);
-
-    return _tmp;
 }
 
 static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n) {

@@ -3,8 +3,9 @@
 
 #include <stddef.h>
 #include <setjmp.h>
-#include "common.h"
 
+#include "debug.h"
+ 
 #define JMPBUF_SIZE 5
 typedef void * jmpbuf[JMPBUF_SIZE];
 

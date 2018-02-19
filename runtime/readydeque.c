@@ -20,19 +20,19 @@ Closure *deque_xtract_top(__cilkrts_worker *const w, int pn) {
 
   cl = w->g->deques[pn].top;
   if(cl) {
-    // CILK_ASSERT(cl->owner_ready_deque == pn);
+    CILK_ASSERT(w, cl->owner_ready_deque == pn);
     w->g->deques[pn].top = cl->next_ready;
     /* ANGE: if there is only one entry in the deque ... */
     if (cl == w->g->deques[pn].bottom) {
-      CILK_ASSERT(cl->next_ready == (Closure *) NULL);
+      CILK_ASSERT(w, cl->next_ready == (Closure *) NULL);
       w->g->deques[pn].bottom = (Closure *) NULL;
     } else {
-      CILK_ASSERT(cl->next_ready);
+      CILK_ASSERT(w, cl->next_ready);
       (cl->next_ready)->prev_ready = (Closure *) NULL;
     }
-    cl->owner_ready_deque = NOBODY; // WHEN_CILK_DEBUG
+    WHEN_CILK_DEBUG(cl->owner_ready_deque = NOBODY);
   } else {
-    CILK_ASSERT(w->g->deques[pn].bottom == (Closure *)NULL);
+    CILK_ASSERT(w, w->g->deques[pn].bottom == (Closure *)NULL);
   }
 
   return cl;
@@ -48,9 +48,9 @@ Closure *deque_peek_top(__cilkrts_worker *const w, int pn) {
   /* ANGE: return the top but does not unlink it from the rest */
   cl = w->g->deques[pn].top;
   if(cl) {
-    CILK_ASSERT(cl->owner_ready_deque == pn);
+    CILK_ASSERT(w, cl->owner_ready_deque == pn);
   } else {
-    CILK_ASSERT(w->g->deques[pn].bottom == (Closure *)NULL);
+    CILK_ASSERT(w, w->g->deques[pn].bottom == (Closure *)NULL);
   }
 
   return cl;
@@ -65,19 +65,19 @@ Closure *deque_xtract_bottom(__cilkrts_worker *const w, int pn) {
 
   cl = w->g->deques[pn].bottom;
   if(cl) {
-    CILK_ASSERT(cl->owner_ready_deque == pn);
+    CILK_ASSERT(w, cl->owner_ready_deque == pn);
     w->g->deques[pn].bottom = cl->prev_ready;
     if(cl == w->g->deques[pn].top) {
-      CILK_ASSERT(cl->prev_ready == (Closure *) NULL);
+      CILK_ASSERT(w, cl->prev_ready == (Closure *) NULL);
       w->g->deques[pn].top = (Closure *) NULL;
     } else {
-      CILK_ASSERT(cl->prev_ready);
+      CILK_ASSERT(w, cl->prev_ready);
       (cl->prev_ready)->next_ready = (Closure *) NULL;
     }
 
-    cl->owner_ready_deque = NOBODY; // WHEN_CILK_DEBUG
+    WHEN_CILK_DEBUG(cl->owner_ready_deque = NOBODY);
   } else {
-    CILK_ASSERT(w->g->deques[pn].top == (Closure *)NULL);
+    CILK_ASSERT(w, w->g->deques[pn].top == (Closure *)NULL);
   }
 
   return cl;
@@ -92,9 +92,9 @@ Closure *deque_peek_bottom(__cilkrts_worker *const w, int pn) {
 
   cl = w->g->deques[pn].bottom;
   if(cl) {
-    CILK_ASSERT(cl->owner_ready_deque == pn);
+    CILK_ASSERT(w, cl->owner_ready_deque == pn);
   } else {
-    CILK_ASSERT(w->g->deques[pn].top == (Closure *)NULL);
+    CILK_ASSERT(w, w->g->deques[pn].top == (Closure *)NULL);
   }
 
   return cl;
@@ -104,7 +104,7 @@ void deque_assert_is_bottom(__cilkrts_worker *const w, Closure *t) {
 
   /* ANGE: still need to make sure the worker self has the lock */
   deque_assert_ownership(w, w->self);
-  CILK_ASSERT(t == deque_peek_bottom(w, w->self));
+  CILK_ASSERT(w, t == deque_peek_bottom(w, w->self));
 }
 
 /*
@@ -114,15 +114,15 @@ void deque_assert_is_bottom(__cilkrts_worker *const w, Closure *t) {
 void deque_add_bottom(__cilkrts_worker *const w, Closure *cl, int pn) {
 
   deque_assert_ownership(w, pn);
-  CILK_ASSERT(cl->owner_ready_deque == NOBODY);
+  CILK_ASSERT(w, cl->owner_ready_deque == NOBODY);
 
   cl->prev_ready = w->g->deques[pn].bottom;
   cl->next_ready = (Closure *)NULL;
   w->g->deques[pn].bottom = cl;
-  cl->owner_ready_deque = pn; // WHEN_CILK_DEBUG
+  WHEN_CILK_DEBUG(cl->owner_ready_deque = pn);
 
   if (w->g->deques[pn].top) {
-    CILK_ASSERT(cl->prev_ready);
+    CILK_ASSERT(w, cl->prev_ready);
     (cl->prev_ready)->next_ready = cl;
   } else {
     w->g->deques[pn].top = cl;
@@ -141,7 +141,7 @@ void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const w,
   deque_lock(w, pn);
   t = deque_xtract_bottom(w, pn);
 
-  CILK_ASSERT(t->frame == f);
+  CILK_ASSERT(w, t->frame == f);
   deque_unlock(w, pn);
 
   /* ANGE: there is no splitter logging in the invoke_main frame */
