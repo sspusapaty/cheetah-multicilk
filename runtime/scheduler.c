@@ -9,7 +9,7 @@
 #include "membar.h"
 #include "fiber.h"
 
-__thread __cilkrts_worker *tls_self = NULL;
+__thread __cilkrts_worker *tls_worker = NULL;
 
 // ==============================================
 // Misc. helper functions 
