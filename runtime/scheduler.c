@@ -252,6 +252,8 @@ Closure *provably_good_steal_maybe(__cilkrts_worker *const w, Closure *parent) {
 /***
  * Return protocol for a spawned child.
  *
+ * Some notes on reducer implementation (which was taken out):
+ *
  * If any reducer is accessed by the child closure, we need to reduce the
  * reducer view with the child's right_sib_rmap, and its left sibling's
  * right_sib_rmap (or parent's child_rmap if it's the left most child)
@@ -301,11 +303,10 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
 
   CILK_ASSERT(w, parent->status != CLOSURE_RETURNING);
   CILK_ASSERT(w, parent->frame != NULL);
-  // CILK_ASSERT(w, parent->frame->magic == CILK_STACKFRAME_MAGIC);
+  CILK_ASSERT(w, parent->frame->magic == CILK_STACKFRAME_MAGIC);
 
   Closure_lock(w, child);
 
-  // MAK: FIBER-THE CASE
   // Execute left-holder logic for stacks.
   if(child->left_sib || parent->fiber_child) {
     // Case where we are not the leftmost stack.
@@ -323,9 +324,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
   Closure_unlock(w, child);
   Closure_destroy(w, child);
 
-  /* 
-   * the two fences ensure dag consistency (Backer)
-   */
+  /* the two fences ensure dag consistency (Backer) */
   CILK_ASSERT(w, parent->join_counter > 0);
   Cilk_fence();
   --parent->join_counter;
@@ -358,7 +357,7 @@ Closure *return_value(__cilkrts_worker *const w, Closure *t) {
   }/* else {
     // ANGE: the ONLY way a closure with call parent can reach here
     // is when the user program calls Cilk_exit, leading to global abort
-    // MAK: We don't support this!!!
+    // Not supported at the moment 
   }*/
 
   __cilkrts_alert(ALERT_RETURN, "[%d]: (return_value) returning closure %p\n", w->self, t);
@@ -373,8 +372,6 @@ Closure *return_value(__cilkrts_worker *const w, Closure *t) {
  *       hence pop_check fails (E >= T) when child returns.  2. Someone 
  *       invokes signal_immediate_exception with the closure currently 
  *       running on the worker's deque.  This is only possible with abort.
- *       In Cilk-M, we use abort only if user invokes Cilk_exit to quit the
- *       program early.
  *
  *       If this function returns 1, the user code then calls 
  *       Cilk_cilk2c_before_return, which destroys the shadow frame and
@@ -383,16 +380,12 @@ Closure *return_value(__cilkrts_worker *const w, Closure *t) {
 void Cilk_exception_handler() {
 
     Closure *t;
-
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-
-    //----- EVENT_EXCEPTION
 
     deque_lock_self(w);
     t = deque_peek_bottom(w, w->self);
 
     CILK_ASSERT(w, t);
-    
     Closure_lock(w, t);
 
     __cilkrts_alert(ALERT_EXCEPT, "[%d]: (Cilk_exception_handler) closure %p!\n", w->self, t);
@@ -401,51 +394,28 @@ void Cilk_exception_handler() {
     reset_exception_pointer(w, t);
 
     CILK_ASSERT(w, t->status == CLOSURE_RUNNING ||
-                    // for during abort process
-                    t->status == CLOSURE_RETURNING);
+                   // for during abort process
+                   t->status == CLOSURE_RETURNING);
 
     if( w->head > w->tail ) {
-        //----- EVENT_EXCEPTION_STEAL // ANGE: this is a steal
       __cilkrts_alert(ALERT_EXCEPT, "[%d]: (Cilk_exception_handler) this is a steal!\n", w->self);
 
-        if(t->status == CLOSURE_RUNNING) {
-            CILK_ASSERT(w, Closure_has_children(t) == 0);
-            t->status = CLOSURE_RETURNING;
-        }
+      if(t->status == CLOSURE_RUNNING) {
+        CILK_ASSERT(w, Closure_has_children(t) == 0);
+        t->status = CLOSURE_RETURNING;
+      }
+
+      Closure_unlock(w, t);
+      deque_unlock_self(w);
+      longjmp_to_runtime(w); // NOT returning back to user code
+
     } else { // not steal, not abort; false alarm
-        //----- EVENT_EXCEPTION_OTHER
-        Closure_unlock(w, t);
-        deque_unlock_self(w);
+      Closure_unlock(w, t);
+      deque_unlock_self(w);
 
-        return;
+      return;
     }
 
-/*
-    // MAK: FIBER-THE CASE
-    // Execute left-holder logic for stacks.
-    if (t->left_sib || t->spawn_parent->fiber_child) {
-      // Case where we are not the leftmost stack.
-      __cilkrts_alert(ALERT_FIBER, "[%d]: (Cilk_exception_handler) we are not the leftmost stack.\n", w->self);
-      CILK_ASSERT(w, t->spawn_parent->fiber_child != t->fiber);
-
-      // Remember any fiber we need to free in the worker.
-      // After we jump into the runtime, we will actually do the
-      // free.
-      w->l->fiber_to_free = t->fiber;
-    } else {
-      // We are leftmost, pass stack/fiber up to parent.
-      __cilkrts_alert(ALERT_FIBER, "[%d]: (Cilk_exception_handler) we are the leftmost stack!\n", w->self);
-      // Thus, no stack/fiber to free.
-      t->spawn_parent->fiber_child = t->fiber;
-      w->l->fiber_to_free = NULL;
-    }
-
-    t->fiber = NULL;
-*/
-
-    Closure_unlock(w, t);
-    deque_unlock_self(w);
-    longjmp_to_runtime(w); // NOT returning back to user code
 }
 
 // ==============================================
@@ -453,8 +423,6 @@ void Cilk_exception_handler() {
 // ==============================================
 
 /* 
- * ANGE: Cannot call this function until we have done the stack remapping
- * for the stolen closure.
  * This return the oldest frame in stacklet that has not been promoted to
  * full frame (i.e., never been stolen), or the closest detached frame 
  * if nothing in this stacklet has been promoted. 
@@ -470,10 +438,6 @@ static inline __cilkrts_stack_frame * oldest_non_stolen_frame_in_stacklet(__cilk
   return cur;
 }
 
-/* 
- * ANGE: Cannot call this function until we have done the stack remapping
- * for the stolen closure 
- */
 Closure * setup_call_parent_closure_helper(__cilkrts_worker *const w, 
 					   __cilkrts_worker *const victim_w, 
 					   __cilkrts_stack_frame *frame,
@@ -529,8 +493,6 @@ void setup_closures_in_stacklet(__cilkrts_worker *const w,
     CILK_ASSERT(w, oldest->flags & CILK_FRAME_DETACHED);
     __cilkrts_set_stolen(oldest);
     oldest_cl->frame = oldest;
-    // ANGE XXX: Don't do this unless we know the frame has spawned
-    // oldest_cl->orig_rsp = SP(oldest); //MAK: RSP management
   }
   CILK_ASSERT(w, oldest->worker == victim_w);
   oldest_cl->frame->worker = (__cilkrts_worker *) NOBODY;
@@ -589,15 +551,6 @@ int do_dekker_on(__cilkrts_worker *const w,
  *       calling this function has to do deque_xtract_top on the victim's 
  *       deque to get the parent closure.  This is the only time I can 
  *       think of, where the ready deque contains more than one frame.
- * 
- * ANGE: with shadow frames alloced on the TLMM stack, the thief cannot 
- * read the content of the frames (it's trying to steal) until it remaps 
- * its own TLMM stack accordingly.  But we don't want to remap while holding
- * the deque lock, so the thief must guess the low watermark for the frame,
- * and gather information necessary to remap its TLMM stack before 
- * releasing the lock on victim's deque.  Furthermore, the thief must 
- * delay promoting the frames in the stolen stacklet until it remaps its
- * stack.   
  ***/
 Closure *promote_child(__cilkrts_worker *const w,
 		       __cilkrts_worker *const victim_w, 

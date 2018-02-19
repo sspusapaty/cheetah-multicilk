@@ -36,36 +36,34 @@ static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n);
 int fib(int n) {
     int x, y, _tmp;
 
-    if(n < 2) {
+    if(n < 2)
         return n;
 
-    } else {
-        alloca(ZERO);
-        __cilkrts_stack_frame sf;
-        __cilkrts_enter_frame(&sf);
+    alloca(ZERO);
+    __cilkrts_stack_frame sf;
+    __cilkrts_enter_frame(&sf);
 
-        /* x = spawn fib(n-1) */
-        __cilkrts_save_fp_ctrl_state(&sf);
-        if(!__builtin_setjmp(sf.ctx)) {
-            fib_spawn_helper(&x, n-1);
-        }
-
-        y = fib(n - 2);
-
-        /* cilk_sync */
-        if(sf.flags & CILK_FRAME_UNSYNCHED) {
-            __cilkrts_save_fp_ctrl_state(&sf);
-            if(!__builtin_setjmp(sf.ctx)) {
-                __cilkrts_sync(&sf);
-            }
-        }
-        _tmp = x + y;
-
-        __cilkrts_pop_frame(&sf);
-        __cilkrts_leave_frame(&sf);
-
-        return _tmp;
+    /* x = spawn fib(n-1) */
+    __cilkrts_save_fp_ctrl_state(&sf);
+    if(!__builtin_setjmp(sf.ctx)) {
+      fib_spawn_helper(&x, n-1);
     }
+
+    y = fib(n - 2);
+
+    /* cilk_sync */
+    if(sf.flags & CILK_FRAME_UNSYNCHED) {
+      __cilkrts_save_fp_ctrl_state(&sf);
+      if(!__builtin_setjmp(sf.ctx)) {
+        __cilkrts_sync(&sf);
+      }
+    }
+    _tmp = x + y;
+
+    __cilkrts_pop_frame(&sf);
+    __cilkrts_leave_frame(&sf);
+
+    return _tmp;
 }
 
 static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n) {

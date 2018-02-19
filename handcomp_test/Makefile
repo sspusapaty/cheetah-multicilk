@@ -4,7 +4,7 @@ SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
-TESTS   = cilksort mm_dac fib
+TESTS   = cilksort fib mm_dac nqueens
 OPTIONS = -g -Wall $(OPT) -fno-omit-frame-pointer
 # dynamic linking
 # RTS_DLIBS = -L../runtime -Wl,-rpath -Wl,../runtime -lcheetah
