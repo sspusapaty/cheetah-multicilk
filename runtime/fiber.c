@@ -151,10 +151,10 @@ void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
   CILK_ASSERT_G(0); // should never get here
 }
 
-cilk_fiber * cilk_main_fiber_allocate() {
+cilk_fiber * cilk_main_fiber_allocate(int stacksize) {
   cilk_fiber * fiber = (cilk_fiber *) malloc(sizeof(cilk_fiber));
   cilk_fiber_init(fiber);
-  make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
+  make_stack(fiber, stacksize); // default ~1MB stack
   __cilkrts_alert(ALERT_FIBER, "[?]: Allocate fiber for main %p [%p--%p]\n", 
                   fiber, fiber->m_stack_base, fiber->m_stack);
   

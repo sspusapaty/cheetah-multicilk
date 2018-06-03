@@ -206,8 +206,7 @@ void Closure_remove_child(__cilkrts_worker *const w,
 
 /*** 
  * This function is called during promote_child, when we know we have multiple 
- * frames in the stacklet, but we can't promote them yet, because the thief
- * has yet to remap its stack, so we can't access the fields in the frames.
+ * frames in the stacklet.
  * We create a new closure for the new spawn_parent, and temporarily use
  * that to represent all frames in between the new spawn_parent and the 
  * old closure on top of the victim's deque.  In case where some other child

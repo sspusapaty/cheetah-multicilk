@@ -46,8 +46,8 @@ struct Closure {
 
   enum ClosureStatus status;
 
-  int has_cilk_callee; // MAK: Can delete
-  Closure * callee; // MAK: Can delete
+  int has_cilk_callee;
+  Closure * callee;
   
   Closure *call_parent; /* the "parent" closure that called */
   Closure *spawn_parent; /* the "parent" closure that spawned */
@@ -58,8 +58,7 @@ struct Closure {
   Closure *right_most_child; 
 
   /*
-   * stuff related to ready deque.  These fields
-   * must be managed only by the queue manager in sched.c
+   * stuff related to ready deque. 
    *
    * ANGE: for top of the ReadyDeque, prev_ready = NULL
    *       for bottom of the ReadyDeque, next_ready = NULL

@@ -57,14 +57,14 @@ void __cilkrts_detach(__cilkrts_stack_frame * sf) {
   struct __cilkrts_stack_frame * parent = sf->call_parent;
   struct __cilkrts_stack_frame * volatile * tail = w->tail;
     
-  Cilk_membar_StoreStore();
   // store parent at *tail, and then increment tail
   *tail++ = parent;
+  sf->flags |= CILK_FRAME_DETACHED;
 
   CILK_ASSERT(w, tail < w->ltq_limit);
+  Cilk_membar_StoreStore();
  
   w->tail = tail;
-  sf->flags |= CILK_FRAME_DETACHED;
 }
 
 void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
@@ -78,11 +78,6 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   CILK_ASSERT(w, sf->flags & CILK_FRAME_VERSION);
   CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC);
-
-  if(sf->worker != w) {
-    fprintf(stderr, "[%d]: sf: %p, sf->worker: %p, w: %p.\n", w->self, sf, sf->worker, w);
-    fprintf(stderr, "[%d]: test: %d.\n", w->self, w->l->test);
-  }
   CILK_ASSERT(w, sf == w->current_stack_frame);
   CILK_ASSERT(w, sf->worker == w);
 
