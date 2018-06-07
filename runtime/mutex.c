@@ -1,9 +1,10 @@
-#include "cilk_mutex.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-void Cilk_mutex_init(Cilk_mutex *lock) {
+#include "mutex.h"
+
+void cilk_mutex_init(cilk_mutex *lock) {
 #if USE_SPINLOCK
   int ret = pthread_spin_init(&(lock->posix), PTHREAD_PROCESS_PRIVATE);
   if(ret != 0) { 
@@ -16,7 +17,7 @@ void Cilk_mutex_init(Cilk_mutex *lock) {
 #endif
 }
 
-void Cilk_mutex_lock(Cilk_mutex *lock) {
+void cilk_mutex_lock(cilk_mutex *lock) {
 #if USE_SPINLOCK
   pthread_spin_lock(&(lock->posix));
 #else
@@ -24,7 +25,7 @@ void Cilk_mutex_lock(Cilk_mutex *lock) {
 #endif
 }
 
-void Cilk_mutex_unlock(Cilk_mutex *lock) {
+void cilk_mutex_unlock(cilk_mutex *lock) {
 #if USE_SPINLOCK
   pthread_spin_unlock(&(lock->posix));
 #else
@@ -32,7 +33,7 @@ void Cilk_mutex_unlock(Cilk_mutex *lock) {
 #endif
 }
 
-int Cilk_mutex_try(Cilk_mutex *lock) {
+int cilk_mutex_try(cilk_mutex *lock) {
 #if USE_SPINLOCK
   if (pthread_spin_trylock(&(lock->posix)) == 0) {
     return 1;
@@ -48,7 +49,7 @@ int Cilk_mutex_try(Cilk_mutex *lock) {
 #endif
 }
 
-void Cilk_mutex_destroy(Cilk_mutex *lock) {
+void cilk_mutex_destroy(cilk_mutex *lock) {
 #if USE_SPINLOCK
   pthread_spin_destroy(&(lock->posix));
 #else

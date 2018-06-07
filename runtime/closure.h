@@ -5,8 +5,8 @@
 #include "debug.h"
 
 #include "cilk-internal.h"
-#include "cilk_mutex.h"
 #include "fiber.h"
+#include "mutex.h"
 
 // Forward declaration
 typedef struct Closure Closure;
@@ -31,7 +31,7 @@ enum ClosureStatus { CLOSURE_RUNNING = 42, CLOSURE_SUSPENDED,
  * and locking.
  */
 struct Closure {
-  Cilk_mutex mutex;              /* mutual exclusion lock */
+  cilk_mutex mutex;              /* mutual exclusion lock */
   WHEN_CILK_DEBUG(int mutex_owner);
 
   __cilkrts_stack_frame *frame;  /* rest of the closure */

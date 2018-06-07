@@ -19,7 +19,7 @@ void Closure_checkmagic(__cilkrts_worker *const w, Closure *t) {
 
 int Closure_trylock(__cilkrts_worker *const w, Closure *t) {
   Closure_checkmagic(w, t);
-  int ret = Cilk_mutex_try(&(t->mutex)); 
+  int ret = cilk_mutex_try(&(t->mutex)); 
   if(ret) {
     WHEN_CILK_DEBUG(t->mutex_owner = w->self);
   }
@@ -28,7 +28,7 @@ int Closure_trylock(__cilkrts_worker *const w, Closure *t) {
 
 void Closure_lock(__cilkrts_worker *const w, Closure *t) {
   Closure_checkmagic(w, t);
-  Cilk_mutex_lock(&(t->mutex));
+  cilk_mutex_lock(&(t->mutex));
   WHEN_CILK_DEBUG(t->mutex_owner = w->self);
 }
 
@@ -36,7 +36,7 @@ void Closure_unlock(__cilkrts_worker *const w, Closure *t) {
   Closure_checkmagic(w, t);
   Closure_assert_ownership(w, t);
   WHEN_CILK_DEBUG(t->mutex_owner = NOBODY);
-  Cilk_mutex_unlock(&(t->mutex));
+  cilk_mutex_unlock(&(t->mutex));
 }
 
 /********************************************
@@ -62,7 +62,7 @@ int Closure_has_children(Closure *cl) {
 }
 
 static inline void Closure_init(Closure *t) {
-  Cilk_mutex_init(&t->mutex);
+  cilk_mutex_init(&t->mutex);
   WHEN_CILK_DEBUG(t->mutex_owner = NOBODY);
 
   t->frame = NULL;
@@ -321,7 +321,7 @@ static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
     CILK_ASSERT_G(t->right_most_child == (Closure *)NULL);
   }
     
-  Cilk_mutex_destroy(&t->mutex);
+  cilk_mutex_destroy(&t->mutex);
 }
 
 /* ANGE: destroy the closure and internally free it (put back to global

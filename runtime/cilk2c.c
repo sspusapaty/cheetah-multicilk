@@ -78,11 +78,6 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
   CILK_ASSERT(w, sf->flags & CILK_FRAME_VERSION);
   CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC);
-
-  if(sf->worker != w) {
-    fprintf(stderr, "[%d]: sf: %p, sf->worker: %p, w: %p.\n", w->self, sf, sf->worker, w);
-    fprintf(stderr, "[%d]: test: %d.\n", w->self, w->l->test);
-  }
   CILK_ASSERT(w, sf == w->current_stack_frame);
   CILK_ASSERT(w, sf->worker == w);
 

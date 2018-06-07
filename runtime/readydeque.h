@@ -5,15 +5,14 @@
 typedef struct ReadyDeque ReadyDeque;
 
 // Includes
-#include "debug.h"
-
-#include "cilk_mutex.h"
 #include "cilk-internal.h"
+#include "debug.h"
 #include "closure.h"
+#include "mutex.h"
 
 // Actual declaration
 struct ReadyDeque {
-  Cilk_mutex mutex;
+  cilk_mutex mutex;
   Closure *top, *bottom;
   WHEN_CILK_DEBUG(int mutex_owner);
   CILK_CACHE_LINE_PAD;
@@ -26,18 +25,18 @@ static inline void deque_assert_ownership(__cilkrts_worker *const w, int pn) {
 
 static inline void deque_lock_self(__cilkrts_worker *const w) {
   int pn = w->self;
-  Cilk_mutex_lock(&w->g->deques[pn].mutex);
+  cilk_mutex_lock(&w->g->deques[pn].mutex);
   WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
 }
 
 static inline void deque_unlock_self(__cilkrts_worker *const w) {
   int pn = w->self;
   WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = NOBODY);
-  Cilk_mutex_unlock(&w->g->deques[pn].mutex);
+  cilk_mutex_unlock(&w->g->deques[pn].mutex);
 }
 
 static inline int deque_trylock(__cilkrts_worker *const w, int pn) {
-  int ret = Cilk_mutex_try(&w->g->deques[pn].mutex);
+  int ret = cilk_mutex_try(&w->g->deques[pn].mutex);
   if(ret) {
     WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
   }
@@ -45,13 +44,13 @@ static inline int deque_trylock(__cilkrts_worker *const w, int pn) {
 }
 
 static inline void deque_lock(__cilkrts_worker *const w, int pn) {
-  Cilk_mutex_lock(&w->g->deques[pn].mutex);
+  cilk_mutex_lock(&w->g->deques[pn].mutex);
   WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = w->self);
 }
 
 static inline void deque_unlock(__cilkrts_worker *const w, int pn) {
   WHEN_CILK_DEBUG(w->g->deques[pn].mutex_owner = NOBODY); 
-  Cilk_mutex_unlock(&w->g->deques[pn].mutex);
+  cilk_mutex_unlock(&w->g->deques[pn].mutex);
 }
 
 /* 
