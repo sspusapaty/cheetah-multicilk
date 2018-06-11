@@ -310,7 +310,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
   if(child->left_sib || parent->fiber_child) {
     // Case where we are not the leftmost stack.
     CILK_ASSERT(w, parent->fiber_child != child->fiber);
-    cilk_fiber_deallocate(child->fiber);
+    cilk_fiber_pool_deallocate(w, child->fiber);
   } else {
     // We are leftmost, pass stack/fiber up to parent.  
     // Thus, no stack/fiber to free.
@@ -727,7 +727,7 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
       if (do_dekker_on(w, victim_w, cl)) {
         __cilkrts_alert(ALERT_STEAL, 
             "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", w->self, victim, cl);
-	fiber = cilk_fiber_allocate(w);
+	fiber = cilk_fiber_pool_allocate(w);
 	parent_fiber = cl->fiber;
 	
 	/* 
@@ -955,7 +955,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
   if(w->l->fiber_to_free) {
       CILK_ASSERT(w, w->l->fiber_to_free != t->fiber);
       // we should free this fiber now and we can as long as we are not on it
-      cilk_fiber_deallocate(w->l->fiber_to_free);
+      cilk_fiber_pool_deallocate(w, w->l->fiber_to_free);
       w->l->fiber_to_free = NULL;
   }
 
@@ -1019,7 +1019,7 @@ static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
     } else {
       CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
       // CILK_ASSERT(w, t->fiber == w->l->fiber_to_free);
-      if(w->l->fiber_to_free) { cilk_fiber_deallocate(w->l->fiber_to_free); }
+      if(w->l->fiber_to_free) { cilk_fiber_pool_deallocate(w, w->l->fiber_to_free); }
       w->l->fiber_to_free = NULL;
     }
 

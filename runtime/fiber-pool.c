@@ -221,6 +221,7 @@ void cilk_fiber_pool_global_init(global_state *g,
     fiber_pool_init(pool, g->options.stacksize, buffer_size, NULL, 1/*shared*/);
     CILK_ASSERT(w, NULL != pool->fibers);
     /* let's not preallocate for global fiber pool for now */
+    g->fiber_pool = pool;
 }
  
 /* Global fiber pool clean up. */

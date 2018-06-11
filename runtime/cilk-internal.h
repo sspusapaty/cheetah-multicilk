@@ -154,16 +154,18 @@ typedef struct __cilkrts_stack_frame **CilkShadowStack;
 struct rts_options {
     int nproc;
     int deqdepth;
-    int stacksize;
+    size_t stacksize;
     int alloc_batch_size;
+    unsigned int max_num_fibers;
 };
 
 #define DEFAULT_OPTIONS \
-{                                                          \
-    DEFAULT_NPROC,       /* num of workers to create */    \
-    DEFAULT_DEQ_DEPTH,   /* num of entries in deque */     \
-    DEFAULT_STACK_SIZE,  /* stack size to use for fiber */ \
-    DEFAULT_ALLOC_BATCH, /* alloc_batch_size */            \
+{                                                             \
+    DEFAULT_NPROC,          /* num of workers to create */    \
+    DEFAULT_DEQ_DEPTH,      /* num of entries in deque */     \
+    DEFAULT_STACK_SIZE,     /* stack size to use for fiber */ \
+    DEFAULT_ALLOC_BATCH,    /* alloc_batch_size */            \
+    DEFAULT_MAX_NUM_FIBERS, /* alloc_batch_size */            \
 }
 
 // Actual declaration

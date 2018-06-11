@@ -6,7 +6,7 @@
 #include "cilk-internal.h"
 
 enum {
-  NONE, NPROC, DEQ_DEPTH, STACK_SIZE, ALLOC_BATCH, HELP, END_OPTIONS
+  NONE, NPROC, DEQ_DEPTH, STACK_SIZE, ALLOC_BATCH, MAX_FIBERS, HELP, END_OPTIONS
 };
 
 static struct options {
@@ -29,6 +29,10 @@ static struct options {
   {
     "alloc-batch", ALLOC_BATCH,
     "--alloc-batch <n> : set batch length for memory allocator"
+  },
+  {
+    "max-fibers", MAX_FIBERS,
+    "--max-fibers <n> : set maximum number of fibers used by the runtime"
   },
   {
     "help", HELP, "--help : print this message"
@@ -130,6 +134,14 @@ int parse_command_line(struct rts_options *options, int *argc, char *argv[]) {
           options->alloc_batch_size = atoi(argv[i]);
           if (options->alloc_batch_size < 8)
             options->alloc_batch_size = 8;
+          break;
+
+        case MAX_FIBERS:
+          ++i;
+          CHECK(i < *argc, "argument missing");
+          options->max_num_fibers = atoi(argv[i]);
+          if (options->max_num_fibers < 128) // arbitrary minimum
+            options->alloc_batch_size = 128;
           break;
 
         default:

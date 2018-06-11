@@ -28,7 +28,6 @@ struct cilk_fiber_pool {
     size_t stack_size;                // Size of stacks for fibers in this pool.
     struct cilk_fiber_pool *parent;   // Parent pool.
                                       // If this pool is empty, get from parent
-
     // Describes inactive fibers stored in the pool.
     cilk_fiber **fibers;           // Array of max_size fiber pointers 
     unsigned max_size;             // Limit on number of fibers in pool 
@@ -60,6 +59,12 @@ char * sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
 __attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf);
 __attribute__((noreturn)) void init_fiber_run(cilk_fiber * fiber, 
                                               __cilkrts_stack_frame *sf);
+
+void cilk_fiber_pool_global_init(global_state *g, unsigned buffer_size); 
+void cilk_fiber_pool_global_destroy(global_state *g);
+void cilk_fiber_pool_per_worker_init(__cilkrts_worker *const w, 
+                                     unsigned buffer_size, int is_shared);
+void cilk_fiber_pool_per_worker_destroy(__cilkrts_worker *const w); 
 
 // allocate / deallocate one fiber from / back to OS
 cilk_fiber * cilk_fiber_allocate();
