@@ -10,11 +10,11 @@
 #define MIN_NUM_PAGES_PER_STACK 4 
 
 #define DEFAULT_STACKSIZE 0x100000 // 1 MBytes
-#define DEFAULT_ALLOC_BATH
 
 #define DEFAULT_NPROC 1
 #define DEFAULT_DEQ_DEPTH 1024
 #define DEFAULT_STACK_SIZE 0x100000 // 1 MBytes
 #define DEFAULT_ALLOC_BATCH 64
+#define DEFAULT_MAX_NUM_FIBERS 2400 // same as Cilk Plus for now
 
 #endif // _CONFIG_H 

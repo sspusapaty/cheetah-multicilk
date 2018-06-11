@@ -9,6 +9,8 @@
 #include "membar.h"
 #include "fiber.h"
 
+__thread __cilkrts_worker *tls_worker = NULL;
+
 // ==============================================
 // Misc. helper functions 
 // ==============================================
@@ -127,8 +129,8 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
 static pthread_key_t worker_key;
 
 void __cilkrts_init_tls_variables() {
-  int status;
-  status = pthread_key_create(&worker_key, NULL);
+  int status = pthread_key_create(&worker_key, NULL);
+  USE_UNUSED(status);
   CILK_ASSERT_G(status == 0);   
 }
 
@@ -137,14 +139,11 @@ void * __cilkrts_get_current_thread_id() {
 }
 
 __cilkrts_worker * __cilkrts_get_tls_worker() {
-  return (__cilkrts_worker *)pthread_getspecific(worker_key);
+  return tls_worker;
 }
 
 void __cilkrts_set_tls_worker(__cilkrts_worker *w) {
-    int status;
-    status = pthread_setspecific(worker_key, w);
-    CILK_ASSERT_G(status == 0);
-    return;
+  tls_worker = w;
 }
 
 
@@ -311,7 +310,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
   if(child->left_sib || parent->fiber_child) {
     // Case where we are not the leftmost stack.
     CILK_ASSERT(w, parent->fiber_child != child->fiber);
-    cilk_fiber_deallocate(child->fiber);
+    cilk_fiber_pool_deallocate(w, child->fiber);
   } else {
     // We are leftmost, pass stack/fiber up to parent.  
     // Thus, no stack/fiber to free.
@@ -728,7 +727,7 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
       if (do_dekker_on(w, victim_w, cl)) {
         __cilkrts_alert(ALERT_STEAL, 
             "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", w->self, victim, cl);
-	fiber = cilk_fiber_allocate(w);
+	fiber = cilk_fiber_pool_allocate(w);
 	parent_fiber = cl->fiber;
 	
 	/* 
@@ -956,7 +955,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
   if(w->l->fiber_to_free) {
       CILK_ASSERT(w, w->l->fiber_to_free != t->fiber);
       // we should free this fiber now and we can as long as we are not on it
-      cilk_fiber_deallocate(w->l->fiber_to_free);
+      cilk_fiber_pool_deallocate(w, w->l->fiber_to_free);
       w->l->fiber_to_free = NULL;
   }
 
@@ -1000,6 +999,7 @@ static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
     // t->fiber->resume_sf = f; // I THINK this works
     __cilkrts_alert(ALERT_SCHED, "[%d]: (do_what_it_says) resume_sf = %p\n", w->self, f);
     CILK_ASSERT(w, f);
+    USE_UNUSED(f);
     Closure_unlock(w, t);
     
     // MUST unlock the closure before locking the queue 
@@ -1019,7 +1019,7 @@ static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
     } else {
       CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
       // CILK_ASSERT(w, t->fiber == w->l->fiber_to_free);
-      if(w->l->fiber_to_free) { cilk_fiber_deallocate(w->l->fiber_to_free); }
+      if(w->l->fiber_to_free) { cilk_fiber_pool_deallocate(w, w->l->fiber_to_free); }
       w->l->fiber_to_free = NULL;
     }
 

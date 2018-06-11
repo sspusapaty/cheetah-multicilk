@@ -4,8 +4,8 @@ SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
-TESTS          = fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-OPTIONS = -g -Werror -Wall $(OPT) -ftapir=cilkr -fno-exceptions
+TESTS          = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
+OPTIONS = -g -Werror -Wall $(OPT) -fcilkplus -ftapir=cilkr -fno-exceptions
 # dynamic linking
 # RTS_DLIBS = ../runtime/libcheetah.so
 # RTS_DLIBS = -L../runtime -Wl,-rpath -Wl,../runtime -lcheetah

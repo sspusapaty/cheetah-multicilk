@@ -152,61 +152,64 @@ typedef struct __cilkrts_stack_frame **CilkShadowStack;
 
 // Actual declaration
 struct rts_options {
-  int nproc;
-  int deqdepth;
-  int stacksize;
-  int alloc_batch_size;
+    int nproc;
+    int deqdepth;
+    size_t stacksize;
+    int alloc_batch_size;
+    unsigned int max_num_fibers;
 };
 
 #define DEFAULT_OPTIONS \
-{                                                        \
-  DEFAULT_NPROC,       /* num of workers to create */    \
-  DEFAULT_DEQ_DEPTH,   /* num of entries in deque */     \
-  DEFAULT_STACK_SIZE,  /* stack size to use for fiber */ \
-  DEFAULT_ALLOC_BATCH, /* alloc_batch_size */            \
+{                                                             \
+    DEFAULT_NPROC,          /* num of workers to create */    \
+    DEFAULT_DEQ_DEPTH,      /* num of entries in deque */     \
+    DEFAULT_STACK_SIZE,     /* stack size to use for fiber */ \
+    DEFAULT_ALLOC_BATCH,    /* alloc_batch_size */            \
+    DEFAULT_MAX_NUM_FIBERS, /* alloc_batch_size */            \
 }
 
 // Actual declaration
 struct global_state {
-  /* globally-visible options (read-only after init) */
-  struct rts_options options;
+    /* globally-visible options (read-only after init) */
+    struct rts_options options;
 
-  /*
-   * this string is printed when an assertion fails.  If we just inline
-   * it, apparently gcc generates many copies of the string.
-   */
-  const char *assertion_failed_msg;
-  const char *stack_overflow_msg;
+    /*
+     * this string is printed when an assertion fails.  If we just inline
+     * it, apparently gcc generates many copies of the string.
+     */
+    const char *assertion_failed_msg;
+    const char *stack_overflow_msg;
 
-  /* dynamically-allocated array of deques, one per processor */
-  struct ReadyDeque *deques;
-  struct __cilkrts_worker **workers;
-  pthread_t * threads;
+    /* dynamically-allocated array of deques, one per processor */
+    struct ReadyDeque *deques;
+    struct __cilkrts_worker **workers;
+    pthread_t * threads;
 
-  struct Closure *invoke_main;
+    struct cilk_fiber_pool *fiber_pool;
+    struct Closure *invoke_main;
 
-  volatile int invoke_main_initialized;
-  volatile int start;
-  volatile int done;
+    volatile int invoke_main_initialized;
+    volatile int start;
+    volatile int done;
 
-  int cilk_main_argc;
-  char **cilk_main_args;
-  
-  int cilk_main_return;
-  int cilk_main_exit;
+    int cilk_main_argc;
+    char **cilk_main_args;
+
+    int cilk_main_return;
+    int cilk_main_exit;
 };
 
 // Actual declaration
 struct local_state {
-  __cilkrts_stack_frame **shadow_stack;
+    __cilkrts_stack_frame **shadow_stack;
+    struct cilk_fiber_pool *fiber_pool;
 
-  int provably_good_steal;
-  unsigned int rand_next;
+    int provably_good_steal;
+    unsigned int rand_next;
 
-  jmpbuf rts_ctx;
-  struct cilk_fiber * fiber_to_free;
-  volatile unsigned int magic;
-  int test;
+    jmpbuf rts_ctx;
+    struct cilk_fiber * fiber_to_free;
+    volatile unsigned int magic;
 };
 
 /**
@@ -216,25 +219,25 @@ struct local_state {
  * https://github.com/wsmoses/Tapir-LLVM/blob/cilkr/lib/Transforms/Tapir/CilkRABI.cpp
  **/
 struct __cilkrts_worker {
-  // T and H pointers in the THE protocol
-  __cilkrts_stack_frame * volatile * volatile tail;
-  __cilkrts_stack_frame * volatile * volatile head;
-  __cilkrts_stack_frame * volatile * volatile exc;
+    // T and H pointers in the THE protocol
+    __cilkrts_stack_frame * volatile * volatile tail;
+    __cilkrts_stack_frame * volatile * volatile head;
+    __cilkrts_stack_frame * volatile * volatile exc;
 
-  // Limit of the Lazy Task Queue, to detect queue overflow
-  __cilkrts_stack_frame * volatile *ltq_limit;
+    // Limit of the Lazy Task Queue, to detect queue overflow
+    __cilkrts_stack_frame * volatile *ltq_limit;
 
-  // Worker id.
-  int32_t self;
+    // Worker id.
+    int32_t self;
 
-  // Global state of the runtime system, opaque to the client.
-  global_state * g;
+    // Global state of the runtime system, opaque to the client.
+    global_state * g;
 
-  // Additional per-worker state hidden from the client.
-  local_state * l;
+    // Additional per-worker state hidden from the client.
+    local_state * l;
 
-  // A slot that points to the currently executing Cilk frame.
-  __cilkrts_stack_frame * current_stack_frame;
+    // A slot that points to the currently executing Cilk frame.
+    __cilkrts_stack_frame * current_stack_frame;
 };
 
 #endif // _CILK_INTERNAL_H

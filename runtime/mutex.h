@@ -2,7 +2,7 @@
 #define _CILK_MUTEX_H
 
 // Forward declaration
-typedef union Cilk_mutex Cilk_mutex;
+typedef union cilk_mutex cilk_mutex;
 
 // Includes
 #include <pthread.h>
@@ -10,24 +10,24 @@ typedef union Cilk_mutex Cilk_mutex;
 #define USE_SPINLOCK 1
 
 #if USE_SPINLOCK
-union Cilk_mutex {
+union cilk_mutex {
      volatile int memory;
      pthread_spinlock_t posix;
 };
 #else
-union Cilk_mutex {
+union cilk_mutex {
      volatile int memory;
      pthread_mutex_t posix;
 };
 #endif
 
-void Cilk_mutex_init(Cilk_mutex *lock);
+void cilk_mutex_init(cilk_mutex *lock);
 
-void Cilk_mutex_lock(Cilk_mutex *lock);
+void cilk_mutex_lock(cilk_mutex *lock);
 
-void Cilk_mutex_unlock(Cilk_mutex *lock);
+void cilk_mutex_unlock(cilk_mutex *lock);
 
-int Cilk_mutex_try(Cilk_mutex *lock);
+int cilk_mutex_try(cilk_mutex *lock);
 
-void Cilk_mutex_destroy(Cilk_mutex *lock);
+void cilk_mutex_destroy(cilk_mutex *lock);
 #endif
