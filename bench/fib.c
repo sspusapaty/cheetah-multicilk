@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include "ktiming.h"
 
-#ifndef TIMES_TO_RUN
-#define TIMES_TO_RUN 1 
+#ifndef TIMING_COUNT
+#define TIMING_COUNT 1 
 #endif
 
 /* 
@@ -33,7 +33,7 @@ int main(int argc, char * args[]) {
     int i;
     int n, res;
     clockmark_t begin, end; 
-    uint64_t running_time[TIMES_TO_RUN];
+    uint64_t running_time[TIMING_COUNT];
 
     if(argc != 2) {
         fprintf(stderr, "Usage: fib [<cilk-options>] <n>\n");
@@ -42,7 +42,7 @@ int main(int argc, char * args[]) {
     
     n = atoi(args[1]);
 
-    for(i = 0; i < TIMES_TO_RUN; i++) {
+    for(i = 0; i < TIMING_COUNT; i++) {
         begin = ktiming_getmark();
         res = fib(n);
         end = ktiming_getmark();
@@ -51,10 +51,10 @@ int main(int argc, char * args[]) {
 
     printf("Result: %d\n", res);
 
-    if( TIMES_TO_RUN > 10 ) 
-        print_runtime_summary(running_time, TIMES_TO_RUN); 
+    if( TIMING_COUNT > 10 ) 
+        print_runtime_summary(running_time, TIMING_COUNT); 
     else 
-        print_runtime(running_time, TIMES_TO_RUN); 
+        print_runtime(running_time, TIMING_COUNT); 
 
     return 0;
 }

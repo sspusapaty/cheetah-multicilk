@@ -1,21 +1,24 @@
-include ../config.mk
+# include ../config.mk
+include ../config-cp.mk
 
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
 TESTS          = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-OPTIONS = -g -Werror -Wall $(OPT) -fcilkplus -ftapir=cilkr -fno-exceptions
+OPTIONS = -O3 -g -fcilkplus $(RTS_OPT) -fno-exceptions # -Werror -Wall 
 # dynamic linking
-# RTS_DLIBS = ../runtime/libcheetah.so
-# RTS_DLIBS = -L../runtime -Wl,-rpath -Wl,../runtime -lcheetah
-RTS_SLIBS = -L../runtime ../runtime/libcheetah.a
-TIMING_COUNT := 1
+RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
+LD_FLAGS = $(RTS_DLIBS)
+# static linking
+# RTS_SLIBS = $(RTS_DIR)/$(RTS_LIB).a
+# LD_FLAGS = $(RTS_SLIBS)
+TIMING_COUNT := 10 
 
 all: $(TESTS)
 
 $(TESTS): %: %.o getoptions.o ktiming.o
-	$(CC) $^ -o $@ $(RTS_SLIBS) -lrt -lpthread -lm
+	$(LINK_CC) $^ -o $@ $(LD_FLAGS) -lrt -lpthread -lm -ldl
 
 %.o: %.c
 	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
