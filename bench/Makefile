@@ -1,5 +1,5 @@
-# include ../config.mk
-include ../config-cp.mk
+include ../config.mk
+# include ../config-cp.mk
 
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)

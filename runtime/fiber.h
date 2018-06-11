@@ -5,7 +5,7 @@
 #include "debug.h"
 #include "mutex.h"
 
-#define FIBER_STATS 0
+#define FIBER_STATS 1
 
 // forward declaration
 typedef struct cilk_fiber cilk_fiber;
@@ -17,9 +17,11 @@ typedef struct cilk_fiber_pool cilk_fiber_pool;
 
 // Statistics on active fibers that were allocated from this pool,
 struct fiber_pool_stats {
-    int num_allocated;   // fibers allocated out of this pool
-    int num_deallocated; // fibers freed into the pool
-    int max_allocated;   // high watermark on max_allocated
+    unsigned int num_allocated;     // fibers allocated out of this pool
+    unsigned int num_deallocated;   // fibers freed into the pool
+    unsigned int max_num_free;       // high watermark on pool->size 
+    unsigned int batch_allocated;   // number of times alloc_batch called  
+    unsigned int batch_deallocated; // number of times dealloc_batch called
 };
 
 struct cilk_fiber_pool {
@@ -34,7 +36,7 @@ struct cilk_fiber_pool {
     unsigned size;                 // Number of fibers currently in the pool
 
 #if FIBER_STATS
-    struct fiber_pool_stats pool_stats; // unimplemented yet
+    struct fiber_pool_stats stats; // unimplemented yet
 #endif
 };
 
