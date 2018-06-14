@@ -170,7 +170,7 @@ static int is_power_of_2(int n) {
 const char *specifiers[] = {"-n", "-c", "-h", 0};
 int opt_types[] = {LONGARG, BOOLARG, BOOLARG, 0};
 
-int cilk_main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     long size;
     int help, check;

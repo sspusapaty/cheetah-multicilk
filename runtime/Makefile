@@ -4,7 +4,7 @@ MAIN = libcheetah
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
-OPTIONS = -g -Werror -Wall -fpic -g
+OPTIONS = -O3 -g -Werror -Wall -fpic -g
 
 .PHONY: all clean build
  

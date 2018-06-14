@@ -77,7 +77,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
   __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) syncing frame %p\n", w->self, sf);
 
   CILK_ASSERT(w, sf->flags & CILK_FRAME_VERSION);
-  CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC);
+  // CILK_ASSERT(w, sf->magic == CILK_STACKFRAME_MAGIC); // can't use this for tapir compiler
   CILK_ASSERT(w, sf == w->current_stack_frame);
   CILK_ASSERT(w, sf->worker == w);
 

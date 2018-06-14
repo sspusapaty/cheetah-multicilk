@@ -18,15 +18,15 @@ Closure * create_invoke_main(global_state *const g) {
 
   Closure *t;
   __cilkrts_stack_frame * sf;
-  cilk_fiber *fiber;
+  struct cilk_fiber *fiber;
 
   t = Closure_create_main();
   t->status = CLOSURE_READY;
 
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n", t);
 
-  sf = (__cilkrts_stack_frame *)malloc(sizeof(__cilkrts_stack_frame));
-  fiber = cilk_fiber_allocate();
+  sf = malloc(sizeof(*sf));
+  fiber = cilk_main_fiber_allocate();
   
   // it's important to set the following fields for the root closure, 
   // because we use the info to jump to the right stack position and start
@@ -53,7 +53,7 @@ Closure * create_invoke_main(global_state *const g) {
 }
 
 void cleanup_invoke_main(Closure *invoke_main) {
-  cilk_fiber_deallocate(invoke_main->fiber); 
+  cilk_main_fiber_deallocate(invoke_main->fiber); 
   free(invoke_main->frame);
   Closure_destroy_main(invoke_main);
 }

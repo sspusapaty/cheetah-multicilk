@@ -91,7 +91,7 @@ static inline void Closure_init(Closure *t) {
 
 Closure * Closure_create(__cilkrts_worker *const w) {
 
-  Closure *new_closure = (Closure *)malloc(sizeof(Closure));
+  Closure *new_closure = cilk_internal_malloc(w, sizeof(*new_closure));
   CILK_ASSERT(w, new_closure != NULL);
 
   Closure_init(new_closure);
@@ -106,7 +106,7 @@ Closure * Closure_create(__cilkrts_worker *const w) {
  */
 Closure *Closure_create_main() {
 
-  Closure *new_closure = (Closure *) malloc(sizeof(Closure));
+  Closure *new_closure = (Closure *) malloc(sizeof(*new_closure));
   CILK_ASSERT_G(new_closure != NULL);
   Closure_init(new_closure);
 
@@ -341,5 +341,5 @@ void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
   Closure_checkmagic(w, t);
   WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
   Closure_clean(w, t);
-  free(t);
+  cilk_internal_free(w, t, sizeof(*t));
 }

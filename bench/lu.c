@@ -476,7 +476,7 @@ int invalid_input(int n) {
 const char *specifiers[] = { "-n", "-o", "-c", "-h", 0 };
 int opt_types[] = { INTARG, BOOLARG, BOOLARG, BOOLARG, 0 };
 
-int cilk_main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     int print, test, n, help, failed;
     Matrix M, Msave = 0;

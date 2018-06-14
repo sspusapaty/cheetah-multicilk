@@ -36,13 +36,13 @@ struct Closure {
 
   __cilkrts_stack_frame *frame;  /* rest of the closure */
 
-  cilk_fiber * fiber;
-  cilk_fiber * fiber_child;
+  struct cilk_fiber *fiber;
+  struct cilk_fiber *fiber_child;
   
   WHEN_CILK_DEBUG(int owner_ready_deque);
   
   int join_counter; /* number of outstanding spawned children */
-  char * orig_rsp;  /* the rsp one should use when sync successfully */
+  char *orig_rsp;  /* the rsp one should use when sync successfully */
 
   enum ClosureStatus status;
 

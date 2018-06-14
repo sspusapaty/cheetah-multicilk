@@ -24,11 +24,13 @@ static global_state * global_state_init(int argc, char* argv[]) {
     g->invoke_main_initialized = 0;
     g->start = 0;
     g->done = 0;
+    cilk_mutex_init(&(g->print_lock));
 
     g->workers = (__cilkrts_worker **) malloc(active_size * sizeof(__cilkrts_worker *));
     g->deques = (ReadyDeque *) malloc(active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *) malloc(active_size * sizeof(pthread_t));
-    cilk_fiber_pool_global_init(g, g->options.max_num_fibers);
+    cilk_internal_malloc_global_init(g); // initialize internal malloc first
+    cilk_fiber_pool_global_init(g);
 
     g->cilk_main_argc = argc;
     g->cilk_main_args = argv;
@@ -58,8 +60,6 @@ static void deques_init(global_state * g) {
 }
 
 static void workers_init(global_state * g) {
-    unsigned int fiber_buf_size = g->options.max_num_fibers / g->options.nproc;
- 
     __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing workers.\n");
     for (int i = 0; i < g->options.nproc; i++) {
         __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing worker %d.\n", i);
@@ -75,7 +75,9 @@ static void workers_init(global_state * g) {
         w->exc = w->head;
         w->current_stack_frame = NULL;
 
-        cilk_fiber_pool_per_worker_init(w, fiber_buf_size, 0/*private*/);
+        // initialize internal malloc first
+        cilk_internal_malloc_per_worker_init(w);
+        cilk_fiber_pool_per_worker_init(w);
     }
 }
 
@@ -125,7 +127,8 @@ static void global_state_deinit(global_state *g) {
 
     cleanup_invoke_main(g->invoke_main);
     cilk_fiber_pool_global_destroy(g);
-    free(g->fiber_pool);
+    cilk_internal_malloc_global_destroy(g); // internal malloc last
+    cilk_mutex_destroy(&(g->print_lock));
     free(g->workers);
     free(g->deques);
     free(g->threads);
@@ -147,6 +150,7 @@ static void workers_deinit(global_state * g) {
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);
 
         cilk_fiber_pool_per_worker_destroy(w);
+        cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
         free(w->l);
         free(w);

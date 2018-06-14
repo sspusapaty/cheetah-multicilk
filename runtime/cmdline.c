@@ -119,7 +119,7 @@ int parse_command_line(struct rts_options *options, int *argc, char *argv[]) {
         case STACK_SIZE:
           ++i;
           CHECK(i < *argc, "argument missing");
-          options->stacksize = atoi(argv[i]);
+          options->stacksize = atol(argv[i]);
           CHECK(options->stacksize > 0, "non-positive stack size");
           break;
 

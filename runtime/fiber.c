@@ -12,24 +12,24 @@
 // in this file.
 //===============================================================
 
-#define ROUND_TO_PAGE_SIZE(size) ((size+PAGE_SIZE) & ~((size_t)PAGE_SIZE-1))
+#define ROUND_TO_PAGE_SIZE(size) ((size+PAGE_SIZE) & ~(PAGE_SIZE-1))
 extern __attribute__((noreturn)) void invoke_main();
 
 //===============================================================
 // Private helper functions
 //===============================================================
 
-static void make_stack(cilk_fiber * f, size_t stack_size) {
+static void make_stack(struct cilk_fiber * f, int stack_size) {
 
     char* p;
     // We've already validated that the stack size is page-aligned and
     // is a reasonable value.  No need to do any extra rounding here.
     size_t rounded_stack_size = stack_size;
 
-    if (rounded_stack_size < MIN_NUM_PAGES_PER_STACK * (size_t)PAGE_SIZE) {
+    if (rounded_stack_size < MIN_NUM_PAGES_PER_STACK * PAGE_SIZE) {
         // If the specified stack size is too small, round up to
         // MIN_NUM_PAGES_PER_STACK.  We need 2 extra for the guard pages.
-        rounded_stack_size = MIN_NUM_PAGES_PER_STACK * (size_t)PAGE_SIZE;
+        rounded_stack_size = MIN_NUM_PAGES_PER_STACK * PAGE_SIZE;
     } else {
         rounded_stack_size = ROUND_TO_PAGE_SIZE(stack_size);
     }
@@ -58,7 +58,7 @@ static void make_stack(cilk_fiber * f, size_t stack_size) {
     f->m_stack_base = p + rounded_stack_size - PAGE_SIZE;
 }
 
-static void free_stack(cilk_fiber * f) {
+static void free_stack(struct cilk_fiber * f) {
 
     if (f->m_stack) {
         size_t rounded_stack_size = f->m_stack_base - f->m_stack + PAGE_SIZE;
@@ -67,7 +67,7 @@ static void free_stack(cilk_fiber * f) {
     }
 }
 
-static void fiber_init(cilk_fiber * fiber) {
+static void fiber_init(struct cilk_fiber * fiber) {
     fiber->m_stack = NULL;
     fiber->m_stack_base = NULL;
     fiber->owner = NULL;
@@ -96,7 +96,7 @@ void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
     asm volatile ("fnstcw %0" : "=m" (sf->fpcsr));
 }
 
-char* sysdep_reset_jump_buffers_for_resume(cilk_fiber* fiber,
+char* sysdep_reset_jump_buffers_for_resume(struct cilk_fiber* fiber,
                                            __cilkrts_stack_frame *sf) {
     CILK_ASSERT_G(fiber);
     char* new_stack_base = fiber->m_stack_base - 256;
@@ -130,7 +130,7 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 }
 
 __attribute__((noreturn))
-void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
+void init_fiber_run(struct cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
 
     // owner of fiber not set at the moment
     __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_run) starting fiber %p\n", fiber);
@@ -161,16 +161,32 @@ void init_fiber_run(cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
     CILK_ASSERT_G(0); // should never get here
 }
 
-cilk_fiber * cilk_fiber_allocate() {
-    cilk_fiber * fiber = (cilk_fiber *) malloc(sizeof(cilk_fiber));
+struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
+    struct cilk_fiber *fiber = cilk_internal_malloc(w, sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate fiber for main %p [%p--%p]\n", 
+    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate fiber %p [%p--%p]\n", 
                     fiber, fiber->m_stack_base, fiber->m_stack);
     return fiber;
 }
 
-void cilk_fiber_deallocate(cilk_fiber * fiber) {
+void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber * fiber) {
+    __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate fiber %p [%p--%p]\n", 
+                    fiber, fiber->m_stack_base, fiber->m_stack);
+    free_stack(fiber);
+    cilk_internal_free(w, fiber, sizeof(*fiber));
+}
+
+struct cilk_fiber *cilk_main_fiber_allocate() {
+    struct cilk_fiber *fiber = malloc(sizeof(*fiber));
+    fiber_init(fiber);
+    make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
+    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate main fiber %p [%p--%p]\n", 
+                    fiber, fiber->m_stack_base, fiber->m_stack);
+    return fiber;
+}
+
+void cilk_main_fiber_deallocate(struct cilk_fiber * fiber) {
     __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate main fiber %p [%p--%p]\n", 
                     fiber, fiber->m_stack_base, fiber->m_stack);
     free_stack(fiber);

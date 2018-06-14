@@ -1,3 +1,4 @@
+#include "cilk-internal.h"
 #include "debug.h"
 
 #include <assert.h>
@@ -7,6 +8,13 @@
 
 const char *const __cilkrts_assertion_failed = "[%d]: %s:%d: cilk assertion failed: %s\n";
 const char *const __cilkrts_assertion_failed_g = "[M]: %s:%d: cilk assertion failed: %s\n";
+
+void cilk_die_internal(struct global_state *const g, const char *complain) {
+    cilk_mutex_lock(&(g->print_lock));
+    fprintf(stderr, "Fatal error: %s\n", complain);
+    cilk_mutex_unlock(&(g->print_lock));
+    exit(1);
+}
 
 void __cilkrts_bug(const char *fmt,...) {
 

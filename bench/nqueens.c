@@ -90,7 +90,7 @@ static int nqueens (int n, int j, char *a) {
     return solNum;
 }
 
-int cilk_main(int argc, char *argv[]) { 
+int main(int argc, char *argv[]) { 
 
   int n = 13;
   char *a;

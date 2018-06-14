@@ -302,7 +302,7 @@ const char *specifiers[] = {"-g", "-nx", "-ny", "-nt",
 int opt_types[] = {INTARG, INTARG, INTARG, INTARG, 
     DOUBLEARG, DOUBLEARG, DOUBLEARG, DOUBLEARG, DOUBLEARG, DOUBLEARG, BOOLARG, 0 };
 
-int cilk_main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     int ret, help;
 

@@ -6,8 +6,11 @@
 
 // Includes
 #include "debug.h"
+#include "fiber.h"
+#include "internal-malloc.h"
 #include "jmpbuf.h"
 #include "rts-config.h"
+#include "mutex.h"
 
 #define NOBODY -1
 
@@ -154,9 +157,9 @@ typedef struct __cilkrts_stack_frame **CilkShadowStack;
 struct rts_options {
     int nproc;
     int deqdepth;
-    size_t stacksize;
+    int64_t stacksize;
     int alloc_batch_size;
-    unsigned int max_num_fibers;
+    int max_num_fibers;
 };
 
 #define DEFAULT_OPTIONS \
@@ -184,13 +187,17 @@ struct global_state {
     struct ReadyDeque *deques;
     struct __cilkrts_worker **workers;
     pthread_t * threads;
-
-    struct cilk_fiber_pool *fiber_pool;
     struct Closure *invoke_main;
+
+    struct cilk_fiber_pool fiber_pool __attribute__((aligned(64)));
+    struct global_im_pool im_pool __attribute__((aligned(64)));
+    struct cilk_im_desc im_desc __attribute__((aligned(64)));
+    cilk_mutex im_lock;  // lock for accessing global im_desc
 
     volatile int invoke_main_initialized;
     volatile int start;
     volatile int done;
+    cilk_mutex print_lock; // global lock for printing messages 
 
     int cilk_main_argc;
     char **cilk_main_args;
@@ -202,12 +209,13 @@ struct global_state {
 // Actual declaration
 struct local_state {
     __cilkrts_stack_frame **shadow_stack;
-    struct cilk_fiber_pool *fiber_pool;
 
     int provably_good_steal;
     unsigned int rand_next;
 
     jmpbuf rts_ctx;
+    struct cilk_fiber_pool fiber_pool;
+    struct cilk_im_desc im_desc;
     struct cilk_fiber * fiber_to_free;
     volatile unsigned int magic;
 };

@@ -446,7 +446,7 @@ int usage(void) {
 const char *specifiers[] = {"-n", "-c", "-h", 0};
 int opt_types[] = {LONGARG, BOOLARG, BOOLARG, 0};
 
-int cilk_main(int argc, char **argv) {
+int main(int argc, char **argv) {
 
     long size;
     ELM *array, *tmp;

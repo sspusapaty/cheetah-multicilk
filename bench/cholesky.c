@@ -808,7 +808,7 @@ const char *specifiers[] = { "-n", "-z", "-c", "-f", "-benchmark", "-h", 0 };
 int opt_types[] = { INTARG, INTARG, BOOLARG, STRINGARG, BENCHMARK, BOOLARG, 0 };
 
 
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
   Matrix A, R;
   int size, depth, nonzeros, i, benchmark, help, check = 1;

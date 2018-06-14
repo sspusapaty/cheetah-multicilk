@@ -6,3 +6,4 @@ RTS_OPT=-ftapir=cilkr
 RTS_DIR=../runtime
 RTS_LIB=libcheetah
 RTS_LIB_FLAG=-lcheetah
+OPT = -O3
