@@ -1,0 +1,9 @@
+./fib 42
+./cholesky -n 4000 -z 40000
+./cilksort -n 100000000
+./fft -benchmark long
+./heat -nx 2048 -ny 2048 -nt 500
+./lu 0n 4096
+./matmul_4_way_z -n 2048
+./nqueens 14
+./strassen -n 4096
