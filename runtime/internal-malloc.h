@@ -7,14 +7,20 @@
 #include "debug.h"
 #include "mutex.h"
 
-#define NUM_BUCKETS  6
+#define NUM_BUCKETS 7
 
-#define INTERNAL_MALLOC_STATS 0
+#define INTERNAL_MALLOC_STATS 1
 
 #if INTERNAL_MALLOC_STATS
 struct global_im_pool_stats {
-    int64_t allocated;
-    int64_t wasted;
+    int64_t allocated; // bytes allocated into the pool
+    int64_t wasted;    // bytes at the end of a chunk that could not be used
+};
+
+struct im_bucket_stats {
+    int num_free;  // number of free blocks left; computed at terminate 
+    int allocated; // number of batch allocated and not freed
+    int max_allocated; // high watermark of batch_allocated
 };
 #define WHEN_IM_STATS(ex) ex
 #else 
@@ -38,6 +44,7 @@ struct im_bucket {
     int list_size;          // length of free list
     int count_until_free;   // number of allocations to make on the free list
                             // before calling batch_free (back to the global) 
+    WHEN_IM_STATS(struct im_bucket_stats stats);
 };
 
 struct cilk_im_desc {
@@ -48,9 +55,11 @@ struct cilk_im_desc {
 
 // public functions
 void cilk_internal_malloc_global_init(struct global_state *g);
+void cilk_internal_malloc_global_terminate(struct global_state *g);
 void cilk_internal_malloc_global_destroy(struct global_state *g); 
 void cilk_internal_malloc_per_worker_init(__cilkrts_worker *w);
 void cilk_internal_malloc_per_worker_destroy(__cilkrts_worker *w);
+void cilk_internal_malloc_per_worker_terminate(__cilkrts_worker *w);
 void * cilk_internal_malloc(__cilkrts_worker *w, int size);
 void cilk_internal_free(__cilkrts_worker *w, void *p, int size);
 #endif // _INTERAL_MALLOC_H

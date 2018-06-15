@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -7,9 +8,18 @@
 
 #define MEM_LIST_SIZE  8 
 #define INTERNAL_MALLOC_CHUNK_SIZE (32 * 1024)
-#define SIZE_THRESH size_buckets[NUM_BUCKETS-1]
+#define SIZE_THRESH bucket_sizes[NUM_BUCKETS-1]
 
-static const int size_buckets[NUM_BUCKETS] = { 64, 128, 256, 512, 1024, 2048 };
+static const int bucket_sizes[NUM_BUCKETS] = { 32, 64, 128, 256, 512, 1024, 2048 };
+static const int bucket_capacity[NUM_BUCKETS] = { 
+    256, /*   32 bytes a piece; 2 pages */
+    128, /*   64 bytes a piece; 2 pages */
+     64, /*  128 bytes a piece; 2 pages */
+     64, /*  256 bytes a piece; 4 pages */
+     32, /*  512 bytes a piece; 4 pages */
+     16, /* 1024 bytes a piece; 4 pages */
+      8  /* 2048 bytes a piece; 4 pages */
+};
 
 struct free_block {
     void *next;
@@ -26,7 +36,7 @@ static inline int is_page_aligned(int size) {
 
 static inline int size_to_bucket(int size) {
     for(int i=0; i < NUM_BUCKETS; i++) {
-        if(size <= size_buckets[i]) {
+        if(size <= bucket_sizes[i]) {
             return i;
         }
     }
@@ -34,10 +44,10 @@ static inline int size_to_bucket(int size) {
 }
 
 static inline int bucket_to_size(int which_bucket) {
-    return size_buckets[which_bucket];
+    return bucket_sizes[which_bucket];
 }
 
-#if CILK_DEBUG // used only when deubgging, turns out
+#if CILK_DEBUG || INTERNAL_MALLOC_STATS // used in these cases only
 /* compute the length of a free list starting at pointer p */
 static int free_list_length(void *p) {
     int count = 0;
@@ -50,13 +60,23 @@ static int free_list_length(void *p) {
 }
 #endif
 
+#if INTERNAL_MALLOC_STATS
+static inline void init_im_bucket_stats(struct im_bucket_stats *s) {
+    s->num_free = 0;
+    s->allocated = 0;
+    s->max_allocated = 0;
+}
+#else
+#define init_im_bucket_stats(s)
+#endif
+
 /* initialize the buckets in struct cilk_im_desc */
-static void init_im_buckets(struct cilk_im_desc *im_desc, 
-                            int count_until_free) {
+static void init_im_buckets(struct cilk_im_desc *im_desc) {
     for(int i=0; i < NUM_BUCKETS; i++) {
         struct im_bucket *bucket = &(im_desc->buckets[i]);
         bucket->free_list = NULL;
-        bucket->count_until_free = count_until_free;
+        bucket->count_until_free = bucket_capacity[i];
+        init_im_bucket_stats(&bucket->stats);
     }
 }
 
@@ -96,80 +116,77 @@ void internal_malloc_global_check(global_state *g) {
 //=========================================================
 
 #if INTERNAL_MALLOC_STATS
-#define FIELD_DESC "%6d"
-#define PN_DESC "%7d"
-#define PN_NAME_DESC "%7s"
-
 static void init_global_im_pool_stats(struct global_im_pool_stats *stats) {
     stats->allocated = 0;
     stats->wasted = 0;
 }
 
-/*
-static void print_im_stats(__cilkrts_worker *w, 
-                           struct global_im_pool_stats *stats) {
-
-    if(w) {
-        fprintf(stderr, "Per-worker internal malloc stats %2d:\n\n", w->self);
-    } else {
-        fprintf(stderr, "Global internal malloc stats:\n\n");
+static void print_im_buckets_stats(struct global_state *g) {
+    
+#define HDR_DESC "%15s"
+#define WORKER_HDR_DESC "%10s %3d:" // two char short compared to HDR_DESC
+#define FIELD_DESC "%10ld"
+    fprintf(stderr, "\nBYTES IN FREE LISTS:\n");
+    fprintf(stderr, HDR_DESC, "Bucket size:");
+    for(int j=0; j < NUM_BUCKETS; j++) {
+        fprintf(stderr, FIELD_DESC, (int64_t)bucket_sizes[j]);
     }
+    fprintf(stderr, "\n-------------------------------------------"
+            "---------------------------------------------\n");
 
-    fprintf(stderr, PN_NAME_DESC, "PN\\size");
-    for(int i = 0; i < NUM_BUCKETS; i++) {
-        fprintf(stderr, FIELD_DESC, bucket_to_size(i));
+    fprintf(stderr, HDR_DESC, "Global:");
+    for(int j=0; j < NUM_BUCKETS; j++) {
+        struct im_bucket_stats *s = &(g->im_desc.buckets[j].stats);  
+        fprintf(stderr, FIELD_DESC, (int64_t)s->num_free * bucket_sizes[j]);
     }
     fprintf(stderr, "\n");
+    for(int i=0; i < g->options.nproc; i++) {
+        __cilkrts_worker *w = g->workers[i]; 
+        fprintf(stderr, WORKER_HDR_DESC, "Worker", w->self);
+        for(int j=0; j < NUM_BUCKETS; j++) {
+            struct im_bucket_stats *s = &(w->l->im_desc.buckets[j].stats);  
+            fprintf(stderr, FIELD_DESC, (int64_t)s->num_free * bucket_sizes[j]); 
+        }
+        fprintf(stderr, "\n");
+    }
 
-    fprintf(stderr, PN_NAME_DESC, "Global");
-    for(int i = 0; i < NUM_BUCKETS; i++) {
-        fprintf(stderr, FIELD_DESC, stats->bucket_length[i]);
+    fprintf(stderr, "\nHIGH WATERMARK FOR BYTES ALLOCATED:\n");
+    fprintf(stderr, HDR_DESC, "Bucket size:");
+    for(int j=0; j < NUM_BUCKETS; j++) {
+        fprintf(stderr, FIELD_DESC, (int64_t)bucket_sizes[j]);
+    }
+    fprintf(stderr, "\n-------------------------------------------"
+            "---------------------------------------------\n");
+
+    for(int i=0; i < g->options.nproc; i++) {
+        __cilkrts_worker *w = g->workers[i]; 
+        fprintf(stderr, WORKER_HDR_DESC, "Worker", w->self);
+        for(int j=0; j < NUM_BUCKETS; j++) {
+            struct im_bucket_stats *s = &(w->l->im_desc.buckets[j].stats);  
+            fprintf(stderr, FIELD_DESC, 
+                    (int64_t)s->max_allocated * bucket_sizes[j]);
+        }
+        fprintf(stderr, "\n");
     }
     fprintf(stderr, "\n");
 }
 
-static void print_global_im_stats(global_stat *g) {
-
-    int i;
-    int in_free_lists = 0;
-
-    fprintf("\nSCHEDULER MEMORY STATISTICS:\n\n"
-            "Total memory allocated for the scheduler: %d bytes\n"
-            "Unfragmented memory in global pool: %ld bytes\n"
-            "Memory wasted because of fragmentation: %d bytes\n"
-            "Memory in free lists at end of execution (in bytes):\n",
-            USE_SHARED1(im_allocated),
-            (long) (USE_SHARED1(global_pool_end) -
-                USE_SHARED1(global_pool_begin)),
-            USE_SHARED1(im_wasted));
-
-    fprintf(USE_PARAMETER1(infofile),
-            "      PN     free-list\n"
-            "  --------------------\n");
-
-    fprintf(USE_PARAMETER1(infofile), "  Global" FORMAT,
-            USE_SHARED1(global_im_info).in_free_lists);
-    in_free_lists += USE_SHARED1(global_im_info).in_free_lists;
-
-    for (i = 0; i < USE_PARAMETER1(active_size); ++i) {
-        fprintf(USE_PARAMETER1(infofile), "     %3d" FORMAT, i,
-                USE_PARAMETER1(im_info)[i].in_free_lists);
-        in_free_lists += USE_PARAMETER1(im_info)[i].in_free_lists;
-    }
-
-    fprintf(USE_PARAMETER1(infofile),
-            "  --------------------\n");
-
-    fprintf(USE_PARAMETER1(infofile), "        " FORMAT, in_free_lists);
-
-    if (USE_PARAMETER1(options->statlevel) >= 4)
-        print_detailed_im_stats(context);
+static void print_global_im_pool_stats(struct global_im_pool_stats *stats) {
+    fprintf(stderr, 
+            "Total bytes allocated from system: %7ld KBytes (%ld pages)\n",
+            stats->allocated / 1024, 
+            (int64_t)ceil(stats->allocated / PAGE_SIZE));
+    fprintf(stderr, 
+            "Total bytes allocated but wasted:  %7ld KBytes\n", 
+            stats->wasted / 1024);
 }
-*/
-#else
-#define init_global_im_pool_stats(stats)
-#define print_im_stats(w, stats)
-#define print_global_im_stats(g)
+
+static void print_internal_malloc_stats(struct global_state *g) {
+    fprintf(stderr, "\nINTERNAL MALLOC STATS\n");
+    print_global_im_pool_stats(&(g->im_pool.stats));
+    print_im_buckets_stats(g);
+    fprintf(stderr, "\n");
+}
 #endif // INTERNAL_MALLOC_STATS
 
 //=========================================================
@@ -309,10 +326,20 @@ void cilk_internal_malloc_global_init(global_state *g) {
     g->im_pool.mem_list_size = MEM_LIST_SIZE;
     g->im_pool.mem_list = malloc(MEM_LIST_SIZE * sizeof(*g->im_pool.mem_list));
     CILK_CHECK(g, g->im_pool.mem_list, "Cannot allocate mem_list");
-    init_im_buckets(&g->im_desc, g->options.alloc_batch_size);
+    init_im_buckets(&g->im_desc);
     init_global_im_pool_stats(&(g->im_pool.stats));
     WHEN_CILK_DEBUG(g->im_desc.used = 0);
     WHEN_CILK_DEBUG(g->im_desc.num_malloc = 0);
+}
+
+void cilk_internal_malloc_global_terminate(global_state *g) {
+#if INTERNAL_MALLOC_STATS
+    for(int i=0; i < NUM_BUCKETS; i++) {
+        struct im_bucket *b = &(g->im_desc.buckets[i]);
+        b->stats.num_free = free_list_length(b->free_list);
+    }
+    print_internal_malloc_stats(g);
+#endif
 }
 
 void cilk_internal_malloc_global_destroy(global_state *g) {
@@ -328,14 +355,22 @@ void cilk_internal_malloc_global_destroy(global_state *g) {
  * Allocate a batch of memory of size 'size' from global im bucket 'bucket'
  * into per-worker im bucekt 'bucket'.
  */
-static void im_allocate_batch(__cilkrts_worker *w,
-                              int size, int bucket) {
+static void im_allocate_batch(__cilkrts_worker *w, int size, int bucket) {
+
+    int batch_size = bucket_capacity[bucket] / 2;
     cilk_mutex_lock(&(w->g->im_lock));
-    for(int i = 0; i < (w->g->options.alloc_batch_size) / 2; i++) {
+    for(int i = 0; i < batch_size; i++) {
         void *p = global_im_alloc(w, size, bucket);
         cilk_internal_free(w, p, size);
     }
     cilk_mutex_unlock(&(w->g->im_lock));
+#if INTERNAL_MALLOC_STATS
+    struct im_bucket_stats *s = &(w->l->im_desc.buckets[bucket].stats);
+    s->allocated += batch_size;
+    if(s->allocated > s->max_allocated) {
+        s->max_allocated = s->allocated;
+    }
+#endif
 }
 
 /**
@@ -343,12 +378,18 @@ static void im_allocate_batch(__cilkrts_worker *w,
  * back to global im bucekt 'bucket'.
  */
 static void im_free_batch(__cilkrts_worker *w, int size, int bucket) {
+
+    int batch_size = bucket_capacity[bucket] / 2;
     cilk_mutex_lock(&(w->g->im_lock));
-    for(int i = 0; i < (w->g->options.alloc_batch_size) / 2; i++) {
+    for(int i = 0; i < batch_size; i++) {
         void *p = cilk_internal_malloc(w, size);
         global_im_free(w, p, size, bucket);
     }
     cilk_mutex_unlock(&(w->g->im_lock));
+#if INTERNAL_MALLOC_STATS
+    struct im_bucket_stats *s = &(w->l->im_desc.buckets[bucket].stats);
+    s->allocated -= batch_size;
+#endif
 }
  
 /*
@@ -367,10 +408,11 @@ void * cilk_internal_malloc(__cilkrts_worker *w, int size) {
     CILK_ASSERT(w, which_bucket >= 0 && which_bucket < NUM_BUCKETS);
     int csize = bucket_to_size(which_bucket); // canonicalize the size
     struct im_bucket *bucket = &(w->l->im_desc.buckets[which_bucket]);
-    void *mem;
+    void *mem = bucket->free_list;
 
-    while(!((mem = bucket->free_list))) {
+    if(!mem) { // when out of memory, allocate a batch from global pool
         im_allocate_batch(w, csize, which_bucket);
+        mem = bucket->free_list;
     }
 
     /* if there is a block in the free list */
@@ -408,16 +450,24 @@ void cilk_internal_free(__cilkrts_worker *w, void *p, int size) {
 }
 
 void cilk_internal_malloc_per_worker_init(__cilkrts_worker *w) {
-    init_im_buckets(&(w->l->im_desc), w->g->options.alloc_batch_size);
+    init_im_buckets(&(w->l->im_desc));
+}
+
+void cilk_internal_malloc_per_worker_terminate(__cilkrts_worker *w) {
+#if INTERNAL_MALLOC_STATS
+    for(int i=0; i < NUM_BUCKETS; i++) {
+        struct im_bucket *b = &(w->l->im_desc.buckets[i]);
+        b->stats.num_free = free_list_length(b->free_list);
+    }
+#endif
 }
 
 void cilk_internal_malloc_per_worker_destroy(__cilkrts_worker *w) {
 #if CILK_DEBUG
     for(int i = 0; i < NUM_BUCKETS; i++) {
-            struct im_bucket *bucket = &(w->l->im_desc.buckets[i]);
-            int k = free_list_length(bucket->free_list);
-            CILK_ASSERT(w,
-                (bucket->count_until_free+k) == w->g->options.alloc_batch_size);
+        struct im_bucket *bucket = &(w->l->im_desc.buckets[i]);
+        int k = free_list_length(bucket->free_list);
+        CILK_ASSERT(w, (bucket->count_until_free+k) == bucket_capacity[i]);
     }
 #endif
 }

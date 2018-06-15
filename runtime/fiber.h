@@ -9,7 +9,13 @@ typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 typedef struct global_state global_state;
 
-#define FIBER_STATS 0
+#define FIBER_STATS 1
+
+#if FIBER_STATS
+#define WHEN_FIBER_STATS(ex) ex
+#else
+#define WHEN_FIBER_STATS(ex)
+#endif
 
 //===============================================================
 // Struct defs used by fibers, fiber pools
@@ -17,11 +23,9 @@ typedef struct global_state global_state;
 
 // Statistics on active fibers that were allocated from this pool,
 struct fiber_pool_stats {
-    int num_allocated;     // fibers allocated out of this pool
-    int num_deallocated;   // fibers freed into the pool
-    int max_num_free;       // high watermark on pool->size 
-    int batch_allocated;   // number of times alloc_batch called  
-    int batch_deallocated; // number of times dealloc_batch called
+    int in_use; // number of fibers allocated - freed from / into the pool
+    int max_in_use; // high watermark for in_use
+    int max_free;   // high watermark for number of free fibers in the pool 
 };
 
 struct cilk_fiber_pool {
@@ -32,12 +36,9 @@ struct cilk_fiber_pool {
                                       // If this pool is empty, get from parent
     // Describes inactive fibers stored in the pool.
     struct cilk_fiber **fibers; // Array of max_size fiber pointers 
-    int max_size;               // Limit on number of fibers in pool 
+    int capacity;               // Limit on number of fibers in pool 
     int size;                   // Number of fibers currently in the pool
-
-#if FIBER_STATS
-    struct fiber_pool_stats stats; // unimplemented yet
-#endif
+    WHEN_FIBER_STATS(struct fiber_pool_stats stats);
 };
 
 struct cilk_fiber {
@@ -64,8 +65,10 @@ __attribute__((noreturn)) void init_fiber_run(struct cilk_fiber * fiber,
                                               __cilkrts_stack_frame *sf);
 
 void cilk_fiber_pool_global_init(global_state *g); 
+void cilk_fiber_pool_global_terminate(global_state *g); 
 void cilk_fiber_pool_global_destroy(global_state *g);
 void cilk_fiber_pool_per_worker_init(__cilkrts_worker *w);
+void cilk_fiber_pool_per_worker_terminate(__cilkrts_worker *w);
 void cilk_fiber_pool_per_worker_destroy(__cilkrts_worker *w); 
 
 // allocate / deallocate one fiber from / back to OS

@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdlib.h>
+#include <sys/sysinfo.h>
 #include <unistd.h>
 
 #include "debug.h"
@@ -10,6 +11,11 @@
 extern void cleanup_invoke_main(Closure *invoke_main);
 extern int parse_command_line(struct rts_options *options, int *argc, char *argv[]);
 
+/* Linux only */
+static int linux_get_num_proc() {
+    return get_nprocs();
+}
+
 static global_state * global_state_init(int argc, char* argv[]) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_init) Initializing global state.\n");
     global_state * g = (global_state *) malloc(sizeof(global_state));
@@ -18,6 +24,11 @@ static global_state * global_state_init(int argc, char* argv[]) {
         // user invoked --help; quit
         free(g);
         exit(0);
+    }
+    
+    if(g->options.nproc == 0) {
+        // use the number of cores online right now 
+        g->options.nproc = linux_get_num_proc();
     }
 
     int active_size = g->options.nproc;
@@ -122,6 +133,11 @@ global_state * __cilkrts_init(int argc, char* argv[]) {
     return g;
 }
 
+static void global_state_terminate(global_state *g) {
+    cilk_fiber_pool_global_terminate(g);
+    cilk_internal_malloc_global_terminate(g);
+}
+
 static void global_state_deinit(global_state *g) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (global_state_deinit) Clean up global state.\n");
 
@@ -143,6 +159,14 @@ static void deques_deinit(global_state * g) {
     }
 }
 
+static void workers_terminate(global_state * g) {
+    for(int i = 0; i < g->options.nproc; i++) {
+        __cilkrts_worker *w = g->workers[i];
+        cilk_fiber_pool_per_worker_terminate(w);
+        cilk_internal_malloc_per_worker_terminate(w); // internal malloc last
+    }
+}
+
 static void workers_deinit(global_state * g) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (workers_deinit) Clean up workers.\n");
     for(int i = 0; i < g->options.nproc; i++) {
@@ -159,6 +183,14 @@ static void workers_deinit(global_state * g) {
 }
 
 void __cilkrts_cleanup(global_state *g) {
+    workers_terminate(g);
+    // Debatable; this can happen after workers_deinit or before:
+    // terminate prints out stats, but the fiber pools uses the
+    // internal-malloc, and fibers in fiber pools are not freed 
+    // until workers_deinit.  We put it here so that we get the stats on
+    // internal-malloc that does not include all the free fibers.  
+    global_state_terminate(g); 
+
     workers_deinit(g);
     deques_deinit(g);
     global_state_deinit(g);

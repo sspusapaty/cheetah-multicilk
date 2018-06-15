@@ -1,5 +1,5 @@
 include ../config.mk
-# include ../config-cp.mk
+# include ../cilkplus-config.mk
 
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
@@ -13,7 +13,7 @@ LD_FLAGS = $(RTS_DLIBS)
 # static linking
 # RTS_SLIBS = $(RTS_DIR)/$(RTS_LIB).a
 # LD_FLAGS = $(RTS_SLIBS)
-TIMING_COUNT := 10 
+TIMING_COUNT := 3 
 
 all: $(TESTS)
 

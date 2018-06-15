@@ -158,8 +158,7 @@ struct rts_options {
     int nproc;
     int deqdepth;
     int64_t stacksize;
-    int alloc_batch_size;
-    int max_num_fibers;
+    int fiber_pool_cap;
 };
 
 #define DEFAULT_OPTIONS \
@@ -167,8 +166,7 @@ struct rts_options {
     DEFAULT_NPROC,          /* num of workers to create */    \
     DEFAULT_DEQ_DEPTH,      /* num of entries in deque */     \
     DEFAULT_STACK_SIZE,     /* stack size to use for fiber */ \
-    DEFAULT_ALLOC_BATCH,    /* alloc_batch_size */            \
-    DEFAULT_MAX_NUM_FIBERS, /* alloc_batch_size */            \
+    DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */            \
 }
 
 // Actual declaration
