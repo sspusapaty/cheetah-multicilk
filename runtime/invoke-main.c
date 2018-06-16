@@ -45,7 +45,7 @@ Closure * create_invoke_main(global_state *const g) {
   t->frame = sf;
   sf->worker = (__cilkrts_worker *) NOBODY;
   t->fiber = fiber;
-  WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
+  // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
   
   __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main->fiber = %p.\n", fiber);
     
@@ -123,7 +123,7 @@ void invoke_main() {
   
   CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
   w->g->cilk_main_return = _tmp;
-  WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
+  // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
   CILK_WMB();
 		   
