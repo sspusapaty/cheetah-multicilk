@@ -13,6 +13,10 @@
 #define RAND_MAX 32767
 #endif
 
+#ifndef TIMING_COUNT
+#define TIMING_COUNT 1
+#endif
+
 #define REAL int
 static int BASE_CASE; //the base case of the computation (2*POWER)
 static int POWER; //the power of two the base case is based on
@@ -310,8 +314,10 @@ void mat_mul_par_rm(REAL *A, REAL *B, REAL *C, int n, int orig_n){
 }
 
 int main(int argc, char *argv[]) {
+
     int n = 2048; //default n value
     POWER = 5; //default k value
+
     if(argc == 3){   
 	    n = atoi(argv[1]);
         POWER = atoi(argv[2]);
@@ -327,26 +333,24 @@ int main(int argc, char *argv[]) {
     A = (REAL *) malloc(n * n * sizeof(REAL)); //source matrix 
     B = (REAL *) malloc(n * n * sizeof(REAL)); //source matrix
     C = (REAL *) malloc(n * n * sizeof(REAL)); //result matrix
-    
-    //I = (REAL *) malloc(n * n * sizeof(REAL)); //iter result matrix
    
     init(A, n);
     init(B, n);
-    zero(C, n);
-    //zero(I, n); 
     
-    clockmark_t begin_rm = ktiming_getmark(); 
-    mat_mul_par(A, B, C, n);
-    clockmark_t end_rm = ktiming_getmark();
+    uint64_t elapsed[TIMING_COUNT];
 
-    //print_matrix_rm(C, n, n);
-    //printf("\n");
+    for(int i=0; i < TIMING_COUNT; i++) {
+        zero(C, n);
+        clockmark_t begin = ktiming_getmark(); 
+        mat_mul_par(A, B, C, n);
+        clockmark_t end = ktiming_getmark();
+        elapsed[i] = ktiming_diff_usec(&begin, &end);
+    }
+    print_runtime(elapsed, TIMING_COUNT);
 
-    //clockmark_t begin_itr = ktiming_getmark();
+    //I = (REAL *) malloc(n * n * sizeof(REAL)); //iter result matrix
     //iter_matmul_rm(A, B, I, n);
-    //clockmark_t end_itr = ktiming_getmark();
     
-    printf("Elapsed time in seconds: %f\n", ktiming_diff_sec(&begin_rm, &end_rm));
     //printf("Max error = %g\n", maxerror_rm(C, I, n));
 
     //clean up memory

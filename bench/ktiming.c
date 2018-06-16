@@ -67,7 +67,7 @@ print_runtime_helper(uint64_t *usec_elapsed, int size, int summary) {
 
     int i; 
     uint64_t total = 0;
-    double ave, std_dev = 0, dev_sq_sum = 0;
+    double ave, std_dev = 0, dev_sq_sum = 0, diff = 0.0;
 
     for (i = 0; i < size; i++) {
         total += usec_elapsed[i];
@@ -79,8 +79,9 @@ print_runtime_helper(uint64_t *usec_elapsed, int size, int summary) {
     
     if( size > 1 ) {
         for (i = 0; i < size; i++) {
-            dev_sq_sum += ( (ave - (double)usec_elapsed[i]) * 
-                            (ave - (double)usec_elapsed[i]) );
+            diff = (double)usec_elapsed[i] - ave;
+            if(diff < 0.0) { diff = -diff; }
+            dev_sq_sum += diff * diff;
         }
         std_dev = dev_sq_sum / (size-1);
     }

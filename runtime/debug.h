@@ -2,11 +2,12 @@
 #define _DEBUG_H
 
 #include <stdarg.h>
+#include <stdarg.h>
+
+#include "rts-config.h"
 
 // forward declaration for using struct global_stat
 struct global_state;
-
-#define CILK_DEBUG 1
 
 #define CILK_CHECK(g, cond, complain) if(!cond) cilk_die_internal(g, complain)
 

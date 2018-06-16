@@ -53,7 +53,7 @@ static void print_help(void) {
 static void print_version(void) {
     int debug = 0, stats = 0;
     WHEN_CILK_DEBUG(debug = 1);
-    // WHEN_CILK_STATS(stats = 1); // ANGE FIXME: not implemented yet
+    WHEN_CILK_STATS(stats = 1);
     fprintf(stderr, "version %d.%d\n", __CILKRTS_VERSION, __CILKRTS_ABI_VERSION);
     fprintf(stderr, "compilation options: ");
     if(debug) fprintf(stderr, "CILK_DEBUG ");

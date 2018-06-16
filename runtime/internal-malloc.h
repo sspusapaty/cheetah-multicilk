@@ -6,10 +6,11 @@
 #include "cilk-internal.h"
 #include "debug.h"
 #include "mutex.h"
+#include "rts-config.h"
 
 #define NUM_BUCKETS 7
 
-#define INTERNAL_MALLOC_STATS 1
+#define INTERNAL_MALLOC_STATS CILK_STATS
 
 #if INTERNAL_MALLOC_STATS
 struct global_im_pool_stats {

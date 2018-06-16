@@ -36,8 +36,7 @@
 //=========================================================
 
 #if FIBER_STATS
-static void fiber_pool_stat_init(__cilkrts_worker *w, 
-                                 struct cilk_fiber_pool *pool) {
+static void fiber_pool_stat_init(struct cilk_fiber_pool *pool) {
     pool->stats.in_use = 0;
     pool->stats.max_in_use = 0;
     pool->stats.max_free = 0;
@@ -78,8 +77,8 @@ static void fiber_pool_stat_print(struct global_state *g) {
     fprintf(stderr, "\n");
 }
 #else 
-#define fiber_pool_stat_init(w, pool)
-#define fiber_pool_stat_print(w, pool)
+#define fiber_pool_stat_init(pool)
+#define fiber_pool_stat_print(g)
 #endif // FIBER_STATS
 
 //=========================================================
@@ -287,7 +286,7 @@ void cilk_fiber_pool_global_init(global_state *g) {
     struct cilk_fiber_pool *pool = &(g->fiber_pool);
     fiber_pool_init(pool, g->options.stacksize, bufsize, NULL, 1/*shared*/);
     CILK_ASSERT_G(NULL != pool->fibers);
-    fiber_pool_stat_init(NULL, pool);
+    fiber_pool_stat_init(pool);
     /* let's not preallocate for global fiber pool for now */
 }
  
@@ -320,7 +319,7 @@ void cilk_fiber_pool_per_worker_init(__cilkrts_worker *w) {
     CILK_ASSERT(w, w->g->fiber_pool.stack_size == pool->stack_size);
 
     fiber_pool_allocate_batch(w, pool, bufsize/BATCH_FRACTION);
-    fiber_pool_stat_init(w, pool);
+    fiber_pool_stat_init(pool);
 }
  
 /* This does not yet destroy the fiber pool; merely collects

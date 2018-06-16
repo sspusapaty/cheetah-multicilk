@@ -3,13 +3,14 @@
 
 #include "debug.h"
 #include "mutex.h"
+#include "rts-config.h"
 
 // Forward declaration
 typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 typedef struct global_state global_state;
 
-#define FIBER_STATS 1
+#define FIBER_STATS CILK_STATS
 
 #if FIBER_STATS
 #define WHEN_FIBER_STATS(ex) ex

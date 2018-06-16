@@ -14,6 +14,12 @@
 
 #define NOBODY -1
 
+#if CILK_STATS
+#define WHEN_CILK_STATS(ex) ex
+#else
+#define WHEN_CILK_STATS(ex)
+#endif
+
 // Forward declaration
 typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
