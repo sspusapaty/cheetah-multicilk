@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "fiber.h"
 #include "readydeque.h"
+#include "sched_stats.h"
 #include "scheduler.h"
 
 extern void cleanup_invoke_main(Closure *invoke_main);
@@ -30,7 +31,7 @@ static global_state * global_state_init(int argc, char* argv[]) {
         // use the number of cores online right now 
         g->options.nproc = linux_get_num_proc();
     }
-
+  
     int active_size = g->options.nproc;
     g->invoke_main_initialized = 0;
     g->start = 0;
@@ -42,6 +43,7 @@ static global_state * global_state_init(int argc, char* argv[]) {
     g->threads = (pthread_t *) malloc(active_size * sizeof(pthread_t));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
+    cilk_global_sched_stats_init(&(g->stats));
 
     g->cilk_main_argc = argc;
     g->cilk_main_args = argv;
@@ -49,13 +51,14 @@ static global_state * global_state_init(int argc, char* argv[]) {
     return g;
 }
 
-static local_state * worker_local_init(global_state *g) {
+static local_state *worker_local_init(global_state *g) {
     local_state * l = (local_state *) malloc(sizeof(local_state));
     l->shadow_stack = (__cilkrts_stack_frame **) 
         malloc(g->options.deqdepth * sizeof(struct __cilkrts_stack_frame *));
     for(int i=0; i < JMPBUF_SIZE; i++) { l->rts_ctx[i] = NULL; }
     l->fiber_to_free = NULL;
     l->provably_good_steal = 0;
+    cilk_sched_stats_init(&(l->stats));
 
     return l;
 }
@@ -103,8 +106,11 @@ static void* scheduler_thread_proc(void * arg) {
         idle++;
     }
 
-    if (w->self == 0) { worker_scheduler(w, w->g->invoke_main); } 
-    else { worker_scheduler(w, NULL); }
+    if(w->self == 0) {
+        worker_scheduler(w, w->g->invoke_main);
+    } else {
+        worker_scheduler(w, NULL);
+    }
 
     return 0;
 }
@@ -136,6 +142,7 @@ global_state * __cilkrts_init(int argc, char* argv[]) {
 static void global_state_terminate(global_state *g) {
     cilk_fiber_pool_global_terminate(g);
     cilk_internal_malloc_global_terminate(g);
+    cilk_sched_stats_print(g);
 }
 
 static void global_state_deinit(global_state *g) {
@@ -184,10 +191,12 @@ static void workers_deinit(global_state * g) {
 
 void __cilkrts_cleanup(global_state *g) {
     workers_terminate(g);
-    // Debatable; this can happen after workers_deinit or before:
-    // terminate prints out stats, but the fiber pools uses the
-    // internal-malloc, and fibers in fiber pools are not freed 
-    // until workers_deinit.  We put it here so that we get the stats on
+    // global_state_terminate collects and prints out stats, and thus
+    // should occur *BEFORE* worker_deinit, because worker_deinit  
+    // deinitializes worker-related data structures which may 
+    // include stats that we care about.
+    // Note: the fiber pools uses the internal-malloc, and fibers in fiber 
+    // pools are not freed until workers_deinit.  Thus the stats included on 
     // internal-malloc that does not include all the free fibers.  
     global_state_terminate(g); 
 

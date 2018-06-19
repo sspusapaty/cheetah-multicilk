@@ -83,8 +83,8 @@ static void setup_for_execution(__cilkrts_worker * w, Closure *t) {
     t->frame->worker = w;
     t->status = CLOSURE_RUNNING;
 
-    w->head = (__cilkrts_stack_frame **) w->l->shadow_stack+1;
-    w->tail = (__cilkrts_stack_frame **) w->l->shadow_stack+1;
+    w->head = (__cilkrts_stack_frame **) w->l->shadow_stack;
+    w->tail = (__cilkrts_stack_frame **) w->l->shadow_stack;
 
     /* push the first frame on the current_stack_frame */
     w->current_stack_frame = t->frame;	
@@ -702,14 +702,14 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
     //----- EVENT_STEAL_ATTEMPT
 
-    if( deque_trylock(w, victim) == 0 ) {
+    if(deque_trylock(w, victim) == 0) {
         return NULL; 
     }
 
     cl = deque_peek_top(w, victim);
 
-    if (cl) {
-        if( Closure_trylock(w, cl) == 0 ) {
+    if(cl) {
+        if(Closure_trylock(w, cl) == 0) {
             deque_unlock(w, victim);
             return NULL;
         }
@@ -724,7 +724,7 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
             case CLOSURE_RUNNING:
                 /* send the exception to the worker */
-                if (do_dekker_on(w, victim_w, cl)) {
+                if(do_dekker_on(w, victim_w, cl)) {
                     __cilkrts_alert(ALERT_STEAL, 
                             "[%d]: (Closure_steal) can steal from W%d; cl=%p\n", w->self, victim, cl);
                     fiber = cilk_fiber_allocate_from_pool(w);
@@ -768,9 +768,6 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
                     success = 1;
 
                 } else {
-                    //----- EVENT_STEAL_NO_DEKKER
-                    // __cilkrts_alert(ALERT_STEAL, "Worker %d: steal failed: dekker fail\n", w->self);
-
                     goto give_up;
                 }
                 break;
@@ -781,8 +778,7 @@ Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
             case CLOSURE_RETURNING:
                 /* ok, let it leave alone */
-                //----- EVENT_STEAL_RETURNING
-                // __cilkrts_alert(ALERT_STEAL, "Worker %d: steal failed: returning closure\n", w->self);
+                __cilkrts_alert(ALERT_STEAL, "Worker %d: steal failed: returning closure\n", w->self);
 
 give_up:
                 // MUST unlock the closure before the queue;
@@ -797,13 +793,6 @@ give_up:
     } else {
         deque_unlock(w, victim);
         //----- EVENT_STEAL_EMPTY_DEQUE
-    }
-
-    if (success) {
-        // __cilkrts_alert(ALERT_STEAL, "[%d]: (Closure_steal) stole from [%d]; res=%p\n", w->self, victim, res);
-        // Since our steal was successful, finish initialization of
-        // the fiber.
-        // cilk_fiber_reset_state(fiber, fiber_proc_to_resume_user_code_for_random_steal);
     }
 
     return res;
@@ -833,92 +822,30 @@ longjmp_to_user_code(__cilkrts_worker * w, Closure *t) {
                 && ((char *)SP(sf) < fiber->m_stack_base));
         w->l->provably_good_steal = 0; // unset
     } else { // this is stolen work; the fiber is a new fiber
+        // This is the first time we run the root frame, invoke_main
+        // init_fiber_run is going to setup the fiber for unning user code 
+        // and "longjmp" into invoke_main (at the very beginning of the 
+        // function) after user fiber is set up.
         if(t == w->g->invoke_main && w->g->invoke_main_initialized == 0) {
             w->g->invoke_main_initialized = 1; 
-            init_fiber_run(fiber, sf);
+            init_fiber_run(w, fiber, sf);
         } else {
             void *new_rsp = sysdep_reset_jump_buffers_for_resume(fiber, sf); 
             USE_UNUSED(new_rsp);
             CILK_ASSERT(w, SP(sf) == new_rsp);
         }
     }
+    CILK_STOP_TIMING(w, INTERVAL_SCHED);
+    CILK_START_TIMING(w, INTERVAL_WORK);
     sysdep_longjmp_to_sf(sf);
 }
 
 __attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker * w) {
-
     __cilkrts_alert(ALERT_SCHED | ALERT_FIBER, 
             "[%d]: (longjmp_to_runtime)\n", w->self);
 
-    // Current fiber is either the (1) one we are about to free,
-    // or (2) it has been passed up to the parent.
-    // struct cilk_fiber *current_fiber = __cilkrts_get_tls_cilk_fiber();
-
-    // Clear the sf in the current fiber for cleanliness, to prevent
-    // us from accidentally resuming a bad sf.
-    // Technically, resume_sf gets overwritten for a fiber when
-    // we are about to resume it anyway.
-    // current_fiber->resume_sf = NULL;
-    // CILK_ASSERT(w, current_fiber->owner == w);
-
-    if (w->l->fiber_to_free) {
-        __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) freeing fiber %p\n", 
-                w->self, w->l->fiber_to_free);
-        // Case 1: we are freeing this fiber.  We never
-        // resume this fiber again after jumping into the runtime.
-        // CILK_ASSERT(w, current_fiber == w->l->fiber_to_free);
-        // w->l->fiber_to_free = NULL;
-
-        // Extra check. Normally, the fiber we are about to switch to
-        // should have a NULL owner.
-        // CILK_ASSERT(w, NULL == w->l->runtime_fiber->owner);
-
-        /*
-           cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
-           w->l->runtime_fiber);
-        // We should never come back here!
-        CILK_ASSERT(w, 0);
-         */
-
-    } /* else {
-         __cilkrts_alert(ALERT_FIBER, "[%d]: (longjmp_to_runtime) passing fiber %p\n", 
-         w->self, current_fiber);
-    // Case 2: We are passing the fiber to our parent because we
-    // are leftmost.  We should come back later to
-    // resume execution of user code.
-    //
-    // If we are not freeing a fiber, there we must be
-    // returning from a spawn or processing an exception.  The
-    // "sync" path always frees a fiber.
-    // 
-    // We must be the leftmost child, and by left holder logic, we
-    // have already moved the current fiber into our parent full
-    // frame.
-
-    cilk_fiber_suspend_self_and_resume_other(current_fiber,
-    w->l->runtime_fiber);
-    // Resuming this fiber returns control back to
-    // this function because our implementation uses OS fibers.
-    //
-    // On Unix, we could have the choice of passing the
-    // user_code_resume_after_switch_into_runtime as an extra "resume_proc"
-    // that resumes execution of user code instead of the
-    // jumping back here, and then jumping back to user code.
-
-    user_code_resume_after_switch_into_runtime(current_fiber);
-    } */
-
-    // __builtin_longjmp(w->l->runtime_fiber->ctx, 1);
-
-    /* 
-       char * rsp = NULL;
-       ASM_GET_SP(rsp);
-       ASM_SET_SP(w->l->runtime_fiber->m_stack_base);
-       worker_scheduler(w);
-       ASM_SET_SP(rsp);
-     */
-    // __cilkrts_alert(3, "[%d]: (longjmp_to_runtime) exit\n", w->self);
-
+    CILK_STOP_TIMING(w, INTERVAL_WORK);
+    CILK_START_TIMING(w, INTERVAL_SCHED);
     __builtin_longjmp(w->l->rts_ctx, 1);
 }
 
@@ -961,7 +888,6 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     }
 
     if(Closure_has_children(t)) {
-        // MAK: FIBER-SYNC GUESS
         __cilkrts_alert(ALERT_SYNC, "[%d]: (Cilk_sync) outstanding children\n", w->self, frame);
 
         w->l->fiber_to_free = t->fiber;
@@ -980,6 +906,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
 
     return res;
 }
+
 static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
 
     Closure *res = NULL;
@@ -1050,31 +977,45 @@ static Closure * do_what_it_says(__cilkrts_worker * w, Closure *t) {
     return res;
 }
 
-void worker_scheduler(__cilkrts_worker * w, Closure * t) {
+void worker_scheduler(__cilkrts_worker *w, Closure *t) {
 
     CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
     rts_srand(w, w->self * 162347);
 
-    while (!w->g->done) {
-        if (!t) {
+    CILK_START_TIMING(w, INTERVAL_SCHED);
+    while(!w->g->done) {
+        if(!t) {
             // try to get work from our local queue
             deque_lock_self(w);
             t = deque_xtract_bottom(w, w->self);
             deque_unlock_self(w);
         }
+        CILK_STOP_TIMING(w, INTERVAL_SCHED);
 
-        while (!t && !w->g->done) {
+        while(!t && !w->g->done) {
+            CILK_START_TIMING(w, INTERVAL_SCHED);
+            CILK_START_TIMING(w, INTERVAL_IDLE);
             int victim = rts_rand(w) % w->g->options.nproc;
-            if( victim != w->self ) {
+            if(victim != w->self) {
                 t = Closure_steal(w, victim);
             }
+#if SCHED_STATS
+            if(t) { // steal successful
+                CILK_STOP_TIMING(w, INTERVAL_SCHED);
+                CILK_DROP_TIMING(w, INTERVAL_IDLE);
+            } else { // steal unsuccessful
+                CILK_STOP_TIMING(w, INTERVAL_IDLE);
+                CILK_DROP_TIMING(w, INTERVAL_SCHED);
+            }
+#endif
         }
-
+        CILK_START_TIMING(w, INTERVAL_SCHED);
         if (!w->g->done) {
             // if provably-good steal happens, do_what_it_says will return
             // the next closure to execute
             t = do_what_it_says(w, t);
         }
     }
+    CILK_STOP_TIMING(w, INTERVAL_SCHED);
 }
 

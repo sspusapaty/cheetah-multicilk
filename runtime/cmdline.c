@@ -67,7 +67,7 @@ static void print_version(void) {
 static struct options *parse_option(char *s) {
     struct options *p;
     for(p = optarray; p->string; ++p)
-        if (strncmp(s, p->string, strlen(p->string)+1) == 0)
+        if(strncmp(s, p->string, strlen(p->string)+1) == 0)
             break;
     return p;
 }

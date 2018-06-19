@@ -9,8 +9,9 @@
 #include "fiber.h"
 #include "internal-malloc.h"
 #include "jmpbuf.h"
-#include "rts-config.h"
 #include "mutex.h"
+#include "rts-config.h"
+#include "sched_stats.h"
 
 #define NOBODY -1
 
@@ -198,6 +199,8 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(64)));
     cilk_mutex im_lock;  // lock for accessing global im_desc
 
+    WHEN_SCHED_STATS(struct global_sched_stats stats);
+
     volatile int invoke_main_initialized;
     volatile int start;
     volatile int done;
@@ -221,7 +224,7 @@ struct local_state {
     struct cilk_fiber_pool fiber_pool;
     struct cilk_im_desc im_desc;
     struct cilk_fiber * fiber_to_free;
-    volatile unsigned int magic;
+    WHEN_SCHED_STATS(struct sched_stats stats);
 };
 
 /**

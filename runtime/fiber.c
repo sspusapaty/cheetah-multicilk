@@ -130,7 +130,9 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 }
 
 __attribute__((noreturn))
-void init_fiber_run(struct cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
+void init_fiber_run(__cilkrts_worker *w, 
+                    struct cilk_fiber * fiber,
+                    __cilkrts_stack_frame *sf) {
 
     // owner of fiber not set at the moment
     __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_run) starting fiber %p\n", fiber);
@@ -155,6 +157,9 @@ void init_fiber_run(struct cilk_fiber * fiber, __cilkrts_stack_frame *sf) {
         SP(sf) = fiber->m_stack_base - frame_size;
         __builtin_longjmp(sf->ctx, 1);
     } else {
+        // fiber is set up; now we longjmp into invoke_main; switch sched_stats
+        CILK_STOP_TIMING(w, INTERVAL_SCHED);
+        CILK_START_TIMING(w, INTERVAL_WORK);
         invoke_main();
     }
 
