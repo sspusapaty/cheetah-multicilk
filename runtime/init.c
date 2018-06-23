@@ -12,6 +12,8 @@
 extern void cleanup_invoke_main(Closure *invoke_main);
 extern int parse_command_line(struct rts_options *options, int *argc, char *argv[]);
 
+extern int cilkg_nproc;
+
 /* Linux only */
 static int linux_get_num_proc() {
     return get_nprocs();
@@ -31,7 +33,8 @@ static global_state * global_state_init(int argc, char* argv[]) {
         // use the number of cores online right now 
         g->options.nproc = linux_get_num_proc();
     }
-  
+    cilkg_nproc = g->options.nproc;
+
     int active_size = g->options.nproc;
     g->invoke_main_initialized = 0;
     g->start = 0;
