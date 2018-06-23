@@ -16,6 +16,9 @@ extern int cilkg_nproc;
 
 /* Linux only */
 static int linux_get_num_proc() {
+    const char *envstr = getenv("CILK_NWORKERS");
+    if (envstr)
+        return strtol(envstr, NULL, 0);
     return get_nprocs();
 }
 
