@@ -8,6 +8,8 @@
 #include "membar.h"
 #include "scheduler.h"
 
+int cilkg_nproc = 0;
+
 // ================================================================
 // This file comtains the compiler ABI, which corresponds to 
 // conceptually what the compiler generates to implement Cilk code.
@@ -135,4 +137,8 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame * sf) {
             CILK_ASSERT(w, w->current_stack_frame->flags & CILK_FRAME_VERSION);
         }
     }
+}
+
+int __cilkrts_get_nworkers(void) {
+  return cilkg_nproc;
 }

@@ -18,4 +18,5 @@ void __cilkrts_detach(__cilkrts_stack_frame * self);
 void __cilkrts_sync(__cilkrts_stack_frame *sf);
 void __cilkrts_pop_frame(__cilkrts_stack_frame * sf);
 void __cilkrts_leave_frame(__cilkrts_stack_frame * sf);
+int __cilkrts_get_nworkers(void);
 #endif
