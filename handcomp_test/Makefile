@@ -18,7 +18,7 @@ TIMING_COUNT := 1
 all: $(TESTS)
 
 $(TESTS): %: %.o ktiming.o getoptions.o
-	$(CC) $^ -o $@ $(RTS_LIBS) -lrt -lpthread
+	$(CC) $^ -o $@ $(RTS_LIBS) -lrt -lpthread -lm
 
 %.o: %.c
 	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<

@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
@@ -34,7 +37,24 @@ static global_state * global_state_init(int argc, char* argv[]) {
     
     if(g->options.nproc == 0) {
         // use the number of cores online right now 
-        g->options.nproc = linux_get_num_proc();
+        int available_cores = 0;
+        cpu_set_t process_mask;
+            //get the mask from the parent thread (master thread)
+        int err = pthread_getaffinity_np (pthread_self(), sizeof(process_mask), &process_mask);
+        if (0 == err)
+        {
+            int j;
+            //Get the number of available cores (copied from os-unix.c)
+            available_cores = 0;
+            for (j = 0; j < CPU_SETSIZE; j++){
+                if (CPU_ISSET(j, &process_mask)){
+                    available_cores++;
+                }
+            }
+        }
+        const char *envstr = getenv("CILK_NWORKERS");
+        g->options.nproc = (envstr ? linux_get_num_proc() : available_cores);
+
     }
     cilkg_nproc = g->options.nproc;
 
@@ -130,6 +150,48 @@ static void threads_init(global_state * g) {
                 g->workers[i]);
         if (status != 0) 
             __cilkrts_bug("Cilk: thread creation (%d) failed: %d\n", i, status);
+        //Affinity setting, from cilkplus-rts
+        cpu_set_t process_mask;
+        //Get the mask from the parent thread (master thread)
+        int err = pthread_getaffinity_np (pthread_self(), sizeof(process_mask), &process_mask);
+        if (0 == err)
+        {
+            int j;
+            //Get the number of available cores (copied from os-unix.c)
+            int available_cores = 0;
+            for (j = 0; j < CPU_SETSIZE; j++){
+               if (CPU_ISSET(j, &process_mask)){
+                   available_cores++;
+               }
+            }
+
+            //Bind the worker to a core according worker id
+            int workermaskid = i % available_cores;
+            for (j = 0; j < CPU_SETSIZE; j++)
+            {
+                if (CPU_ISSET(j, &process_mask))
+                {
+                    if (workermaskid == 0){
+                    // Bind the worker to the assigned cores
+                        cpu_set_t mask;
+                        CPU_ZERO(&mask);
+                        CPU_SET(j, &mask);
+                        int ret_val = pthread_setaffinity_np(g->threads[i], sizeof(mask), &mask);
+                        if (ret_val != 0)
+                        {
+                            __cilkrts_bug("ERROR: Could not set CPU affinity");
+                        }
+                        break;
+                    }
+                    else{
+                        workermaskid--;
+                    }
+                }
+            }
+        }
+        else{
+            __cilkrts_bug("Cannot get affinity mask by pthread_getaffinity_np");
+        }
     }
     usleep(10);
 }

@@ -5,7 +5,7 @@
 #define __CILKRTS_ABI_VERSION 0x1
 
 #define CILK_DEBUG 1
-#define CILK_STATS 1
+#define CILK_STATS 0
 
 #define CILK_CACHE_LINE 64
 #define CILK_CACHE_LINE_PAD  char __dummy[CILK_CACHE_LINE]
