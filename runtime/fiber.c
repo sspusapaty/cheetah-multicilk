@@ -1,9 +1,9 @@
-#include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 
-#include "fiber.h"
 #include "cilk-internal.h"
+#include "fiber.h"
 
 //===============================================================
 // This file maintains fiber-related function that requires
@@ -12,16 +12,16 @@
 // in this file.
 //===============================================================
 
-#define ROUND_TO_PAGE_SIZE(size) ((size+PAGE_SIZE) & ~(PAGE_SIZE-1))
+#define ROUND_TO_PAGE_SIZE(size) ((size + PAGE_SIZE) & ~(PAGE_SIZE - 1))
 extern __attribute__((noreturn)) void invoke_main();
 
 //===============================================================
 // Private helper functions
 //===============================================================
 
-static void make_stack(struct cilk_fiber * f, int stack_size) {
+static void make_stack(struct cilk_fiber *f, int stack_size) {
 
-    char* p;
+    char *p;
     // We've already validated that the stack size is page-aligned and
     // is a reasonable value.  No need to do any extra rounding here.
     size_t rounded_stack_size = stack_size;
@@ -34,10 +34,9 @@ static void make_stack(struct cilk_fiber * f, int stack_size) {
         rounded_stack_size = ROUND_TO_PAGE_SIZE(stack_size);
     }
 
-    p = (char*)mmap(0, rounded_stack_size,
-            PROT_READ|PROT_WRITE,
-            MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK|MAP_GROWSDOWN,
-            -1, 0);
+    p = (char *)mmap(0, rounded_stack_size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN,
+                     -1, 0);
     if (MAP_FAILED == p) {
         __cilkrts_bug("Cilk: stack mmap failed\n");
         // For whatever reason (probably ran out of memory), mmap() failed.
@@ -58,7 +57,7 @@ static void make_stack(struct cilk_fiber * f, int stack_size) {
     f->m_stack_base = p + rounded_stack_size - PAGE_SIZE;
 }
 
-static void free_stack(struct cilk_fiber * f) {
+static void free_stack(struct cilk_fiber *f) {
 
     if (f->m_stack) {
         size_t rounded_stack_size = f->m_stack_base - f->m_stack + PAGE_SIZE;
@@ -67,7 +66,7 @@ static void free_stack(struct cilk_fiber * f) {
     }
 }
 
-static void fiber_init(struct cilk_fiber * fiber) {
+static void fiber_init(struct cilk_fiber *fiber) {
     fiber->m_stack = NULL;
     fiber->m_stack_base = NULL;
     fiber->owner = NULL;
@@ -79,12 +78,14 @@ static void fiber_init(struct cilk_fiber * fiber) {
  *
  * Only valid for IA32 and Intel64 processors.
  */
-static void restore_x86_fp_state (__cilkrts_stack_frame *sf) {
+static void restore_x86_fp_state(__cilkrts_stack_frame *sf) {
     // Assume cpu supports sse
-    asm volatile ("ldmxcsr %0" : : "m" (sf->mxcsr));
-    asm volatile ("fnclex\n\t" "fldcw %0" : : "m" (sf->fpcsr));
+    asm volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
+    asm volatile("fnclex\n\t"
+                 "fldcw %0"
+                 :
+                 : "m"(sf->fpcsr));
 }
-
 
 //===============================================================
 // Supported public functions
@@ -92,21 +93,21 @@ static void restore_x86_fp_state (__cilkrts_stack_frame *sf) {
 
 void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
     // Assume cpu supports sse
-    asm volatile ("stmxcsr %0" : "=m" (sf->mxcsr));
-    asm volatile ("fnstcw %0" : "=m" (sf->fpcsr));
+    asm volatile("stmxcsr %0" : "=m"(sf->mxcsr));
+    asm volatile("fnstcw %0" : "=m"(sf->fpcsr));
 }
 
-char* sysdep_reset_jump_buffers_for_resume(struct cilk_fiber* fiber,
+char *sysdep_reset_jump_buffers_for_resume(struct cilk_fiber *fiber,
                                            __cilkrts_stack_frame *sf) {
     CILK_ASSERT_G(fiber);
-    char* new_stack_base = fiber->m_stack_base - 256;
+    char *new_stack_base = fiber->m_stack_base - 256;
 
     // Whatever correction we choose, align the final stack top.
     // This alignment seems to be necessary in particular on 32-bit
     // Linux, and possibly Mac. (Is 32-byte alignment is sufficient?)
-    const uintptr_t align_mask = ~(256 -1); // 256-byte alignment. 
-    new_stack_base = (char*)((size_t)new_stack_base & align_mask);
-    void* sp = (void*) new_stack_base;
+    const uintptr_t align_mask = ~(256 - 1); // 256-byte alignment.
+    new_stack_base = (char *)((size_t)new_stack_base & align_mask);
+    void *sp = (void *)new_stack_base;
     SP(sf) = sp;
 
     /* Debugging: make sure stack is accessible. */
@@ -115,8 +116,7 @@ char* sysdep_reset_jump_buffers_for_resume(struct cilk_fiber* fiber,
     return sp;
 }
 
-__attribute__((noreturn))
-void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
+__attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 
     __cilkrts_alert(ALERT_FIBER, "[%d]: longjmp to sf, BP/SP/PC: %p/%p/%p\n",
                     sf->worker->self, FP(sf), SP(sf), PC(sf));
@@ -129,19 +129,19 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     __builtin_longjmp(sf->ctx, 1);
 }
 
-__attribute__((noreturn))
-void init_fiber_run(__cilkrts_worker *w, 
-                    struct cilk_fiber * fiber,
-                    __cilkrts_stack_frame *sf) {
+__attribute__((noreturn)) void init_fiber_run(__cilkrts_worker *w,
+                                              struct cilk_fiber *fiber,
+                                              __cilkrts_stack_frame *sf) {
 
     // owner of fiber not set at the moment
-    __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_run) starting fiber %p\n", fiber);
+    __cilkrts_alert(ALERT_FIBER, "[?]: (cilk_fiber_run) starting fiber %p\n",
+                    fiber);
 
-    if( __builtin_setjmp(sf->ctx) == 0 ) {
+    if (__builtin_setjmp(sf->ctx) == 0) {
         size_t frame_size = (size_t)FP(sf) - (size_t)SP(sf);
-        // Macs require 16-byte alignment.  
-        if (frame_size & (16-1))
-            frame_size += 16 - (frame_size  & (16-1));
+        // Macs require 16-byte alignment.
+        if (frame_size & (16 - 1))
+            frame_size += 16 - (frame_size & (16 - 1));
 
         // Assert that we are getting a reasonable frame size out of
         // it.  If this run() function is using more than 4096 bytes
@@ -170,14 +170,14 @@ struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
     struct cilk_fiber *fiber = cilk_internal_malloc(w, sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate fiber %p [%p--%p]\n", 
-                    fiber, fiber->m_stack_base, fiber->m_stack);
+    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate fiber %p [%p--%p]\n", fiber,
+                    fiber->m_stack_base, fiber->m_stack);
     return fiber;
 }
 
-void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber * fiber) {
-    __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate fiber %p [%p--%p]\n", 
-                    fiber, fiber->m_stack_base, fiber->m_stack);
+void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber) {
+    __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate fiber %p [%p--%p]\n", fiber,
+                    fiber->m_stack_base, fiber->m_stack);
     free_stack(fiber);
     cilk_internal_free(w, fiber, sizeof(*fiber));
 }
@@ -186,13 +186,13 @@ struct cilk_fiber *cilk_main_fiber_allocate() {
     struct cilk_fiber *fiber = malloc(sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate main fiber %p [%p--%p]\n", 
+    __cilkrts_alert(ALERT_FIBER, "[?]: Allocate main fiber %p [%p--%p]\n",
                     fiber, fiber->m_stack_base, fiber->m_stack);
     return fiber;
 }
 
-void cilk_main_fiber_deallocate(struct cilk_fiber * fiber) {
-    __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate main fiber %p [%p--%p]\n", 
+void cilk_main_fiber_deallocate(struct cilk_fiber *fiber) {
+    __cilkrts_alert(ALERT_FIBER, "[?]: Deallocate main fiber %p [%p--%p]\n",
                     fiber, fiber->m_stack_base, fiber->m_stack);
     free_stack(fiber);
     free(fiber);

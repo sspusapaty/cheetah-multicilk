@@ -1,8 +1,8 @@
 #ifndef _CILK_INTERNAL_H
 #define _CILK_INTERNAL_H
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 
 // Includes
 #include "debug.h"
@@ -36,7 +36,7 @@ typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
  *
  * NOTE: if you are using the Tapir compiler, you should not change
  * these fields; ok to change for hand-compiled code.
- * See Tapir compiler ABI: 
+ * See Tapir compiler ABI:
  * https://github.com/wsmoses/Tapir-LLVM/blob/cilkr/lib/Transforms/Tapir/CilkRABI.cpp
  */
 struct __cilkrts_stack_frame {
@@ -47,20 +47,20 @@ struct __cilkrts_stack_frame {
     // call_parent points to the __cilkrts_stack_frame of the closest
     // ancestor spawning function, including spawn helpers, of this frame.
     // It forms a linked list ending at the first stolen frame.
-    __cilkrts_stack_frame *  call_parent;
+    __cilkrts_stack_frame *call_parent;
 
     // The client copies the worker from TLS here when initializing
     // the structure.  The runtime ensures that the field always points
     // to the __cilkrts_worker which currently "owns" the frame.
-    __cilkrts_worker * worker;
+    __cilkrts_worker *worker;
 
     // Before every spawn and nontrivial sync the client function
     // saves its continuation here.
     jmpbuf ctx;
 
     /**
-     * Architecture-specific floating point state.  
-     * mxcsr and fpcsr should be set when setjmp is called in client code.  
+     * Architecture-specific floating point state.
+     * mxcsr and fpcsr should be set when setjmp is called in client code.
      *
      * They are for linux / x86_64 platforms only.  Note that the Win64
      * jmpbuf for the Intel64 architecture already contains this information
@@ -73,7 +73,7 @@ struct __cilkrts_stack_frame {
      * reserved is not used at this time.  Client code should initialize it
      * to 0 before the first Cilk operation
      */
-    uint16_t reserved;      // ANGE: leave it to make it 8-byte aligned.
+    uint16_t reserved; // ANGE: leave it to make it 8-byte aligned.
     uint32_t magic;
 };
 
@@ -120,7 +120,7 @@ static inline void __cilkrts_set_stolen(__cilkrts_stack_frame *sf) {
 
 /* A frame is set to be unsynced only if it has parallel subcomputation
  * underneathe, i.e., only if it has spawned children executing on a different
- * worker 
+ * worker
  */
 static inline void __cilkrts_set_unsynced(__cilkrts_stack_frame *sf) {
     sf->flags |= CILK_FRAME_UNSYNCHED;
@@ -142,23 +142,22 @@ static inline int __cilkrts_stolen(__cilkrts_stack_frame *sf) {
 
 /* Returns nonzero if the frame is synched. */
 static inline int __cilkrts_synced(__cilkrts_stack_frame *sf) {
-    return( (sf->flags & CILK_FRAME_UNSYNCHED) == 0 );
+    return ((sf->flags & CILK_FRAME_UNSYNCHED) == 0);
 }
 
 /* Returns nonzero if the frame has never been stolen. */
 static inline int __cilkrts_not_stolen(__cilkrts_stack_frame *sf) {
-    return( (sf->flags & CILK_FRAME_STOLEN) == 0);
+    return ((sf->flags & CILK_FRAME_STOLEN) == 0);
 }
 
 //===============================================
-// Worker related definition 
+// Worker related definition
 //===============================================
 
 // Forward declaration
 typedef struct global_state global_state;
 typedef struct local_state local_state;
 typedef struct __cilkrts_stack_frame **CilkShadowStack;
-
 
 // Actual declaration
 struct rts_options {
@@ -168,13 +167,15 @@ struct rts_options {
     int fiber_pool_cap;
 };
 
-#define DEFAULT_OPTIONS \
-{                                                             \
-    DEFAULT_NPROC,          /* num of workers to create */    \
-    DEFAULT_DEQ_DEPTH,      /* num of entries in deque */     \
-    DEFAULT_STACK_SIZE,     /* stack size to use for fiber */ \
-    DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */            \
-}
+// clang-format off
+#define DEFAULT_OPTIONS                                            \
+    {                                                              \
+        DEFAULT_NPROC,          /* num of workers to create */     \
+        DEFAULT_DEQ_DEPTH,      /* num of entries in deque */      \
+        DEFAULT_STACK_SIZE,     /* stack size to use for fiber */  \
+        DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */             \
+    }
+// clang-format on
 
 // Actual declaration
 struct global_state {
@@ -191,20 +192,20 @@ struct global_state {
     /* dynamically-allocated array of deques, one per processor */
     struct ReadyDeque *deques;
     struct __cilkrts_worker **workers;
-    pthread_t * threads;
+    pthread_t *threads;
     struct Closure *invoke_main;
 
     struct cilk_fiber_pool fiber_pool __attribute__((aligned(64)));
     struct global_im_pool im_pool __attribute__((aligned(64)));
     struct cilk_im_desc im_desc __attribute__((aligned(64)));
-    cilk_mutex im_lock;  // lock for accessing global im_desc
+    cilk_mutex im_lock; // lock for accessing global im_desc
 
     WHEN_SCHED_STATS(struct global_sched_stats stats);
 
     volatile int invoke_main_initialized;
     volatile int start;
     volatile int done;
-    cilk_mutex print_lock; // global lock for printing messages 
+    cilk_mutex print_lock; // global lock for printing messages
 
     int cilk_main_argc;
     char **cilk_main_args;
@@ -223,36 +224,36 @@ struct local_state {
     jmpbuf rts_ctx;
     struct cilk_fiber_pool fiber_pool;
     struct cilk_im_desc im_desc;
-    struct cilk_fiber * fiber_to_free;
+    struct cilk_fiber *fiber_to_free;
     WHEN_SCHED_STATS(struct sched_stats stats);
 };
 
 /**
  * NOTE: if you are using the Tapir compiler, you should not change
  * these fields; ok to change for hand-compiled code.
- * See Tapir compiler ABI: 
+ * See Tapir compiler ABI:
  * https://github.com/wsmoses/Tapir-LLVM/blob/cilkr/lib/Transforms/Tapir/CilkRABI.cpp
  **/
 struct __cilkrts_worker {
     // T and H pointers in the THE protocol
-    __cilkrts_stack_frame * volatile * volatile tail;
-    __cilkrts_stack_frame * volatile * volatile head;
-    __cilkrts_stack_frame * volatile * volatile exc;
+    __cilkrts_stack_frame *volatile *volatile tail;
+    __cilkrts_stack_frame *volatile *volatile head;
+    __cilkrts_stack_frame *volatile *volatile exc;
 
     // Limit of the Lazy Task Queue, to detect queue overflow
-    __cilkrts_stack_frame * volatile *ltq_limit;
+    __cilkrts_stack_frame *volatile *ltq_limit;
 
     // Worker id.
     int32_t self;
 
     // Global state of the runtime system, opaque to the client.
-    global_state * g;
+    global_state *g;
 
     // Additional per-worker state hidden from the client.
-    local_state * l;
+    local_state *l;
 
     // A slot that points to the currently executing Cilk frame.
-    __cilkrts_stack_frame * current_stack_frame;
+    __cilkrts_stack_frame *current_stack_frame;
 };
 
 #endif // _CILK_INTERNAL_H

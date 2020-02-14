@@ -1,8 +1,8 @@
 #ifndef __SCHED_STATS_HEADER__
 #define __SCHED_STATS_HEADER__
 
-#include <stdint.h> 
 #include "rts-config.h"
+#include <stdint.h>
 
 typedef struct __cilkrts_worker __cilkrts_worker;
 
@@ -10,10 +10,10 @@ typedef struct __cilkrts_worker __cilkrts_worker;
 
 #if SCHED_STATS
 enum timing_type {
-    INTERVAL_WORK = 0, // work time 
+    INTERVAL_WORK = 0, // work time
     INTERVAL_SCHED,    // scheduling time
     INTERVAL_IDLE,     // idle time
-    NUMBER_OF_STATS // must be the very last entry
+    NUMBER_OF_STATS    // must be the very last entry
 };
 
 struct sched_stats {
@@ -23,7 +23,7 @@ struct sched_stats {
 };
 
 struct global_sched_stats {
-    double time[NUMBER_OF_STATS];  // Total time measured for all stats
+    double time[NUMBER_OF_STATS]; // Total time measured for all stats
 };
 
 void cilk_global_sched_stats_init(struct global_sched_stats *s);
@@ -34,7 +34,7 @@ void cilk_drop_timing(__cilkrts_worker *w, enum timing_type t);
 void cilk_sched_stats_print(struct global_state *g);
 // void cilk_reset_timing(__cilkrts_worker *w, enum timing_type t);
 // FIXME: should have a header file that's user-code interfacing
-// void __cilkrts_reset_timing(); // user-code facing 
+// void __cilkrts_reset_timing(); // user-code facing
 
 #define WHEN_SCHED_STATS(ex) ex
 #define CILK_START_TIMING(w, t) cilk_start_timing(w, t)

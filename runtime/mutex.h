@@ -11,13 +11,13 @@ typedef union cilk_mutex cilk_mutex;
 
 #if USE_SPINLOCK
 union cilk_mutex {
-     volatile int memory;
-     pthread_spinlock_t posix;
+    volatile int memory;
+    pthread_spinlock_t posix;
 };
 #else
 union cilk_mutex {
-     volatile int memory;
-     pthread_mutex_t posix;
+    volatile int memory;
+    pthread_mutex_t posix;
 };
 #endif
 

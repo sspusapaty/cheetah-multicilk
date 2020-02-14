@@ -6,7 +6,14 @@
 #include "cilk-internal.h"
 
 enum {
-    NONE, NPROC, DEQ_DEPTH, STACK_SIZE, FIBER_POOL_CAP, VERSION, HELP, END_OPTIONS
+    NONE,
+    NPROC,
+    DEQ_DEPTH,
+    STACK_SIZE,
+    FIBER_POOL_CAP,
+    VERSION,
+    HELP,
+    END_OPTIONS
 };
 
 static struct options {
@@ -14,32 +21,15 @@ static struct options {
     int option;
     char *help;
 } optarray[] = {
-    {
-        "", END_OPTIONS, "-- : end of option parsing"
-    },
-    {
-        "nproc", NPROC, "--nproc <n> : set number of processors"
-    },
-    {
-        "deqdepth", DEQ_DEPTH, "--deqdepth <n> : set number of entries per deque"
-    },
-    {
-        "stacksize", STACK_SIZE, "--stacksize <n> : set the size of a fiber"
-    },
-    {
-        "per-worker fiber pool capacity", FIBER_POOL_CAP,
-        "--fiber-pool <n> : set the per-worker fiber pool capacity"
-    },
-    {
-        "version", VERSION, "--v: print version of the runtime"
-    },
-    {
-        "help", HELP, "--help : print this message"
-    },
-    {
-        (char *) 0, NONE, ""
-    }
-};
+    {"", END_OPTIONS, "-- : end of option parsing"},
+    {"nproc", NPROC, "--nproc <n> : set number of processors"},
+    {"deqdepth", DEQ_DEPTH, "--deqdepth <n> : set number of entries per deque"},
+    {"stacksize", STACK_SIZE, "--stacksize <n> : set the size of a fiber"},
+    {"per-worker fiber pool capacity", FIBER_POOL_CAP,
+     "--fiber-pool <n> : set the per-worker fiber pool capacity"},
+    {"version", VERSION, "--v: print version of the runtime"},
+    {"help", HELP, "--help : print this message"},
+    {(char *)0, NONE, ""}};
 
 static void print_help(void) {
     struct options *p;
@@ -54,11 +44,14 @@ static void print_version(void) {
     int debug = 0, stats = 0;
     WHEN_CILK_DEBUG(debug = 1);
     WHEN_CILK_STATS(stats = 1);
-    fprintf(stderr, "version %d.%d\n", __CILKRTS_VERSION, __CILKRTS_ABI_VERSION);
+    fprintf(stderr, "version %d.%d\n", __CILKRTS_VERSION,
+            __CILKRTS_ABI_VERSION);
     fprintf(stderr, "compilation options: ");
-    if(debug) fprintf(stderr, "CILK_DEBUG ");
-    if(stats) fprintf(stderr, "CILK_STATS ");
-    if(!(debug | stats))
+    if (debug)
+        fprintf(stderr, "CILK_DEBUG ");
+    if (stats)
+        fprintf(stderr, "CILK_STATS ");
+    if (!(debug | stats))
         fprintf(stderr, "none");
     fprintf(stderr, "\n");
 }
@@ -66,17 +59,18 @@ static void print_version(void) {
 /* look for a given string in the option table */
 static struct options *parse_option(char *s) {
     struct options *p;
-    for(p = optarray; p->string; ++p)
-        if(strncmp(s, p->string, strlen(p->string)+1) == 0)
+    for (p = optarray; p->string; ++p)
+        if (strncmp(s, p->string, strlen(p->string) + 1) == 0)
             break;
     return p;
 }
 
-#define CHECK(cond, complaint) \
-if (!(cond)) { \
-  fprintf(stderr, "Bad option argument for -%s: %s\n", \
-          p->string, complaint); return 1; \
-}
+#define CHECK(cond, complaint)                                                 \
+    if (!(cond)) {                                                             \
+        fprintf(stderr, "Bad option argument for -%s: %s\n", p->string,        \
+                complaint);                                                    \
+        return 1;                                                              \
+    }
 
 int parse_command_line(struct rts_options *options, int *argc, char *argv[]) {
     struct options *p;
@@ -94,49 +88,49 @@ int parse_command_line(struct rts_options *options, int *argc, char *argv[]) {
             p = parse_option(argv[i] + 2);
 
             switch (p->option) {
-                case NPROC:
-                    ++i;
-                    CHECK(i < *argc, "argument missing");
-                    options->nproc = atoi(argv[i]);
-                    break;
+            case NPROC:
+                ++i;
+                CHECK(i < *argc, "argument missing");
+                options->nproc = atoi(argv[i]);
+                break;
 
-                case DEQ_DEPTH:
-                    ++i;
-                    CHECK(i < *argc, "argument missing");
-                    options->deqdepth= atoi(argv[i]);
-                    CHECK(options->deqdepth > 0, "non-positive deque depth");
-                    break;
+            case DEQ_DEPTH:
+                ++i;
+                CHECK(i < *argc, "argument missing");
+                options->deqdepth = atoi(argv[i]);
+                CHECK(options->deqdepth > 0, "non-positive deque depth");
+                break;
 
-                case STACK_SIZE:
-                    ++i;
-                    CHECK(i < *argc, "argument missing");
-                    options->stacksize = atol(argv[i]);
-                    CHECK(options->stacksize > 0, "non-positive stack size");
-                    break;
+            case STACK_SIZE:
+                ++i;
+                CHECK(i < *argc, "argument missing");
+                options->stacksize = atol(argv[i]);
+                CHECK(options->stacksize > 0, "non-positive stack size");
+                break;
 
-                case VERSION:
-                    print_version();
-                    return 1;
-                    break;
+            case VERSION:
+                print_version();
+                return 1;
+                break;
 
-                case HELP:
-                    print_help();
-                    return 1;
-                    break;
+            case HELP:
+                print_help();
+                return 1;
+                break;
 
-                case FIBER_POOL_CAP:
-                    ++i;
-                    CHECK(i < *argc, "argument missing");
-                    options->fiber_pool_cap = atoi(argv[i]);
-                    if(options->fiber_pool_cap < 8) // keep minimum at 8
-                        options->fiber_pool_cap = 8;
-                    break;
+            case FIBER_POOL_CAP:
+                ++i;
+                CHECK(i < *argc, "argument missing");
+                options->fiber_pool_cap = atoi(argv[i]);
+                if (options->fiber_pool_cap < 8) // keep minimum at 8
+                    options->fiber_pool_cap = 8;
+                break;
 
-                default:
-                    fprintf(stderr, "Unrecognized options.\n");
-                    print_help();
-                    return 1;
-                    break;
+            default:
+                fprintf(stderr, "Unrecognized options.\n");
+                print_help();
+                return 1;
+                break;
             }
         } else {
             assert(j <= i);

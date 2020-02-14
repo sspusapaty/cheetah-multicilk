@@ -1,13 +1,13 @@
 #ifndef _JMPBUF_H
 #define _JMPBUF_H
 
-#include <stddef.h>
 #include <setjmp.h>
+#include <stddef.h>
 
 #include "debug.h"
- 
+
 #define JMPBUF_SIZE 5
-typedef void * jmpbuf[JMPBUF_SIZE];
+typedef void *jmpbuf[JMPBUF_SIZE];
 
 #define JMPBUF_FP(ctx) (ctx)[0] // frame addr, i.e., %rbp
 #define JMPBUF_PC(ctx) (ctx)[1] // PC counter, i.e., %rip
@@ -27,15 +27,21 @@ typedef void * jmpbuf[JMPBUF_SIZE];
  * @brief Get stack pointer from jump buffer in__cilkrts_stack_frame.
  */
 #define SP(SF) JMPBUF_SP((SF)->ctx)
-//typedef void *__CILK_JUMP_BUFFER[8];
+// typedef void *__CILK_JUMP_BUFFER[8];
 
-#define ASM_GET_SP(osp) asm volatile ("movq %%rsp, %0": "=r" (osp))
-#define ASM_SET_SP(nsp) asm volatile ("movq %0, %%rsp": : "r" (nsp) : "rsp")
+#define ASM_GET_SP(osp) asm volatile("movq %%rsp, %0" : "=r"(osp))
+#define ASM_SET_SP(nsp) asm volatile("movq %0, %%rsp" : : "r"(nsp) : "rsp")
 
-#define ASM_GET_FP(ofp) asm volatile ("movq %%rbp, %0": "=r" (ofp))
-#define ASM_SET_FP(nfp) asm volatile ("movq %0, %%rbp": : "r" (nfp) : "rbp")
+#define ASM_GET_FP(ofp) asm volatile("movq %%rbp, %0" : "=r"(ofp))
+#define ASM_SET_FP(nfp) asm volatile("movq %0, %%rbp" : : "r"(nfp) : "rbp")
 
-
-#define DUMP_STACK(lvl, wid) {char * x_bp; char * x_sp; ASM_GET_FP(x_bp); ASM_GET_SP(x_sp);  __cilkrts_alert((lvl), "[%d]: rbp: %p\n[%d]: rsp: %p\n", (wid), x_bp, (wid), x_sp);}
+#define DUMP_STACK(lvl, wid)                                                   \
+    {                                                                          \
+        char *x_bp;                                                            \
+        char *x_sp;                                                            \
+        ASM_GET_FP(x_bp);                                                      \
+        ASM_GET_SP(x_sp);                                                      \
+        __cilkrts_alert((lvl), "[%d]: rbp: %p\n[%d]: rsp: %p\n", (wid), x_bp,  \
+                        (wid), x_sp);                                          \
+    }
 #endif
-
