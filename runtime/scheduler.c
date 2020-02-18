@@ -53,7 +53,6 @@ static void decrement_exception_pointer(__cilkrts_worker *const w,
 }
 
 static void reset_exception_pointer(__cilkrts_worker *const w, Closure *cl) {
-
     Closure_assert_ownership(w, cl);
     CILK_ASSERT(w, (cl->frame == NULL) || (cl->frame->worker == w) ||
                        (cl == w->g->invoke_main &&
@@ -63,7 +62,6 @@ static void reset_exception_pointer(__cilkrts_worker *const w, Closure *cl) {
 
 /* Unused for now but may be helpful later
 static void signal_immediate_exception_to_all(__cilkrts_worker *const w) {
-
     int i, active_size = w->g->options.nproc;
     __cilkrts_worker *curr_w;
 
@@ -77,7 +75,6 @@ static void signal_immediate_exception_to_all(__cilkrts_worker *const w) {
 */
 
 static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
-
     __cilkrts_alert(ALERT_SCHED, "[%d]: (setup_for_execution) closure %p\n",
                     w->self, t);
     t->frame->worker = w;
@@ -95,7 +92,6 @@ static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
 // not on the right fiber), or b) a worker just performed a provably good steal
 // successfully
 static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
-
     Closure_assert_ownership(w, t);
     // ANGE: this must be true since in case a) we would have freed it in
     // Cilk_sync, or in case b) we would have freed it when we first returned to
@@ -115,7 +111,6 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
     //         "[%d]: (setup_for_sync) set t %p and t->fiber %p\n", w->self, t,
     //         t->fiber);
     __cilkrts_set_synced(t->frame);
-
     CILK_ASSERT(w, w->current_stack_frame == t->frame);
 
     SP(t->frame) = (void *)t->orig_rsp;
@@ -135,9 +130,7 @@ void __cilkrts_init_tls_variables() {
 }
 
 void *__cilkrts_get_current_thread_id() { return (void *)pthread_self(); }
-
 __cilkrts_worker *__cilkrts_get_tls_worker() { return tls_worker; }
-
 void __cilkrts_set_tls_worker(__cilkrts_worker *w) { tls_worker = w; }
 
 // ==============================================
