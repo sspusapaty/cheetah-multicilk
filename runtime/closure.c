@@ -84,8 +84,7 @@ int Closure_at_top_of_stack(__cilkrts_worker *const w) {
 
 int Closure_has_children(Closure *cl) {
 
-    return (cl->has_cilk_callee ||
-            atomic_load_explicit(&cl->join_counter, memory_order_relaxed) != 0);
+    return (cl->has_cilk_callee || cl->join_counter != 0);
 }
 
 static inline void Closure_init(Closure *t) {
@@ -96,12 +95,12 @@ static inline void Closure_init(Closure *t) {
     t->status = CLOSURE_PRE_INVALID;
     t->lock_wait = 0;
     t->has_cilk_callee = 0;
+    t->join_counter = 0;
 
     t->frame = NULL;
     t->fiber = NULL;
     t->fiber_child = NULL;
 
-    atomic_store_explicit(&t->join_counter, 0, memory_order_relaxed);
     t->orig_rsp = NULL;
 
     t->callee = NULL;

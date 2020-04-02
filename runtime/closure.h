@@ -54,9 +54,7 @@ struct Closure {
     enum ClosureStatus status : 16; /* doubles as magic number */
     _Bool lock_wait;
     _Bool has_cilk_callee;
-    /* JFC: Does this need to be atomic?  Originally the increment
-       had a lock but no fences and the decrement had two fences. */
-    atomic_int join_counter; /* number of outstanding spawned children */
+    unsigned int join_counter; /* number of outstanding spawned children */
 
     char *orig_rsp; /* the rsp one should use when sync successfully */
 

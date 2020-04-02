@@ -411,13 +411,9 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
     CILK_ASSERT(w, parent->status != CLOSURE_RETURNING);
     CILK_ASSERT(w, parent->frame != NULL);
     // CILK_ASSERT(w, parent->frame->magic == CILK_STACKFRAME_MAGIC);
+    CILK_ASSERT(w, parent->join_counter);
 
-    /* JFC: Does this need to be atomic?  parent is locked.
-       The original code had two fences with a comment:
-         the two fences ensure dag consistency (Backer) */
-    int old_count = atomic_fetch_sub_explicit(&parent->join_counter, 1,
-                                              memory_order_seq_cst);
-    CILK_ASSERT(w, old_count > 0);
+    --parent->join_counter;
 
     res = provably_good_steal_maybe(w, parent);
 
@@ -753,10 +749,7 @@ static Closure *promote_child(__cilkrts_worker *const w,
      ***/
     Closure_add_child(w, spawn_parent, spawn_child);
 
-    /* join counter update */
-    /* JFC: Does this need to be atomic? */
-    atomic_fetch_add_explicit(&spawn_parent->join_counter, 1,
-                              memory_order_relaxed);
+    ++spawn_parent->join_counter;
 
     atomic_store_explicit(&victim_w->head, head + 1, memory_order_release);
 

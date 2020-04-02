@@ -38,7 +38,7 @@ void cilkred_map_log_id(__cilkrts_worker *const w, cilkred_map *this_map,
     CILK_ASSERT(w, this_map->num_of_vinfo <= this_map->spa_cap);
 
     if (this_map->num_of_vinfo == this_map->spa_cap) {
-        __cilkrts_bug("SPA resize not supported yet!\n");
+        cilkrts_bug(w, "SPA resize not supported yet!");
     }
 
     if (this_map->num_of_logs < (this_map->spa_cap / 2)) {
@@ -83,9 +83,8 @@ ViewInfo *cilkred_map_lookup(cilkred_map *this_map,
  */
 cilkred_map *cilkred_map_make_map(__cilkrts_worker *w) {
     CILK_ASSERT_G(w);
-    __cilkrts_alert(ALERT_REDUCE,
-                    "[%d]: (cilkred_map_make_map) creating a cilkred_map\n",
-                    w->self);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(cilkred_map_make_map) creating a cilkred_map");
 
     cilkred_map *h;
 
@@ -99,9 +98,8 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w) {
     h->log = (uint16_t *)malloc((h->spa_cap / 2) * sizeof(uint16_t));
     h->merging = false;
 
-    __cilkrts_alert(ALERT_REDUCE,
-                    "[%d]: (cilkred_map_make_map) created cilkred_map %p\n",
-                    w->self, h);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(cilkred_map_make_map) created cilkred_map %p", h);
 
     return h;
 }
@@ -114,23 +112,21 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w) {
  * @param h The cilkred_map to be deallocated.
  */
 void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h) {
-    __cilkrts_alert(ALERT_REDUCE,
-                    "[%d]: (cilkred_map_destroy_map) freeing cilkred_map %p\n",
-                    w->self, h);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(cilkred_map_destroy_map) freeing cilkred_map %p", h);
     free(h->vinfo);
     free(h->log);
     free(h);
 
-    __cilkrts_alert(ALERT_REDUCE,
-                    "[%d]: (cilkred_map_destroy_map) freed cilkred_map %p\n",
-                    w->self, h);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(cilkred_map_destroy_map) freed cilkred_map %p\n", h);
 }
 
 __cilkrts_worker *cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
                                     cilkred_map *other_map, merge_kind kind) {
-    __cilkrts_alert(ALERT_REDUCE,
-                    "[%d]: (cilkred_map_merge) merging %p into %p, order %d\n",
-                    w->self, other_map, this_map, kind);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(cilkred_map_merge) merging %p into %p, order %d", other_map,
+                  this_map, kind);
     // Remember the current stack frame.
     // __cilkrts_stack_frame *current_sf = w->current_stack_frame;
     this_map->merging = true;
