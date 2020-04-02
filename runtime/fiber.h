@@ -5,6 +5,8 @@
 #include "mutex.h"
 #include "rts-config.h"
 
+#include <stdint.h>
+
 // Forward declaration
 typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
@@ -30,8 +32,7 @@ struct fiber_pool_stats {
 };
 
 struct cilk_fiber_pool {
-    cilk_mutex *lock; // Mutual exclusion for pool operations
-    WHEN_CILK_DEBUG(int mutex_owner;)
+    cilk_mutex *lock;               // Mutual exclusion for pool operations
     int64_t stack_size;             // Size of stacks for fibers in this pool.
     struct cilk_fiber_pool *parent; // Parent pool.
                                     // If this pool is empty, get from parent
@@ -39,12 +40,13 @@ struct cilk_fiber_pool {
     struct cilk_fiber **fibers; // Array of max_size fiber pointers
     int capacity;               // Limit on number of fibers in pool
     int size;                   // Number of fibers currently in the pool
+    unsigned short mutex_owner;
     WHEN_FIBER_STATS(struct fiber_pool_stats stats);
 };
 
 struct cilk_fiber {
-    char *m_stack;      // stack low addr, including the mprotected page
-    char *m_stack_base; // the usable portion where it can start grow downward
+    char *m_stack;           // lowest usable byte of stack
+    char *m_stack_base;      // one byte above highest usable byte of stack
     __cilkrts_worker *owner; // worker using this fiber
 };
 
@@ -57,29 +59,39 @@ static inline void cilk_fiber_set_owner(struct cilk_fiber *fiber,
     fiber->owner = owner;
 }
 
+CHEETAH_INTERNAL
 void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf);
-char *sysdep_reset_jump_buffers_for_resume(struct cilk_fiber *fiber,
-                                           __cilkrts_stack_frame *sf);
-__attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf);
-__attribute__((noreturn)) void init_fiber_run(__cilkrts_worker *w,
-                                              struct cilk_fiber *fiber,
-                                              __cilkrts_stack_frame *sf);
+CHEETAH_INTERNAL
+char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
+                                    __cilkrts_stack_frame *sf);
+CHEETAH_INTERNAL_NORETURN
+void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf);
+CHEETAH_INTERNAL_NORETURN
+void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
+                    __cilkrts_stack_frame *sf);
 
-void cilk_fiber_pool_global_init(global_state *g);
-void cilk_fiber_pool_global_terminate(global_state *g);
-void cilk_fiber_pool_global_destroy(global_state *g);
-void cilk_fiber_pool_per_worker_init(__cilkrts_worker *w);
-void cilk_fiber_pool_per_worker_terminate(__cilkrts_worker *w);
-void cilk_fiber_pool_per_worker_destroy(__cilkrts_worker *w);
+CHEETAH_INTERNAL void cilk_fiber_pool_global_init(global_state *g);
+CHEETAH_INTERNAL void cilk_fiber_pool_global_terminate(global_state *g);
+CHEETAH_INTERNAL void cilk_fiber_pool_global_destroy(global_state *g);
+CHEETAH_INTERNAL void cilk_fiber_pool_per_worker_init(__cilkrts_worker *w);
+CHEETAH_INTERNAL void cilk_fiber_pool_per_worker_terminate(__cilkrts_worker *w);
+CHEETAH_INTERNAL void cilk_fiber_pool_per_worker_destroy(__cilkrts_worker *w);
 
 // allocate / deallocate one fiber from / back to OS
+CHEETAH_INTERNAL
 struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w);
+CHEETAH_INTERNAL
 void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber);
 // allocate / deallocate fiber from / back to OS for the invoke-main
+CHEETAH_INTERNAL
 struct cilk_fiber *cilk_main_fiber_allocate();
+CHEETAH_INTERNAL
 void cilk_main_fiber_deallocate(struct cilk_fiber *fiber);
 // allocate / deallocate one fiber from / back to per-worker pool
+CHEETAH_INTERNAL
 struct cilk_fiber *cilk_fiber_allocate_from_pool(__cilkrts_worker *w);
+CHEETAH_INTERNAL
 void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
                                    struct cilk_fiber *fiber);
+
 #endif

@@ -8,6 +8,8 @@
 #include "mutex.h"
 #include "rts-config.h"
 
+CHEETAH_INTERNAL extern int cheetah_page_shift;
+
 #define NUM_BUCKETS 7
 
 #define INTERNAL_MALLOC_STATS CILK_STATS
@@ -54,13 +56,21 @@ struct cilk_im_desc {
     WHEN_CILK_DEBUG(int num_malloc);
 };
 
-// public functions
-void cilk_internal_malloc_global_init(struct global_state *g);
-void cilk_internal_malloc_global_terminate(struct global_state *g);
-void cilk_internal_malloc_global_destroy(struct global_state *g);
-void cilk_internal_malloc_per_worker_init(__cilkrts_worker *w);
-void cilk_internal_malloc_per_worker_destroy(__cilkrts_worker *w);
-void cilk_internal_malloc_per_worker_terminate(__cilkrts_worker *w);
-void *cilk_internal_malloc(__cilkrts_worker *w, int size);
-void cilk_internal_free(__cilkrts_worker *w, void *p, int size);
+// public functions (external to source file, internal to library)
+CHEETAH_INTERNAL void cilk_internal_malloc_global_init(struct global_state *g);
+CHEETAH_INTERNAL void
+cilk_internal_malloc_global_terminate(struct global_state *g);
+CHEETAH_INTERNAL void
+cilk_internal_malloc_global_destroy(struct global_state *g);
+CHEETAH_INTERNAL void cilk_internal_malloc_per_worker_init(__cilkrts_worker *w);
+CHEETAH_INTERNAL void
+cilk_internal_malloc_per_worker_destroy(__cilkrts_worker *w);
+CHEETAH_INTERNAL void
+cilk_internal_malloc_per_worker_terminate(__cilkrts_worker *w);
+__attribute__((alloc_size(2), assume_aligned(32), malloc))
+CHEETAH_INTERNAL void *
+cilk_internal_malloc(__cilkrts_worker *w, int size);
+CHEETAH_INTERNAL void cilk_internal_free(__cilkrts_worker *w, void *p,
+                                         int size);
+
 #endif // _INTERAL_MALLOC_H

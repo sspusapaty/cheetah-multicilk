@@ -7,6 +7,12 @@
 // mainly used by invoke-main.c
 extern unsigned long ZERO;
 
+/* Rename a mandatory symbol to prevent accidentally linking the
+   wrong library version. */
+#ifdef OPENCILK_ABI
+#define __cilkrts_leave_frame(SF) __opencilk_leave_frame(SF)
+#endif
+
 // These functions are mostly inlined by the compiler, except for
 // __cilkrts_leave_frame.  However, their implementations are also
 // provided in cilk2c.c.  The implementations in cilk2c.c are used

@@ -1,41 +1,65 @@
 #include "closure.h"
 #include "cilk-internal.h"
 #include "cilk2c.h"
+#include "internal-malloc.h"
 #include "readydeque.h"
 
-#if CILK_DEBUG
+#undef Closure_assert_ownership
 void Closure_assert_ownership(__cilkrts_worker *const w, Closure *t) {
     CILK_ASSERT(w, t->mutex_owner == w->self);
 }
 
+#undef Closure_assert_alienation
 void Closure_assert_alienation(__cilkrts_worker *const w, Closure *t) {
     CILK_ASSERT(w, t->mutex_owner != w->self);
 }
 
 void Closure_checkmagic(__cilkrts_worker *const w, Closure *t) {
-    CILK_ASSERT(w, t->magic == CILK_CLOSURE_MAGIC);
+    switch (t->status) {
+    case CLOSURE_RUNNING:
+    case CLOSURE_SUSPENDED:
+    case CLOSURE_RETURNING:
+    case CLOSURE_READY:
+        return;
+    case CLOSURE_POST_INVALID:
+        CILK_ABORT(w, "destroyed closure");
+    default:
+        CILK_ABORT(w, "invalid closure");
+    }
 }
-#endif // CILK_DEBUG
+
+void Closure_change_status(__cilkrts_worker *const w, Closure *t,
+                           enum ClosureStatus old, enum ClosureStatus status) {
+    CILK_ASSERT(w, t->status == old);
+    t->status = status;
+}
+
+void Closure_set_status(__cilkrts_worker *const w, Closure *t,
+                        enum ClosureStatus status) {
+    t->status = status;
+}
 
 int Closure_trylock(__cilkrts_worker *const w, Closure *t) {
     Closure_checkmagic(w, t);
     int ret = cilk_mutex_try(&(t->mutex));
     if (ret) {
-        WHEN_CILK_DEBUG(t->mutex_owner = w->self);
+        t->mutex_owner = w->self;
     }
     return ret;
 }
 
 void Closure_lock(__cilkrts_worker *const w, Closure *t) {
     Closure_checkmagic(w, t);
+    t->lock_wait = 1;
     cilk_mutex_lock(&(t->mutex));
-    WHEN_CILK_DEBUG(t->mutex_owner = w->self);
+    t->lock_wait = 0;
+    t->mutex_owner = w->self;
 }
 
 void Closure_unlock(__cilkrts_worker *const w, Closure *t) {
     Closure_checkmagic(w, t);
     Closure_assert_ownership(w, t);
-    WHEN_CILK_DEBUG(t->mutex_owner = NOBODY);
+    t->mutex_owner = NOBODY;
     cilk_mutex_unlock(&(t->mutex));
 }
 
@@ -51,27 +75,35 @@ void Closure_unlock(__cilkrts_worker *const w, Closure *t) {
 // means, a frame can be stolen, in the process of being promoted, and
 // mean while, the stolen flag is not set until finish_promote.
 int Closure_at_top_of_stack(__cilkrts_worker *const w) {
-
-    return (w->head == w->tail && __cilkrts_stolen(w->current_stack_frame));
+    __cilkrts_stack_frame **head =
+        atomic_load_explicit(&w->head, memory_order_relaxed);
+    __cilkrts_stack_frame **tail =
+        atomic_load_explicit(&w->tail, memory_order_relaxed);
+    return (head == tail && __cilkrts_stolen(w->current_stack_frame));
 }
 
 int Closure_has_children(Closure *cl) {
 
-    return (cl->has_cilk_callee || cl->join_counter != 0);
+    return (cl->has_cilk_callee ||
+            atomic_load_explicit(&cl->join_counter, memory_order_relaxed) != 0);
 }
 
 static inline void Closure_init(Closure *t) {
     cilk_mutex_init(&t->mutex);
-    WHEN_CILK_DEBUG(t->mutex_owner = NOBODY);
+
+    t->mutex_owner = NOBODY;
+    t->owner_ready_deque = NOBODY;
+    t->status = CLOSURE_PRE_INVALID;
+    t->lock_wait = 0;
+    t->has_cilk_callee = 0;
 
     t->frame = NULL;
     t->fiber = NULL;
     t->fiber_child = NULL;
 
-    t->join_counter = 0;
+    atomic_store_explicit(&t->join_counter, 0, memory_order_relaxed);
     t->orig_rsp = NULL;
 
-    t->has_cilk_callee = 0;
     t->callee = NULL;
 
     t->call_parent = NULL;
@@ -84,12 +116,15 @@ static inline void Closure_init(Closure *t) {
     t->next_ready = NULL;
     t->prev_ready = NULL;
 
-    WHEN_CILK_DEBUG(t->owner_ready_deque = NOBODY);
-    WHEN_CILK_DEBUG(t->magic = CILK_CLOSURE_MAGIC);
+#ifdef REDUCER_MODULE
+    atomic_store_explicit(&t->child_rmap, NULL, memory_order_relaxed);
+    atomic_store_explicit(&t->right_rmap, NULL, memory_order_relaxed);
+    t->user_rmap = NULL;
+#endif
 }
 
 Closure *Closure_create(__cilkrts_worker *const w) {
-
+    /* cilk_internal_malloc returns sufficiently aligned memory */
     Closure *new_closure = cilk_internal_malloc(w, sizeof(*new_closure));
     CILK_ASSERT(w, new_closure != NULL);
 
@@ -101,11 +136,11 @@ Closure *Closure_create(__cilkrts_worker *const w) {
 /*
  * ANGE: Same thing as Cilk_Closure_create, except this function uses system
  *       malloc, while Cilk_Closure_create will eventually use internal_malloc.
- *       To be used only for creating the initial closure in inovke-main.c.
+ *       To be used only for creating the initial closure in invoke-main.c.
  */
 Closure *Closure_create_main() {
-
-    Closure *new_closure = (Closure *)malloc(sizeof(*new_closure));
+    Closure *new_closure =
+        (Closure *)aligned_alloc(CILK_CACHE_LINE, sizeof(*new_closure));
     CILK_ASSERT_G(new_closure != NULL);
     Closure_init(new_closure);
 
@@ -160,6 +195,7 @@ static inline void unlink_child(__cilkrts_worker *const w, Closure *cl) {
  * we are holding.  The pointer to new right most child is not visible
  * to anyone yet, so we don't need to lock that, either.
  ***/
+CHEETAH_INTERNAL
 void Closure_add_child(__cilkrts_worker *const w, Closure *parent,
                        Closure *child) {
 
@@ -198,6 +234,11 @@ void Closure_remove_child(__cilkrts_worker *const w, Closure *parent,
         CILK_ASSERT(w, child->right_sib == (Closure *)NULL);
         parent->right_most_child = child->left_sib;
     }
+
+#ifdef REDUCER_MODULE
+    CILK_ASSERT(w, child->right_rmap == (cilkred_map *)NULL ||
+                       child->right_rmap == INVALID_RMAP);
+#endif
 
     unlink_child(w, child);
 }
@@ -255,21 +296,25 @@ void Closure_remove_callee(__cilkrts_worker *const w, Closure *caller) {
  * access the oldest frame nor the fields of the frame.  Hence, this is a
  * separate and distinctly different function from Closure_suspend (which
  * suspend a closure owned by the worker with appropriate stack mapping).
+ * JFC: Without TLMM does this merge with Closure_suspend?
  */
 void Closure_suspend_victim(__cilkrts_worker *const w, int victim,
                             Closure *cl) {
 
     Closure *cl1;
 
+#ifdef REDUCER_MODULE
+    CILK_ASSERT(w, !cl->user_rmap);
+#endif
+
     Closure_checkmagic(w, cl);
     Closure_assert_ownership(w, cl);
     deque_assert_ownership(w, victim);
 
-    CILK_ASSERT(w, cl->status == CLOSURE_RUNNING);
     CILK_ASSERT(w,
                 cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
 
-    cl->status = CLOSURE_SUSPENDED;
+    Closure_change_status(w, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
 
     cl1 = deque_xtract_bottom(w, victim);
     CILK_ASSERT(w, cl == cl1);
@@ -280,20 +325,23 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 
     Closure *cl1;
 
+#ifdef REDUCER_MODULE
+    CILK_ASSERT(w, !cl->user_rmap);
+#endif
+
     __cilkrts_alert(ALERT_SCHED, "[%d]: (Closure_suspend) %p\n", w->self, cl);
 
     Closure_checkmagic(w, cl);
     Closure_assert_ownership(w, cl);
     deque_assert_ownership(w, w->self);
 
-    CILK_ASSERT(w, cl->status == CLOSURE_RUNNING);
     CILK_ASSERT(w,
                 cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
     CILK_ASSERT(w, cl->frame != NULL);
     CILK_ASSERT(w, __cilkrts_stolen(cl->frame));
     CILK_ASSERT(w, cl->frame->worker->self == w->self);
 
-    cl->status = CLOSURE_SUSPENDED;
+    Closure_change_status(w, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
     cl->frame->worker = (__cilkrts_worker *)NOBODY;
 
     cl1 = deque_xtract_bottom(w, w->self);
@@ -305,16 +353,29 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 void Closure_make_ready(Closure *cl) { cl->status = CLOSURE_READY; }
 
 static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
+    CILK_ASSERT(w, !t->lock_wait);
 
     // sanity checks
     if (w) {
         CILK_ASSERT(w, t->left_sib == (Closure *)NULL);
         CILK_ASSERT(w, t->right_sib == (Closure *)NULL);
         CILK_ASSERT(w, t->right_most_child == (Closure *)NULL);
+#ifdef REDUCER_MODULE
+        CILK_ASSERT(w, t->user_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT(w, t->child_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT(w, t->right_rmap == INVALID_RMAP ||
+                           t->right_rmap == (cilkred_map *)NULL);
+#endif
     } else {
         CILK_ASSERT_G(t->left_sib == (Closure *)NULL);
         CILK_ASSERT_G(t->right_sib == (Closure *)NULL);
         CILK_ASSERT_G(t->right_most_child == (Closure *)NULL);
+#ifdef REDUCER_MODULE
+        CILK_ASSERT_G(t->user_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT_G(t->child_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT_G(t->right_rmap == INVALID_RMAP ||
+                      t->right_rmap == (cilkred_map *)NULL);
+#endif
     }
 
     cilk_mutex_destroy(&t->mutex);
@@ -324,8 +385,7 @@ static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
  * pool)
  */
 void Closure_destroy_main(Closure *t) {
-
-    WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
+    t->status = CLOSURE_POST_INVALID;
     Closure_clean(NULL, t);
     free(t);
 }
@@ -334,9 +394,8 @@ void Closure_destroy_main(Closure *t) {
  * pool)
  */
 void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
-
     Closure_checkmagic(w, t);
-    WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
+    t->status = CLOSURE_POST_INVALID;
     Closure_clean(w, t);
     cilk_internal_free(w, t, sizeof(*t));
 }

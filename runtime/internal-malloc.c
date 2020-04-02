@@ -1,10 +1,14 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h> /* ffs */
 #include <sys/mman.h>
+#include <unistd.h> /* sysconf */
 
 #include "cilk-internal.h"
 #include "debug.h"
+
+CHEETAH_INTERNAL int cheetah_page_shift = 0;
 
 #define MEM_LIST_SIZE 8
 #define INTERNAL_MALLOC_CHUNK_SIZE (32 * 1024)
@@ -30,8 +34,8 @@ struct free_block {
 // Private helper functions
 //=========================================================
 
-static inline int is_page_aligned(int size) {
-    int mask = PAGE_SIZE - 1;
+static inline int is_page_aligned(long size) {
+    long mask = (1L << cheetah_page_shift) - 1;
     return ((size & mask) == 0);
 }
 
@@ -86,6 +90,7 @@ static void init_im_buckets(struct cilk_im_desc *im_desc) {
 //=========================================================
 
 #if CILK_DEBUG
+CHEETAH_INTERNAL
 void internal_malloc_global_check(global_state *g) {
 
     struct cilk_im_desc *d = &(g->im_desc);
@@ -318,6 +323,12 @@ static void global_im_pool_destroy(struct global_im_pool *im_pool) {
 }
 
 void cilk_internal_malloc_global_init(global_state *g) {
+    if (cheetah_page_shift == 0) {
+        long cheetah_page_size = sysconf(_SC_PAGESIZE);
+        /* The global store here should be atomic. */
+        cheetah_page_shift = ffs(cheetah_page_size) - 1;
+        CILK_ASSERT_G((1 << cheetah_page_shift) == cheetah_page_size);
+    }
     cilk_mutex_init(&(g->im_lock));
     g->im_pool.mem_begin = g->im_pool.mem_end = NULL;
     g->im_pool.mem_list_index = -1;
@@ -351,7 +362,7 @@ void cilk_internal_malloc_global_destroy(global_state *g) {
 
 /**
  * Allocate a batch of memory of size 'size' from global im bucket 'bucket'
- * into per-worker im bucekt 'bucket'.
+ * into per-worker im bucket 'bucket'.
  */
 static void im_allocate_batch(__cilkrts_worker *w, int size, int bucket) {
 
@@ -373,7 +384,7 @@ static void im_allocate_batch(__cilkrts_worker *w, int size, int bucket) {
 
 /**
  * Free a batch of memory of size 'size' from per-worker im bucket 'bucket'
- * back to global im bucekt 'bucket'.
+ * back to global im bucket 'bucket'.
  */
 static void im_free_batch(__cilkrts_worker *w, int size, int bucket) {
 
@@ -394,6 +405,7 @@ static void im_free_batch(__cilkrts_worker *w, int size, int bucket) {
  * Malloc returns a piece of memory at the head of the free list;
  * last-in-first-out
  */
+CHEETAH_INTERNAL
 void *cilk_internal_malloc(__cilkrts_worker *w, int size) {
 
     WHEN_CILK_DEBUG(w->l->im_desc.used += size);

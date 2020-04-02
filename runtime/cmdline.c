@@ -16,6 +16,7 @@ enum {
     END_OPTIONS
 };
 
+CHEETAH_INTERNAL
 static struct options {
     char *string;
     int option;
@@ -72,7 +73,8 @@ static struct options *parse_option(char *s) {
         return 1;                                                              \
     }
 
-int parse_command_line(struct rts_options *options, int *argc, char *argv[]) {
+CHEETAH_INTERNAL int parse_command_line(struct rts_options *options, int *argc,
+                                        char *argv[]) {
     struct options *p;
     /* gcc allows to write directly into *options, but other compilers
      * only allow you to initialize this way.

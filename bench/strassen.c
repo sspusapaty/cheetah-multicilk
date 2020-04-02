@@ -869,7 +869,7 @@ int main(int argc, char *argv[]) {
         begin = ktiming_getmark();
         strassen(n, A, n, B, n, C, n);
         end = ktiming_getmark();
-        elapsed[i] = ktiming_diff_usec(&begin, &end);
+        elapsed[i] = ktiming_diff_nsec(&begin, &end);
 
         if(rand_check || verify) {
             check_result(rand_check, verify, A, B, C, n);

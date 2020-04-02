@@ -3,25 +3,19 @@
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "fiber.h"
-#include "membar.h"
+#include "init.h"
 #include "scheduler.h"
 
 extern unsigned long ZERO;
 
-extern int cilk_main(int argc, char *argv[]);
-extern global_state *__cilkrts_init(int argc, char *argv[]);
-extern void __cilkrts_cleanup(global_state *g);
-
-__attribute__((noreturn)) void invoke_main(); // forward decl
-
-Closure *create_invoke_main(global_state *const g) {
+CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
 
     Closure *t;
     __cilkrts_stack_frame *sf;
     struct cilk_fiber *fiber;
 
     t = Closure_create_main();
-    t->status = CLOSURE_READY;
+    Closure_make_ready(t);
 
     __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n",
                     t);
@@ -33,7 +27,7 @@ Closure *create_invoke_main(global_state *const g) {
     // because we use the info to jump to the right stack position and start
     // executing user code.  For any other frames, these fields get setup
     // in user code before a spawn and when it gets stolen the first time.
-    void *new_rsp = (void *)sysdep_reset_jump_buffers_for_resume(fiber, sf);
+    void *new_rsp = (void *)sysdep_reset_stack_for_resume(fiber, sf);
     CILK_ASSERT_G(SP(sf) == new_rsp);
     FP(sf) = new_rsp;
     PC(sf) = (void *)invoke_main;
@@ -55,13 +49,13 @@ Closure *create_invoke_main(global_state *const g) {
     return t;
 }
 
-void cleanup_invoke_main(Closure *invoke_main) {
+CHEETAH_INTERNAL void cleanup_invoke_main(Closure *invoke_main) {
     cilk_main_fiber_deallocate(invoke_main->fiber);
     free(invoke_main->frame);
     Closure_destroy_main(invoke_main);
 }
 
-void spawn_cilk_main(int *res, int argc, char *args[]) {
+CHEETAH_INTERNAL void spawn_cilk_main(int *res, int argc, char *args[]) {
     __cilkrts_stack_frame *sf = alloca(sizeof(__cilkrts_stack_frame));
     __cilkrts_enter_frame_fast(sf);
     __cilkrts_detach(sf);
@@ -78,7 +72,7 @@ void spawn_cilk_main(int *res, int argc, char *args[]) {
  * - the sync point after spawn of cilk_main provides a natural point to
  *   resume if user ever calls Cilk_exit and abort the entire computation.
  */
-__attribute__((noreturn)) void invoke_main() {
+CHEETAH_INTERNAL_NORETURN void invoke_main() {
 
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     __cilkrts_stack_frame *sf = w->current_stack_frame;
@@ -94,6 +88,7 @@ __attribute__((noreturn)) void invoke_main() {
     __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) rsp = %p.\n", w->self,
                     rsp);
 
+    /* TODO(jfc): This can be optimized away. */
     alloca(ZERO);
 
     __cilkrts_save_fp_ctrl_state(sf);
@@ -132,8 +127,7 @@ __attribute__((noreturn)) void invoke_main() {
     w->g->cilk_main_return = _tmp;
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
-    CILK_WMB();
-    w->g->done = 1;
+    atomic_store_explicit(&w->g->done, 1, memory_order_release);
 
     // done; go back to runtime
     longjmp_to_runtime(w);
@@ -145,9 +139,8 @@ static void main_thread_init(global_state *g) {
         "[M]: (main_thread_init) Setting up main thread's closure.\n");
 
     g->invoke_main = create_invoke_main(g);
-    // ANGE: the order here is important!
-    Cilk_membar_StoreStore();
-    g->start = 1;
+    // Make sure all previous stores precede this one.
+    atomic_store_explicit(&g->start, 1, memory_order_release);
 }
 
 static void threads_join(global_state *g) {

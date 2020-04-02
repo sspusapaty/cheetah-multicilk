@@ -94,7 +94,7 @@ static void fiber_pool_init(struct cilk_fiber_pool *pool, int64_t stacksize,
     if (is_shared) {
         pool->lock = malloc(sizeof(*pool->lock));
         cilk_mutex_init(pool->lock);
-        WHEN_CILK_DEBUG(pool->mutex_owner = NOBODY);
+        pool->mutex_owner = NOBODY;
     } else {
         pool->lock = NULL;
     }
@@ -134,7 +134,7 @@ static inline void fiber_pool_lock(__cilkrts_worker *w,
     if (pool->lock) {
         fiber_pool_assert_alienation(w, pool);
         cilk_mutex_lock(pool->lock);
-        WHEN_CILK_DEBUG(pool->mutex_owner = w->self);
+        pool->mutex_owner = w->self;
     }
 }
 
@@ -142,7 +142,7 @@ static inline void fiber_pool_unlock(__cilkrts_worker *w,
                                      struct cilk_fiber_pool *pool) {
     if (pool->lock) {
         fiber_pool_assert_ownership(w, pool);
-        WHEN_CILK_DEBUG(pool->mutex_owner = -1);
+        pool->mutex_owner = NOBODY;
         cilk_mutex_unlock(pool->lock);
     }
 }

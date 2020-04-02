@@ -1,10 +1,19 @@
 include ../config.mk
 
+# With reducers
+REDUCER_INC = -I../include
+REDUCER_DEF = -DREDUCER_MODULE
+
+ABI = -DOPENCILK_ABI
+
 MAIN = libcheetah
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
-OPTIONS = -O3 -g -Werror -Wall -fpic -g
+OPT = -O1 -g
+INCLUDES = $(REDUCER_INC)
+DEFINES = $(REDUCER_DEF) $(ABI)
+OPTIONS = $(OPT) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
 .PHONY: all clean build
  

@@ -2,6 +2,7 @@
 #define _CILK_INTERNAL_H
 
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdint.h>
 
 // Includes
@@ -13,7 +14,7 @@
 #include "rts-config.h"
 #include "sched_stats.h"
 
-#define NOBODY -1
+#define NOBODY 0xffff
 
 #if CILK_STATS
 #define WHEN_CILK_STATS(ex) ex
@@ -24,6 +25,9 @@
 // Forward declaration
 typedef struct __cilkrts_worker __cilkrts_worker;
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
+#ifdef REDUCER_MODULE
+typedef struct cilkred_map cilkred_map;
+#endif
 
 //===============================================
 // Cilk stack frame related defs
@@ -41,8 +45,15 @@ typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
  */
 struct __cilkrts_stack_frame {
     // Flags is a bitfield with values defined below. Client code
-    // initializes flags to 0 before the first Cilk operation.
+    // initializes flags to 0 (except for the ABI version field)
+    // before the first Cilk operation.
     uint32_t flags;
+
+#ifdef OPENCILK_ABI
+    uint32_t magic;
+#else
+    /* 32 bit hole here on 64 bit machines */
+#endif
 
     // call_parent points to the __cilkrts_stack_frame of the closest
     // ancestor spawning function, including spawn helpers, of this frame.
@@ -66,15 +77,29 @@ struct __cilkrts_stack_frame {
      * jmpbuf for the Intel64 architecture already contains this information
      * so there is no need to use these fields on that OS/architecture.
      */
+#ifdef __SSE__
+#define CHEETAH_SAVE_MXCSR
     uint32_t mxcsr;
+#else
+    uint32_t reserved1;
+#endif
+#ifndef OPENCILK_ABI /* x87 flags not preserved in OpenCilk */
+#if defined i386 || defined __x86_64__
+#define CHEETAH_SAVE_FPCSR
     uint16_t fpcsr;
+#else
+    uint16_t reserved2;
+#endif
+#endif
 
+#ifndef OPENCILK_ABI
     /**
      * reserved is not used at this time.  Client code should initialize it
      * to 0 before the first Cilk operation
      */
-    uint16_t reserved; // ANGE: leave it to make it 8-byte aligned.
+    uint16_t reserved3; // ANGE: leave it to make it 8-byte aligned.
     uint32_t magic;
+#endif
 };
 
 //===========================================================
@@ -107,6 +132,7 @@ struct __cilkrts_stack_frame {
    sync when it can no longer do any Cilk operations? */
 #define CILK_FRAME_EXITING 0x0100
 
+#define GET_CILK_FRAME_VERSION(F) (((F) >> 24) & 255)
 #define CILK_FRAME_VERSION (__CILKRTS_ABI_VERSION << 24)
 
 //===========================================================
@@ -195,16 +221,14 @@ struct global_state {
     pthread_t *threads;
     struct Closure *invoke_main;
 
-    struct cilk_fiber_pool fiber_pool __attribute__((aligned(64)));
-    struct global_im_pool im_pool __attribute__((aligned(64)));
-    struct cilk_im_desc im_desc __attribute__((aligned(64)));
+    struct cilk_fiber_pool fiber_pool __attribute__((aligned(CILK_CACHE_LINE)));
+    struct global_im_pool im_pool __attribute__((aligned(CILK_CACHE_LINE)));
+    struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
-    WHEN_SCHED_STATS(struct global_sched_stats stats);
-
     volatile int invoke_main_initialized;
-    volatile int start;
-    volatile int done;
+    atomic_bool start;
+    atomic_bool done;
     cilk_mutex print_lock; // global lock for printing messages
 
     int cilk_main_argc;
@@ -212,39 +236,51 @@ struct global_state {
 
     int cilk_main_return;
     int cilk_main_exit;
+
+    WHEN_SCHED_STATS(struct global_sched_stats stats;)
 };
 
 // Actual declaration
+
+enum __cilkrts_worker_state {
+    WORKER_IDLE = 10,
+    WORKER_SCHED,
+    WORKER_STEAL,
+    WORKER_RUN
+};
+
 struct local_state {
     __cilkrts_stack_frame **shadow_stack;
 
-    int provably_good_steal;
+    unsigned short state; /* __cilkrts_worker_state */
+    _Bool lock_wait;
+    _Bool provably_good_steal;
     unsigned int rand_next;
 
     jmpbuf rts_ctx;
     struct cilk_fiber_pool fiber_pool;
     struct cilk_im_desc im_desc;
     struct cilk_fiber *fiber_to_free;
-    WHEN_SCHED_STATS(struct sched_stats stats);
+    WHEN_SCHED_STATS(struct sched_stats stats;)
 };
 
 /**
  * NOTE: if you are using the Tapir compiler, you should not change
  * these fields; ok to change for hand-compiled code.
  * See Tapir compiler ABI:
- * https://github.com/wsmoses/Tapir-LLVM/blob/cilkr/lib/Transforms/Tapir/CilkRABI.cpp
+ * https://github.com/OpenCilk/opencilk-project/blob/release/9.x/llvm/lib/Transforms/Tapir/CilkRABI.cpp
  **/
 struct __cilkrts_worker {
     // T and H pointers in the THE protocol
-    __cilkrts_stack_frame *volatile *volatile tail;
-    __cilkrts_stack_frame *volatile *volatile head;
-    __cilkrts_stack_frame *volatile *volatile exc;
+    _Atomic(__cilkrts_stack_frame **) tail;
+    _Atomic(__cilkrts_stack_frame **) head;
+    _Atomic(__cilkrts_stack_frame **) exc;
 
     // Limit of the Lazy Task Queue, to detect queue overflow
-    __cilkrts_stack_frame *volatile *ltq_limit;
+    __cilkrts_stack_frame **ltq_limit;
 
-    // Worker id.
-    int32_t self;
+    // Worker id, a small integer
+    uint32_t self;
 
     // Global state of the runtime system, opaque to the client.
     global_state *g;
@@ -254,6 +290,11 @@ struct __cilkrts_worker {
 
     // A slot that points to the currently executing Cilk frame.
     __cilkrts_stack_frame *current_stack_frame;
+
+#ifdef REDUCER_MODULE
+    // Map from reducer names to reducer values
+    cilkred_map *reducer_map;
+#endif
 };
 
 #endif // _CILK_INTERNAL_H

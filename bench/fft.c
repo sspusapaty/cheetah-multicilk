@@ -3319,7 +3319,7 @@ void test_speed(long size) {
         begin = ktiming_getmark();
         cilk_fft(size, in, out);
         end = ktiming_getmark();
-        elapsed[i] = ktiming_diff_usec(&begin, &end);
+        elapsed[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(elapsed, TIMING_COUNT);
 #else
@@ -3361,7 +3361,9 @@ int main(int argc, char *argv[]) {
     int correctness, help, benchmark;
     long size;
 
+    help = 0;
     /* standard benchmark options */
+    benchmark = 0;
     correctness = 0;
     size = 1024 * 1024;
 

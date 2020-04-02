@@ -242,7 +242,7 @@ block_zero (Block B) {
 /*
  * Create new leaf nodes (BLOCK_SIZE x BLOCK_SIZE submatrices)
  */
-inline InternalNode *
+static /* was inline */ InternalNode *
 new_block_leaf (void) {
 
   LeafNode *leaf = (LeafNode *) malloc (sizeof (LeafNode));
@@ -257,7 +257,7 @@ new_block_leaf (void) {
 /*
  * Create internal node in quadtree representation
  */
-inline InternalNode *
+static /* was inline */ InternalNode *
 new_internal (InternalNode * a00, InternalNode * a01,
               InternalNode * a10, InternalNode * a11) {
 
@@ -745,7 +745,7 @@ cholesky (int depth, Matrix a) {
     a11 = cholesky (depth, a11);
     cilk_sync;
 
-  } else { 
+  } else {
     a00 = cholesky (depth, a00);
     assert (a00);
 
@@ -952,11 +952,11 @@ again:
     begin = ktiming_getmark();
     R = cholesky(depth, R);
     end = ktiming_getmark();
-    elapsed[i] = ktiming_diff_usec(&begin, &end);
+    elapsed[i] = ktiming_diff_nsec(&begin, &end);
   }
   print_runtime(elapsed, TIMING_COUNT);
 #else
-  R = cholesky(depth, R);
+  R = cholesky(depth, A);
 #endif
   
   output_blocks = num_blocks (depth, R);

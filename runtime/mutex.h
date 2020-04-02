@@ -7,7 +7,9 @@ typedef union cilk_mutex cilk_mutex;
 // Includes
 #include <pthread.h>
 
+#ifndef __APPLE__
 #define USE_SPINLOCK 1
+#endif
 
 #if USE_SPINLOCK
 union cilk_mutex {

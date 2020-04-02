@@ -9,16 +9,19 @@
 
 #define EXCEPTION_INFINITY (__cilkrts_stack_frame **)(-1LL)
 
-void __cilkrts_init_tls_variables();
+/* This is part of the ABI */
 __cilkrts_worker *__cilkrts_get_tls_worker();
-void __cilkrts_set_tls_worker(__cilkrts_worker *w);
 
-int Cilk_sync(__cilkrts_worker *const ws, __cilkrts_stack_frame *frame);
+CHEETAH_INTERNAL void __cilkrts_init_tls_variables();
+CHEETAH_INTERNAL void __cilkrts_set_tls_worker(__cilkrts_worker *w);
 
-void Cilk_set_return(__cilkrts_worker *const ws);
-void Cilk_exception_handler();
+CHEETAH_INTERNAL int Cilk_sync(__cilkrts_worker *const ws,
+                               __cilkrts_stack_frame *frame);
 
-__attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker *w);
-void worker_scheduler(__cilkrts_worker *ws, Closure *t);
+CHEETAH_INTERNAL void Cilk_set_return(__cilkrts_worker *const ws);
+CHEETAH_INTERNAL void Cilk_exception_handler();
+
+CHEETAH_INTERNAL_NORETURN void longjmp_to_runtime(__cilkrts_worker *w);
+CHEETAH_INTERNAL void worker_scheduler(__cilkrts_worker *ws, Closure *t);
 
 #endif

@@ -222,7 +222,7 @@ int heat(void) {
             l = divide(0, nx, neww, old, COMP, c);
         }
         end = ktiming_getmark();
-        elapsed[i] = ktiming_diff_usec(&begin, &end);
+        elapsed[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(elapsed, TIMING_COUNT);
 #else

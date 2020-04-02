@@ -7,7 +7,6 @@
 
 #include "getoptions.h"
 #include "ktiming.h"
-#include "papi.h"
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
@@ -344,7 +343,7 @@ int main(int argc, char *argv[]) {
         clockmark_t begin = ktiming_getmark(); 
         mat_mul_par(A, B, C, n);
         clockmark_t end = ktiming_getmark();
-        elapsed[i] = ktiming_diff_usec(&begin, &end);
+        elapsed[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(elapsed, TIMING_COUNT);
 

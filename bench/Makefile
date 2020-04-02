@@ -6,7 +6,8 @@ HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
 TESTS          = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-OPTIONS = -O3 -g -fcilkplus $(RTS_OPT) -fno-exceptions # -Werror -Wall 
+OPT=-O3
+OPTIONS = $(OPT) -g -fcilkplus $(RTS_OPT) -fno-exceptions # -Werror -Wall 
 # dynamic linking
 RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
 LD_FLAGS = $(RTS_DLIBS)

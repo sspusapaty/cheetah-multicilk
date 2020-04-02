@@ -3,33 +3,50 @@
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h> /* strerror */
+#ifdef __linux__
 #include <sys/sysinfo.h>
+#endif
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
 #include <unistd.h>
 
 #include "debug.h"
 #include "fiber.h"
+#include "init.h"
 #include "readydeque.h"
 #include "sched_stats.h"
 #include "scheduler.h"
 
+#ifdef REDUCER_MODULE
+#include "reducer_impl.h"
+#endif
+
+CHEETAH_INTERNAL
 extern void cleanup_invoke_main(Closure *invoke_main);
+CHEETAH_INTERNAL
 extern int parse_command_line(struct rts_options *options, int *argc,
                               char *argv[]);
 
-extern int cilkg_nproc;
+CHEETAH_INTERNAL extern int cilkg_nproc;
 
-/* Linux only */
-static int linux_get_num_proc() {
-    const char *envstr = getenv("CILK_NWORKERS");
+#ifdef __FreeBSD__
+typedef cpuset_t cpu_set_t;
+#endif
+
+static int env_get_int(char const *var) {
+    const char *envstr = getenv(var);
     if (envstr)
         return strtol(envstr, NULL, 0);
-    return get_nprocs();
+    return 0;
 }
 
 static global_state *global_state_init(int argc, char *argv[]) {
     __cilkrts_alert(ALERT_BOOT,
                     "[M]: (global_state_init) Initializing global state.\n");
-    global_state *g = (global_state *)malloc(sizeof(global_state));
+    global_state *g = (global_state *)aligned_alloc(__alignof(global_state),
+                                                    sizeof(global_state));
 
     if (parse_command_line(&g->options, &argc, argv)) {
         // user invoked --help; quit
@@ -40,34 +57,43 @@ static global_state *global_state_init(int argc, char *argv[]) {
     if (g->options.nproc == 0) {
         // use the number of cores online right now
         int available_cores = 0;
+#ifdef CPU_SETSIZE
         cpu_set_t process_mask;
         // get the mask from the parent thread (master thread)
         int err = pthread_getaffinity_np(pthread_self(), sizeof(process_mask),
                                          &process_mask);
         if (0 == err) {
-            int j;
             // Get the number of available cores (copied from os-unix.c)
-            available_cores = 0;
-            for (j = 0; j < CPU_SETSIZE; j++) {
-                if (CPU_ISSET(j, &process_mask)) {
-                    available_cores++;
-                }
+            available_cores = CPU_COUNT(&process_mask);
+        }
+#endif
+        int proc_override = env_get_int("CILK_NWORKERS");
+        if (proc_override > 0)
+            g->options.nproc = proc_override;
+        else if (available_cores > 0)
+            g->options.nproc = available_cores;
+#ifdef _SC_NPROCESSORS_ONLN
+        else if (available_cores == 0) {
+            long nproc = sysconf(_SC_NPROCESSORS_ONLN);
+            if (nproc > 0) {
+                g->options.nproc = nproc;
             }
         }
-        const char *envstr = getenv("CILK_NWORKERS");
-        g->options.nproc = (envstr ? linux_get_num_proc() : available_cores);
+#endif
     }
-    cilkg_nproc = g->options.nproc;
-
     int active_size = g->options.nproc;
+    CILK_ASSERT_G(active_size > 0);
+    cilkg_nproc = active_size;
+
     g->invoke_main_initialized = 0;
-    g->start = 0;
-    g->done = 0;
+    atomic_store_explicit(&g->start, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->done, 0, memory_order_relaxed);
     cilk_mutex_init(&(g->print_lock));
 
     g->workers =
         (__cilkrts_worker **)malloc(active_size * sizeof(__cilkrts_worker *));
-    g->deques = (ReadyDeque *)malloc(active_size * sizeof(ReadyDeque));
+    g->deques = (ReadyDeque *)aligned_alloc(__alignof__(ReadyDeque),
+                                            active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *)malloc(active_size * sizeof(pthread_t));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
@@ -87,7 +113,10 @@ static local_state *worker_local_init(global_state *g) {
         l->rts_ctx[i] = NULL;
     }
     l->fiber_to_free = NULL;
+    l->state = WORKER_IDLE;
+    l->lock_wait = 0;
     l->provably_good_steal = 0;
+    l->rand_next = 0; /* will be reset in scheduler loop */
     cilk_sched_stats_init(&(l->stats));
 
     return l;
@@ -98,7 +127,7 @@ static void deques_init(global_state *g) {
     for (int i = 0; i < g->options.nproc; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
-        WHEN_CILK_DEBUG(g->deques[i].mutex_owner = NOBODY);
+        g->deques[i].mutex_owner = NOBODY;
         cilk_mutex_init(&(g->deques[i].mutex));
     }
 }
@@ -108,17 +137,18 @@ static void workers_init(global_state *g) {
     for (int i = 0; i < g->options.nproc; i++) {
         __cilkrts_alert(ALERT_BOOT,
                         "[M]: (workers_init) Initializing worker %d.\n", i);
-        __cilkrts_worker *w =
-            (__cilkrts_worker *)malloc(sizeof(__cilkrts_worker));
+        __cilkrts_worker *w = (__cilkrts_worker *)aligned_alloc(
+            __alignof__(__cilkrts_worker), sizeof(__cilkrts_worker));
         w->self = i;
         w->g = g;
         w->l = worker_local_init(g);
 
         w->ltq_limit = w->l->shadow_stack + g->options.deqdepth;
         g->workers[i] = w;
-        w->tail = w->l->shadow_stack + 1;
-        w->head = w->l->shadow_stack + 1;
-        w->exc = w->head;
+        __cilkrts_stack_frame **init = w->l->shadow_stack + 1;
+        atomic_store_explicit(&w->tail, init, memory_order_relaxed);
+        atomic_store_explicit(&w->head, init, memory_order_relaxed);
+        atomic_store_explicit(&w->exc, init, memory_order_relaxed);
         w->current_stack_frame = NULL;
 
         // initialize internal malloc first
@@ -129,13 +159,16 @@ static void workers_init(global_state *g) {
 
 static void *scheduler_thread_proc(void *arg) {
     __cilkrts_worker *w = (__cilkrts_worker *)arg;
-    long long idle = 0;
     __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc)\n", w->self);
     __cilkrts_set_tls_worker(w);
 
-    while (!w->g->start) {
-        usleep(1);
-        idle++;
+    int delay = 1;
+
+    while (!atomic_load_explicit(&w->g->start, memory_order_acquire)) {
+        usleep(delay);
+        if (delay < 64) {
+            delay *= 2;
+        }
     }
 
     if (w->self == 0) {
@@ -147,51 +180,114 @@ static void *scheduler_thread_proc(void *arg) {
     return 0;
 }
 
+static void move_bit(int cpu, cpu_set_t *to, cpu_set_t *from) {
+    if (CPU_ISSET(cpu, from)) {
+        CPU_CLR(cpu, from);
+        CPU_SET(cpu, to);
+    }
+}
+
 static void threads_init(global_state *g) {
+#ifdef CPU_SETSIZE
+    // Affinity setting, from cilkplus-rts
+    cpu_set_t process_mask;
+    int available_cores = 0;
+    // Get the mask from the parent thread (master thread)
+    if (0 == pthread_getaffinity_np(pthread_self(), sizeof(process_mask),
+                                    &process_mask)) {
+        available_cores = CPU_COUNT(&process_mask);
+    }
+#endif
+    /* pin_strategy controls how threads are spread over cpu numbers.
+       Based on very limited testing FreeBSD groups hyperthreads of a
+       core together (consecutive IDs) and Linux separates them.
+       This is not guaranteed and may not even be consistent.
+       The order is influenced by board firmware.
+       When sysfs is enabled, Linux offers
+       /sys/devices/system/cpu/cpu0/topology/core_siblings
+       which is in a format compatible with cpulist_parse().
+       FreeBSD exports sysctl kern.sched.topology_spec, an XML representation
+       of the processor topology. */
+#ifdef __FreeBSD__
+    int pin_strategy = 1; /* (0, 1), (2, 3), ... */
+#else
+    int pin_strategy = 0; /* (0, N/2), (1, N/2 + 1), ... */
+#endif
+    switch (env_get_int("CILK_PIN")) {
+    case 1:
+        pin_strategy = 0;
+        break;
+    case 2:
+        pin_strategy = 1;
+        break;
+    case 3:
+        available_cores = 0;
+        break;
+    }
+
+    int n_threads = g->options.nproc;
+
+    /* TODO: Apple supports thread affinity using a different interface. */
+
     __cilkrts_alert(ALERT_BOOT, "[M]: (threads_init) Setting up threads.\n");
-    for (int i = 0; i < g->options.nproc; i++) {
-        int status = pthread_create(&g->threads[i], NULL, scheduler_thread_proc,
-                                    g->workers[i]);
+
+    /* Three cases: core count at least twice worker count, allocate
+       groups of floor(worker count / core count) CPUs.
+       Core count greater than worker count, do not bind workers to CPUs.
+       Otherwise, bind workers to single CPUs. */
+    int cpu = 0;
+    int group_size = 1;
+    int step_in = 1, step_out = 1;
+
+    /* If cores are overallocated it doesn't make sense to pin threads. */
+    if (n_threads > available_cores) {
+        available_cores = 0;
+    } else {
+        group_size = available_cores / n_threads;
+        if (pin_strategy != 0) {
+            step_in = 1;
+            step_out = group_size;
+        } else {
+            step_out = 1;
+            step_in = group_size;
+        }
+    }
+
+    for (int w = 0; w < n_threads; w++) {
+        int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,
+                                    g->workers[w]);
+
         if (status != 0)
-            __cilkrts_bug("Cilk: thread creation (%d) failed: %d\n", i, status);
-        // Affinity setting, from cilkplus-rts
-        cpu_set_t process_mask;
-        // Get the mask from the parent thread (master thread)
-        int err = pthread_getaffinity_np(pthread_self(), sizeof(process_mask),
-                                         &process_mask);
-        if (0 == err) {
-            int j;
-            // Get the number of available cores (copied from os-unix.c)
-            int available_cores = 0;
-            for (j = 0; j < CPU_SETSIZE; j++) {
-                if (CPU_ISSET(j, &process_mask)) {
-                    available_cores++;
-                }
+            __cilkrts_bug("Cilk: thread creation (%d) failed: %s\n", w,
+                          strerror(status));
+
+#ifdef CPU_SETSIZE
+        if (available_cores > 0) {
+            /* Skip to the next active CPU ID.  */
+            while (!CPU_ISSET(cpu, &process_mask)) {
+                ++cpu;
             }
 
-            // Bind the worker to a core according worker id
-            int workermaskid = i % available_cores;
-            for (j = 0; j < CPU_SETSIZE; j++) {
-                if (CPU_ISSET(j, &process_mask)) {
-                    if (workermaskid == 0) {
-                        // Bind the worker to the assigned cores
-                        cpu_set_t mask;
-                        CPU_ZERO(&mask);
-                        CPU_SET(j, &mask);
-                        int ret_val = pthread_setaffinity_np(
-                            g->threads[i], sizeof(mask), &mask);
-                        if (ret_val != 0) {
-                            __cilkrts_bug("ERROR: Could not set CPU affinity");
-                        }
-                        break;
-                    } else {
-                        workermaskid--;
-                    }
-                }
+            __cilkrts_alert(ALERT_BOOT, "Bind worker %d to core %d of %d\n", w,
+                            cpu, available_cores);
+
+            CPU_CLR(cpu, &process_mask);
+            cpu_set_t worker_mask;
+            CPU_ZERO(&worker_mask);
+            CPU_SET(cpu, &worker_mask);
+            int off;
+            for (off = 1; off < group_size; ++off) {
+                move_bit(cpu + off * step_in, &worker_mask, &process_mask);
+                __cilkrts_alert(ALERT_BOOT, "Bind worker %d to core %d of %d\n",
+                                w, cpu + off * step_in, available_cores);
             }
-        } else {
-            __cilkrts_bug("Cannot get affinity mask by pthread_getaffinity_np");
+            cpu += step_out;
+
+            int err = pthread_setaffinity_np(g->threads[w], sizeof(worker_mask),
+                                             &worker_mask);
+            CILK_ASSERT_G(err == 0);
         }
+#endif
     }
     usleep(10);
 }
@@ -199,6 +295,9 @@ static void threads_init(global_state *g) {
 global_state *__cilkrts_init(int argc, char *argv[]) {
     __cilkrts_alert(ALERT_BOOT, "[M]: (__cilkrts_init)\n");
     global_state *g = global_state_init(argc, argv);
+#ifdef REDUCER_MODULE
+    reducers_init(g);
+#endif
     __cilkrts_init_tls_variables();
     workers_init(g);
     deques_init(g);
@@ -249,6 +348,15 @@ static void workers_deinit(global_state *g) {
         __cilkrts_worker *w = g->workers[i];
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);
 
+#ifdef REDUCER_MODULE
+        cilkred_map *rm = w->reducer_map;
+        w->reducer_map = NULL;
+        // Workers can have NULL reducer maps now.
+        if (rm) {
+            cilkred_map_destroy_map(w, rm);
+        }
+#endif
+
         cilk_fiber_pool_per_worker_destroy(w);
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
@@ -258,7 +366,11 @@ static void workers_deinit(global_state *g) {
     }
 }
 
+CHEETAH_INTERNAL
 void __cilkrts_cleanup(global_state *g) {
+#ifdef REDUCER_MODULE
+    reducers_deinit(g);
+#endif
     workers_terminate(g);
     // global_state_terminate collects and prints out stats, and thus
     // should occur *BEFORE* worker_deinit, because worker_deinit
