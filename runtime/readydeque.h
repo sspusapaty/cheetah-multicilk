@@ -16,18 +16,18 @@ typedef struct ReadyDeque ReadyDeque;
 struct ReadyDeque {
     cilk_mutex mutex;
     Closure *top, *bottom;
-    unsigned short mutex_owner;
+    worker_id mutex_owner;
 } __attribute__((aligned(CILK_CACHE_LINE)));
 
 // assert that pn's deque be locked by ourselves
 static inline void deque_assert_ownership(__cilkrts_worker *const w,
-                                          unsigned int pn) {
+                                          worker_id pn) {
     CILK_ASSERT(w, w->g->deques[pn].mutex_owner == w->self);
 }
 
 static inline void deque_lock_self(__cilkrts_worker *const w) {
     struct local_state *l = w->l;
-    uint32_t id = w->self;
+    worker_id id = w->self;
     global_state *g = w->g;
     l->lock_wait = 1;
     cilk_mutex_lock(&g->deques[id].mutex);
@@ -36,13 +36,13 @@ static inline void deque_lock_self(__cilkrts_worker *const w) {
 }
 
 static inline void deque_unlock_self(__cilkrts_worker *const w) {
-    uint32_t id = w->self;
+    worker_id id = w->self;
     global_state *g = w->g;
     g->deques[id].mutex_owner = NOBODY;
     cilk_mutex_unlock(&g->deques[id].mutex);
 }
 
-static inline int deque_trylock(__cilkrts_worker *const w, unsigned int pn) {
+static inline int deque_trylock(__cilkrts_worker *const w, worker_id pn) {
     global_state *g = w->g;
     int ret = cilk_mutex_try(&g->deques[pn].mutex);
     if (ret) {
@@ -51,7 +51,7 @@ static inline int deque_trylock(__cilkrts_worker *const w, unsigned int pn) {
     return ret;
 }
 
-static inline void deque_lock(__cilkrts_worker *const w, unsigned int pn) {
+static inline void deque_lock(__cilkrts_worker *const w, worker_id pn) {
     global_state *g = w->g;
     struct local_state *l = w->l;
     l->lock_wait = 1;
@@ -60,7 +60,7 @@ static inline void deque_lock(__cilkrts_worker *const w, unsigned int pn) {
     g->deques[pn].mutex_owner = w->self;
 }
 
-static inline void deque_unlock(__cilkrts_worker *const w, unsigned int pn) {
+static inline void deque_unlock(__cilkrts_worker *const w, worker_id pn) {
     global_state *g = w->g;
     g->deques[pn].mutex_owner = NOBODY;
     cilk_mutex_unlock(&w->g->deques[pn].mutex);
@@ -73,23 +73,23 @@ static inline void deque_unlock(__cilkrts_worker *const w, unsigned int pn) {
  * must have locked worker pn's deque before entering the function
  */
 CHEETAH_INTERNAL
-Closure *deque_xtract_top(__cilkrts_worker *const w, unsigned int pn);
+Closure *deque_xtract_top(__cilkrts_worker *const w, worker_id pn);
 
 CHEETAH_INTERNAL
-Closure *deque_peek_top(__cilkrts_worker *const w, unsigned int pn);
+Closure *deque_peek_top(__cilkrts_worker *const w, worker_id pn);
 
 CHEETAH_INTERNAL
-Closure *deque_xtract_bottom(__cilkrts_worker *const w, unsigned int pn);
+Closure *deque_xtract_bottom(__cilkrts_worker *const w, worker_id pn);
 
 CHEETAH_INTERNAL
-Closure *deque_peek_bottom(__cilkrts_worker *const w, unsigned int pn);
+Closure *deque_peek_bottom(__cilkrts_worker *const w, worker_id pn);
 
 /*
  * ANGE: this allow w -> self to append Closure cl onto worker pn's ready
  *       deque (i.e. make cl the new bottom).
  */
 CHEETAH_INTERNAL void deque_add_bottom(__cilkrts_worker *const w, Closure *cl,
-                                       unsigned int pn);
+                                       worker_id pn);
 
 CHEETAH_INTERNAL void deque_assert_is_bottom(__cilkrts_worker *const w,
                                              Closure *t);
@@ -101,5 +101,5 @@ CHEETAH_INTERNAL void deque_assert_is_bottom(__cilkrts_worker *const w,
 CHEETAH_INTERNAL
 void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const w,
                                             __cilkrts_stack_frame *f,
-                                            unsigned int pn);
+                                            worker_id pn);
 #endif

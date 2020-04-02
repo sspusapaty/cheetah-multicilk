@@ -7,12 +7,15 @@
 
 // forward declaration for using struct global_stat
 struct global_state;
+struct __cilkrts_worker;
 
 #define CILK_CHECK(g, cond, complain)                                          \
     if (!cond)                                                                 \
     cilk_die_internal(g, complain)
 
+#ifndef ALERT_LVL
 #define ALERT_LVL 0 /* ALERT_BOOT */
+#endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x1
 #define ALERT_SYNC 0x2
@@ -27,13 +30,15 @@ struct global_state;
 // Unused: compiler inlines the stack frame creation
 // #define CILK_STACKFRAME_MAGIC 0xCAFEBABE
 
-CHEETAH_INTERNAL_NORETURN void __cilkrts_bug(const char *fmt, ...);
-CHEETAH_INTERNAL_NORETURN void cilk_die_internal(struct global_state *const g,
-                                                 const char *complain);
+CHEETAH_INTERNAL_NORETURN
+void cilkrts_bug(struct __cilkrts_worker *w, const char *fmt, ...);
+CHEETAH_INTERNAL_NORETURN
+void cilk_die_internal(struct global_state *const g, const char *complain);
 
 #if CILK_DEBUG
-void __cilkrts_alert(const int lvl, const char *fmt, ...);
-#define __cilkrts_alert(lvl, fmt, ...) __cilkrts_alert(lvl, fmt, ##__VA_ARGS__)
+void cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
+/*#define __cilkrts_alert(lvl, w, fmt, ...) __cilkrts_alert(lvl, w, fmt,
+ * ##__VA_ARGS__)*/
 #define WHEN_CILK_DEBUG(ex) ex
 
 /** Standard text for failed assertion */
@@ -43,23 +48,23 @@ CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed_g;
 #define CILK_ASSERT(w, ex)                                                     \
     (__builtin_expect((ex) != 0, 1)                                            \
          ? (void)0                                                             \
-         : __cilkrts_bug(__cilkrts_assertion_failed, w->self, __FILE__,        \
-                         __LINE__, #ex))
+         : cilkrts_bug(w, __cilkrts_assertion_failed, __FILE__, __LINE__,      \
+                       #ex))
 
 #define CILK_ASSERT_G(ex)                                                      \
     (__builtin_expect((ex) != 0, 1)                                            \
          ? (void)0                                                             \
-         : __cilkrts_bug(__cilkrts_assertion_failed_g, __FILE__, __LINE__,     \
-                         #ex))
+         : cilkrts_bug(NULL, __cilkrts_assertion_failed_g, __FILE__, __LINE__, \
+                       #ex))
 
 #define CILK_ABORT(w, msg)                                                     \
-    __cilkrts_bug(__cilkrts_assertion_failed, w->self, __FILE__, __LINE__, msg)
+    cilkrts_bug(w, __cilkrts_assertion_failed, __FILE__, __LINE__, msg)
 
 #define CILK_ABORT_G(msg)                                                      \
-    __cilkrts_bug(__cilkrts_assertion_failed_g, __FILE__, __LINE__, msg)
+    cilkrts_bug(NULL, __cilkrts_assertion_failed_g, __FILE__, __LINE__, msg)
 
 #else
-#define __cilkrts_alert(lvl, fmt, ...)
+#define cilkrts_alert(lvl, fmt, ...)
 #define CILK_ASSERT(w, ex)
 #define CILK_ASSERT_G(ex)
 #define CILK_ABORT(w, msg)

@@ -91,7 +91,7 @@ void cilk_drop_timing(__cilkrts_worker *w, enum timing_type t) {
 
 void cilk_sched_stats_print(struct global_state *g) {
 #define HDR_DESC "%15s"
-#define WORKER_HDR_DESC "%10s %3d:"
+#define WORKER_HDR_DESC "%10s %3u:"
 #define FIELD_DESC "%15.3f"
 
     fprintf(stderr, "\nSCHEDULING STATS (SECONDS):\n");

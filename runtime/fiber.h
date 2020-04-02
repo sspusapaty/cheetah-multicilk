@@ -4,13 +4,9 @@
 #include "debug.h"
 #include "mutex.h"
 #include "rts-config.h"
+#include "types.h"
 
 #include <stdint.h>
-
-// Forward declaration
-typedef struct __cilkrts_worker __cilkrts_worker;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
-typedef struct global_state global_state;
 
 #define FIBER_STATS CILK_STATS
 
@@ -40,7 +36,7 @@ struct cilk_fiber_pool {
     struct cilk_fiber **fibers; // Array of max_size fiber pointers
     int capacity;               // Limit on number of fibers in pool
     int size;                   // Number of fibers currently in the pool
-    unsigned short mutex_owner;
+    worker_id mutex_owner;
     WHEN_FIBER_STATS(struct fiber_pool_stats stats);
 };
 

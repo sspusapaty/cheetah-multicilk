@@ -11,7 +11,7 @@
  * ANGE: the precondition of these functions is that the worker w -> self
  * must have locked worker pn's deque before entering the function
  */
-Closure *deque_xtract_top(__cilkrts_worker *const w, unsigned int pn) {
+Closure *deque_xtract_top(__cilkrts_worker *const w, worker_id pn) {
 
     Closure *cl;
 
@@ -38,7 +38,7 @@ Closure *deque_xtract_top(__cilkrts_worker *const w, unsigned int pn) {
     return cl;
 }
 
-Closure *deque_peek_top(__cilkrts_worker *const w, unsigned int pn) {
+Closure *deque_peek_top(__cilkrts_worker *const w, worker_id pn) {
 
     Closure *cl;
 
@@ -56,7 +56,7 @@ Closure *deque_peek_top(__cilkrts_worker *const w, unsigned int pn) {
     return cl;
 }
 
-Closure *deque_xtract_bottom(__cilkrts_worker *const w, unsigned int pn) {
+Closure *deque_xtract_bottom(__cilkrts_worker *const w, worker_id pn) {
 
     Closure *cl;
 
@@ -83,7 +83,7 @@ Closure *deque_xtract_bottom(__cilkrts_worker *const w, unsigned int pn) {
     return cl;
 }
 
-Closure *deque_peek_bottom(__cilkrts_worker *const w, unsigned int pn) {
+Closure *deque_peek_bottom(__cilkrts_worker *const w, worker_id pn) {
 
     Closure *cl;
 
@@ -111,7 +111,7 @@ void deque_assert_is_bottom(__cilkrts_worker *const w, Closure *t) {
  * ANGE: this allow w -> self to append Closure cl onto worker pn's ready
  *       deque (i.e. make cl the new bottom).
  */
-void deque_add_bottom(__cilkrts_worker *const w, Closure *cl, unsigned int pn) {
+void deque_add_bottom(__cilkrts_worker *const w, Closure *cl, worker_id pn) {
 
     deque_assert_ownership(w, pn);
     CILK_ASSERT(w, cl->owner_ready_deque == NOBODY);
@@ -135,7 +135,7 @@ void deque_add_bottom(__cilkrts_worker *const w, Closure *cl, unsigned int pn) {
  */
 void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const w,
                                             __cilkrts_stack_frame *f,
-                                            unsigned int pn) {
+                                            worker_id pn) {
     Closure *t;
 
     deque_lock(w, pn);

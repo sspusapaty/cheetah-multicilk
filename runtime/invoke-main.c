@@ -17,8 +17,7 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
     t = Closure_create_main();
     Closure_make_ready(t);
 
-    __cilkrts_alert(ALERT_BOOT, "[M]: (create_invoke_main) invoke_main = %p.\n",
-                    t);
+    cilkrts_alert(ALERT_BOOT, NULL, "(create_invoke_main) invoke_main = %p", t);
 
     sf = malloc(sizeof(*sf));
     fiber = cilk_main_fiber_allocate();
@@ -42,9 +41,8 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
     t->fiber = fiber;
     // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
 
-    __cilkrts_alert(ALERT_BOOT,
-                    "[M]: (create_invoke_main) invoke_main->fiber = %p.\n",
-                    fiber);
+    cilkrts_alert(ALERT_BOOT, NULL,
+                  "(create_invoke_main) invoke_main->fiber = %p", fiber);
 
     return t;
 }
@@ -84,9 +82,7 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     char **args = w->g->cilk_main_args;
 
     ASM_GET_SP(rsp);
-    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main).\n", w->self);
-    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) rsp = %p.\n", w->self,
-                    rsp);
+    cilkrts_alert(ALERT_BOOT, w, "invoke_main rsp = %p", rsp);
 
     /* TODO(jfc): This can be optimized away. */
     alloca(ZERO);
@@ -98,14 +94,12 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
         // ANGE: Important to reset using sf->worker;
         // otherwise w gets cached in a register
         w = sf->worker;
-        __cilkrts_alert(ALERT_BOOT,
-                        "[%d]: (invoke_main) corrected worker after spawn.\n",
-                        w->self);
+        cilkrts_alert(ALERT_BOOT, w,
+                      "invoke_main corrected worker after spawn");
     }
 
     ASM_GET_SP(nsp);
-    __cilkrts_alert(ALERT_BOOT, "[%d]: (invoke_main) new rsp = %p.\n", w->self,
-                    nsp);
+    cilkrts_alert(ALERT_BOOT, w, "invoke_main new rsp = %p", nsp);
 
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
 
@@ -117,9 +111,8 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
             // ANGE: Important to reset using sf->worker;
             // otherwise w gets cached in a register
             w = sf->worker;
-            __cilkrts_alert(
-                ALERT_BOOT,
-                "[%d]: (invoke_main) corrected worker after sync.\n", w->self);
+            cilkrts_alert(ALERT_BOOT, w,
+                          "invoke_main corrected worker after sync");
         }
     }
 
@@ -134,9 +127,8 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
 }
 
 static void main_thread_init(global_state *g) {
-    __cilkrts_alert(
-        ALERT_BOOT,
-        "[M]: (main_thread_init) Setting up main thread's closure.\n");
+    cilkrts_alert(ALERT_BOOT, NULL,
+                  "(main_thread_init) Setting up main thread's closure");
 
     g->invoke_main = create_invoke_main(g);
     // Make sure all previous stores precede this one.
@@ -144,13 +136,13 @@ static void main_thread_init(global_state *g) {
 }
 
 static void threads_join(global_state *g) {
-    for (int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
         int status = pthread_join(g->threads[i], NULL);
         if (status != 0)
-            __cilkrts_bug("Cilk runtime error: thread join (%d) failed: %d\n",
-                          i, status);
+            cilkrts_bug(NULL, "Cilk runtime error: thread join (%u) failed: %d",
+                        i, status);
     }
-    __cilkrts_alert(ALERT_BOOT, "[M]: (threads_join) All workers joined!\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(threads_join) All workers joined!");
 }
 
 static void __cilkrts_run(global_state *g) {

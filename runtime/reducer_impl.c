@@ -51,13 +51,13 @@ static void free_reducer_id_manager(global_state *const g) {
     free(id_manager);
 }
 
-static void reducer_id_get(__cilkrts_worker *const ws, uint16_t *id) {
+static void reducer_id_get(__cilkrts_worker *ws, uint16_t *id) {
 
     reducer_id_manager_lock(ws);
     *id = id_manager->curr_id;
     id_manager->curr_id++;
     if (id_manager->curr_id >= id_manager->spa_cap) {
-        __cilkrts_bug("SPA resize not supported yet!\n");
+        cilkrts_bug(ws, "SPA resize not supported yet!");
     }
     reducer_id_manager_unlock(ws);
 }
@@ -73,14 +73,12 @@ void reducer_id_free(__cilkrts_worker *const ws, uint16_t *id) {
 // =================================================================
 
 void reducers_init(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT,
-                    "[M]: (reducers_init) Initializing reducers.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(reducers_init) Initializing reducers");
     init_reducer_id_manager(g);
 }
 
 void reducers_deinit(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT,
-                    "[M]: (reducers_deinit) Cleaning up reducers.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(reducers_deinit) Cleaning up reducers");
     free_reducer_id_manager(g);
 }
 
@@ -95,10 +93,8 @@ static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     h = cilkred_map_make_map(w);
     w->reducer_map = h;
 
-    __cilkrts_alert(
-        ALERT_REDUCE,
-        "[%d]: (install_new_reducer_map) installed reducer_map %p\n", w->self,
-        h);
+    cilkrts_alert(ALERT_REDUCE, w,
+                  "(install_new_reducer_map) installed reducer_map %p", h);
     return h;
 }
 
@@ -127,10 +123,10 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
 
     cilkred_map *h = w->reducer_map;
     if (NULL == h)
-        __cilkrts_bug(UNSYNCED_REDUCER_MSG); // Does not return
+        cilkrts_bug(w, UNSYNCED_REDUCER_MSG); // Does not return
 
     if (h->merging) {
-        __cilkrts_bug("User error: hyperobject used by another hyperobject");
+        cilkrts_bug(w, "User error: hyperobject used by another hyperobject");
     }
 
     ViewInfo *vinfo = &h->vinfo[key->__id_num];
@@ -160,7 +156,7 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     CILK_ASSERT(w, cilkred_map_lookup(h, key) == NULL);
 
     if (h->merging)
-        __cilkrts_bug("User error: hyperobject used by another hyperobject");
+        cilkrts_bug(w, "User error: hyperobject used by another hyperobject");
 
     CILK_ASSERT(w, w->reducer_map == h);
 
@@ -184,7 +180,7 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     }
 
     if (h->merging)
-        __cilkrts_bug("User error: hyperobject used by another hyperobject");
+        cilkrts_bug(w, "User error: hyperobject used by another hyperobject");
 
     ViewInfo *vinfo = cilkred_map_lookup(h, key);
     if (vinfo == NULL) {
@@ -213,10 +209,9 @@ void __cilkrts_hyperobject_dealloc(void *ignore, void *view) { free(view); }
 void __cilkrts_hyperobject_noop_destroy(void *ignore, void *ignore2) {}
 
 // =================================================================
-// management of cilkred_maps
+// Helper function for the scheduler
 // =================================================================
 
-// used by the scheduler so cannot be static
 cilkred_map *merge_two_rmaps(__cilkrts_worker *const ws, cilkred_map *left,
                              cilkred_map *right) {
     CILK_ASSERT(ws, ws == __cilkrts_get_tls_worker());

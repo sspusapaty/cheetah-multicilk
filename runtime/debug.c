@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 const char *const __cilkrts_assertion_failed =
-    "[%d]: %s:%d: cilk assertion failed: %s\n";
+    "[W%02u]: %s:%d: cilk assertion failed: %s\n";
 const char *const __cilkrts_assertion_failed_g =
     "[M]: %s:%d: cilk assertion failed: %s\n";
 
@@ -18,7 +18,11 @@ void cilk_die_internal(struct global_state *const g, const char *complain) {
     exit(1);
 }
 
-void __cilkrts_bug(const char *fmt, ...) {
+CHEETAH_INTERNAL_NORETURN
+void cilkrts_bug(__cilkrts_worker *w, const char *fmt, ...) {
+    if (w) {
+        fprintf(stderr, "[W%02u]: ", w->self);
+    }
 
     /* To reduce user confusion, write all user-generated output
        before the system-generated error message. */
@@ -27,27 +31,36 @@ void __cilkrts_bug(const char *fmt, ...) {
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);
     va_end(l);
+    fputc('\n', stderr);
     fflush(stderr);
 
-    assert(0); // generate core file
+    abort(); // generate core file
 }
 
 #if CILK_DEBUG
-void __cilkrts_alert(const int lvl, const char *fmt, ...) {
-
+CHEETAH_INTERNAL
+void cilkrts_alert(const int lvl, __cilkrts_worker *w, const char *fmt, ...) {
     /* To reduce user confusion, write all user-generated output
        before the system-generated error message. */
 #ifndef ALERT_LVL
+    if (w) {
+        fprintf(stderr, "[W%02u]: ", w->self);
+    }
     va_list l;
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);
     va_end(l);
+    fputc('\n', stderr);
 #else
     if (lvl & ALERT_LVL) {
+        if (w) {
+            fprintf(stderr, "[W%02u]: ", w->self);
+        }
         va_list l;
         va_start(l, fmt);
         vfprintf(stderr, fmt, l);
         va_end(l);
+        fputc('\n', stderr);
     }
 #endif
 }

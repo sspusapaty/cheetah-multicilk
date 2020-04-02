@@ -94,11 +94,13 @@ struct Closure {
     // cilkred_map *children_reducer_map;
     // cilkred_map *right_reducer_map;
 
-    /* XXX JFC Fix accesses to make these not volatile. */
+    /* Stores of non-null values to right_rmap and child_rmap must
+       have release ordering to make sure values pointed to by the
+       map are visible.  Loads must have acquire ordering. */
     /* Accumulated reducer maps from right siblings */
     _Atomic(cilkred_map *) volatile right_rmap;
     /* Accumulated reducer maps from children */
-    _Atomic(cilkred_map *) child_rmap;
+    _Atomic(cilkred_map *) volatile child_rmap;
     /* Reducer map for this closure when suspended at sync */
     cilkred_map *user_rmap;
 #endif

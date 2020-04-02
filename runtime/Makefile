@@ -4,6 +4,8 @@ include ../config.mk
 REDUCER_INC = -I../include
 REDUCER_DEF = -DREDUCER_MODULE
 
+#ALERT_DEF = -DALERT_LVL=0x000
+
 ABI = -DOPENCILK_ABI
 
 MAIN = libcheetah
@@ -12,7 +14,7 @@ HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
 OPT = -O1 -g
 INCLUDES = $(REDUCER_INC)
-DEFINES = $(REDUCER_DEF) $(ABI)
+DEFINES = $(REDUCER_DEF) $(ABI) $(ALERT_DEF)
 OPTIONS = $(OPT) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
 .PHONY: all clean build

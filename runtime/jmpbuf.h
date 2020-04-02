@@ -35,13 +35,12 @@ typedef void *jmpbuf[JMPBUF_SIZE];
 #define ASM_GET_FP(ofp) asm volatile("movq %%rbp, %0" : "=r"(ofp))
 #define ASM_SET_FP(nfp) asm volatile("movq %0, %%rbp" : : "r"(nfp) : "rbp")
 
-#define DUMP_STACK(lvl, wid)                                                   \
+#define DUMP_STACK(lvl, w)                                                     \
     {                                                                          \
         char *x_bp;                                                            \
         char *x_sp;                                                            \
         ASM_GET_FP(x_bp);                                                      \
         ASM_GET_SP(x_sp);                                                      \
-        __cilkrts_alert((lvl), "[%d]: rbp: %p\n[%d]: rsp: %p\n", (wid), x_bp,  \
-                        (wid), x_sp);                                          \
+        cilkrts_alert((lvl), (w), "rbp %p rsp %p", x_bp, x_sp);                \
     }
 #endif

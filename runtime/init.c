@@ -2,6 +2,9 @@
 #include <sched.h>
 
 #include <pthread.h>
+#if ALERT_LVL != 0
+#include <stdio.h>
+#endif
 #include <stdlib.h>
 #include <string.h> /* strerror */
 #ifdef __linux__
@@ -43,10 +46,14 @@ static int env_get_int(char const *var) {
 }
 
 static global_state *global_state_init(int argc, char *argv[]) {
-    __cilkrts_alert(ALERT_BOOT,
-                    "[M]: (global_state_init) Initializing global state.\n");
+    cilkrts_alert(ALERT_BOOT, NULL,
+                  "(global_state_init) Initializing global state");
     global_state *g = (global_state *)aligned_alloc(__alignof(global_state),
                                                     sizeof(global_state));
+
+#if ALERT_LVL != 0
+    setlinebuf(stderr);
+#endif
 
     if (parse_command_line(&g->options, &argc, argv)) {
         // user invoked --help; quit
@@ -123,7 +130,7 @@ static local_state *worker_local_init(global_state *g) {
 }
 
 static void deques_init(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT, "[M]: (deques_init) Initializing deques.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(deques_init) Initializing deques");
     for (int i = 0; i < g->options.nproc; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
@@ -133,10 +140,10 @@ static void deques_init(global_state *g) {
 }
 
 static void workers_init(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT, "[M]: (workers_init) Initializing workers.\n");
-    for (int i = 0; i < g->options.nproc; i++) {
-        __cilkrts_alert(ALERT_BOOT,
-                        "[M]: (workers_init) Initializing worker %d.\n", i);
+    cilkrts_alert(ALERT_BOOT, NULL, "(workers_init) Initializing workers");
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
+        cilkrts_alert(ALERT_BOOT, NULL, "(workers_init) Initializing worker %u",
+                      i);
         __cilkrts_worker *w = (__cilkrts_worker *)aligned_alloc(
             __alignof__(__cilkrts_worker), sizeof(__cilkrts_worker));
         w->self = i;
@@ -159,7 +166,7 @@ static void workers_init(global_state *g) {
 
 static void *scheduler_thread_proc(void *arg) {
     __cilkrts_worker *w = (__cilkrts_worker *)arg;
-    __cilkrts_alert(ALERT_BOOT, "[%d]: (scheduler_thread_proc)\n", w->self);
+    cilkrts_alert(ALERT_BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
     int delay = 1;
@@ -229,7 +236,7 @@ static void threads_init(global_state *g) {
 
     /* TODO: Apple supports thread affinity using a different interface. */
 
-    __cilkrts_alert(ALERT_BOOT, "[M]: (threads_init) Setting up threads.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(threads_init) Setting up threads");
 
     /* Three cases: core count at least twice worker count, allocate
        groups of floor(worker count / core count) CPUs.
@@ -253,13 +260,13 @@ static void threads_init(global_state *g) {
         }
     }
 
-    for (int w = 0; w < n_threads; w++) {
+    for (unsigned int w = 0; w < n_threads; w++) {
         int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,
                                     g->workers[w]);
 
         if (status != 0)
-            __cilkrts_bug("Cilk: thread creation (%d) failed: %s\n", w,
-                          strerror(status));
+            cilkrts_bug(NULL, "Cilk: thread creation (%u) failed: %s", w,
+                        strerror(status));
 
 #ifdef CPU_SETSIZE
         if (available_cores > 0) {
@@ -268,8 +275,8 @@ static void threads_init(global_state *g) {
                 ++cpu;
             }
 
-            __cilkrts_alert(ALERT_BOOT, "Bind worker %d to core %d of %d\n", w,
-                            cpu, available_cores);
+            cilkrts_alert(ALERT_BOOT, NULL, "Bind worker %u to core %d of %d",
+                          w, cpu, available_cores);
 
             CPU_CLR(cpu, &process_mask);
             cpu_set_t worker_mask;
@@ -278,8 +285,9 @@ static void threads_init(global_state *g) {
             int off;
             for (off = 1; off < group_size; ++off) {
                 move_bit(cpu + off * step_in, &worker_mask, &process_mask);
-                __cilkrts_alert(ALERT_BOOT, "Bind worker %d to core %d of %d\n",
-                                w, cpu + off * step_in, available_cores);
+                cilkrts_alert(ALERT_BOOT, NULL,
+                              "Bind worker %u to core %d of %d", w,
+                              cpu + off * step_in, available_cores);
             }
             cpu += step_out;
 
@@ -293,7 +301,7 @@ static void threads_init(global_state *g) {
 }
 
 global_state *__cilkrts_init(int argc, char *argv[]) {
-    __cilkrts_alert(ALERT_BOOT, "[M]: (__cilkrts_init)\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(__cilkrts_init)");
     global_state *g = global_state_init(argc, argv);
 #ifdef REDUCER_MODULE
     reducers_init(g);
@@ -313,8 +321,8 @@ static void global_state_terminate(global_state *g) {
 }
 
 static void global_state_deinit(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT,
-                    "[M]: (global_state_deinit) Clean up global state.\n");
+    cilkrts_alert(ALERT_BOOT, NULL,
+                  "(global_state_deinit) Clean up global state");
 
     cleanup_invoke_main(g->invoke_main);
     cilk_fiber_pool_global_destroy(g);
@@ -327,7 +335,7 @@ static void global_state_deinit(global_state *g) {
 }
 
 static void deques_deinit(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT, "[M]: (deques_deinit) Clean up deques.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(deques_deinit) Clean up deques");
     for (int i = 0; i < g->options.nproc; i++) {
         CILK_ASSERT_G(g->deques[i].mutex_owner == NOBODY);
         cilk_mutex_destroy(&(g->deques[i].mutex));
@@ -343,7 +351,7 @@ static void workers_terminate(global_state *g) {
 }
 
 static void workers_deinit(global_state *g) {
-    __cilkrts_alert(ALERT_BOOT, "[M]: (workers_deinit) Clean up workers.\n");
+    cilkrts_alert(ALERT_BOOT, NULL, "(workers_deinit) Clean up workers");
     for (int i = 0; i < g->options.nproc; i++) {
         __cilkrts_worker *w = g->workers[i];
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);

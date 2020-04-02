@@ -44,7 +44,7 @@ static void fiber_pool_stat_init(struct cilk_fiber_pool *pool) {
 static void fiber_pool_stat_print(struct global_state *g) {
 
 #define HDR_DESC "%15s"
-#define WORKER_HDR_DESC "%10s %3d:" // two char short compared to HDR_DESC
+#define WORKER_HDR_DESC "%10s %3u:" // two char short compared to HDR_DESC
 #define FIELD_STR_DESC "%10s"
 #define FIELD_DESC "%10d"
 

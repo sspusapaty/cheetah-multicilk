@@ -110,7 +110,7 @@ void internal_malloc_global_check(global_state *g) {
     // freed into the global one
 
     CILK_CHECK(g, (total_size == 0) && (total_malloc == 0),
-               "Possible memory leak detected.\n");
+               "Possible memory leak detected");
 }
 
 #else
@@ -130,7 +130,7 @@ static void init_global_im_pool_stats(struct global_im_pool_stats *stats) {
 static void print_im_buckets_stats(struct global_state *g) {
 
 #define HDR_DESC "%15s"
-#define WORKER_HDR_DESC "%10s %3d:" // two char short compared to HDR_DESC
+#define WORKER_HDR_DESC "%10s %3u:" // two char short compared to HDR_DESC
 #define FIELD_DESC "%10ld"
     fprintf(stderr, "\nBYTES IN FREE LISTS:\n");
     fprintf(stderr, HDR_DESC, "Bucket size:");
