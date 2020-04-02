@@ -8,3 +8,4 @@ heat
 lu
 matmul_4_way_z
 strassen
+cholesky
