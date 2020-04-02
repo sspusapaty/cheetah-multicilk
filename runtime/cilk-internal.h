@@ -13,20 +13,14 @@
 #include "mutex.h"
 #include "rts-config.h"
 #include "sched_stats.h"
+#include "types.h"
 
-#define NOBODY 0xffff
+#define NOBODY 0xffffffffu /* type worker_id */
 
 #if CILK_STATS
 #define WHEN_CILK_STATS(ex) ex
 #else
 #define WHEN_CILK_STATS(ex)
-#endif
-
-// Forward declaration
-typedef struct __cilkrts_worker __cilkrts_worker;
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
-#ifdef REDUCER_MODULE
-typedef struct cilkred_map cilkred_map;
 #endif
 
 //===============================================
@@ -187,7 +181,7 @@ typedef struct __cilkrts_stack_frame **CilkShadowStack;
 
 // Actual declaration
 struct rts_options {
-    int nproc;
+    unsigned int nproc;
     int deqdepth;
     int64_t stacksize;
     int fiber_pool_cap;
@@ -280,7 +274,7 @@ struct __cilkrts_worker {
     __cilkrts_stack_frame **ltq_limit;
 
     // Worker id, a small integer
-    uint32_t self;
+    worker_id self;
 
     // Global state of the runtime system, opaque to the client.
     global_state *g;

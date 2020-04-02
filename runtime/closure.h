@@ -48,8 +48,8 @@ struct Closure {
     struct cilk_fiber *fiber;
     struct cilk_fiber *fiber_child;
 
-    uint32_t owner_ready_deque; /* debug only */
-    uint32_t mutex_owner;       /* debug only */
+    worker_id owner_ready_deque; /* debug only */
+    worker_id mutex_owner;       /* debug only */
 
     enum ClosureStatus status : 16; /* doubles as magic number */
     _Bool lock_wait;
@@ -94,13 +94,11 @@ struct Closure {
     // cilkred_map *children_reducer_map;
     // cilkred_map *right_reducer_map;
 
-    /* Stores of non-null values to right_rmap and child_rmap must
-       have release ordering to make sure values pointed to by the
-       map are visible.  Loads must have acquire ordering. */
+    /* XXX JFC Fix accesses to make these not volatile. */
     /* Accumulated reducer maps from right siblings */
     _Atomic(cilkred_map *) volatile right_rmap;
     /* Accumulated reducer maps from children */
-    _Atomic(cilkred_map *) volatile child_rmap;
+    _Atomic(cilkred_map *) child_rmap;
     /* Reducer map for this closure when suspended at sync */
     cilkred_map *user_rmap;
 #endif

@@ -20,8 +20,7 @@ CHEETAH_INTERNAL int cilkg_nproc = 0;
 // inlined by the compiler
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_enter_frame) frame %p\n",
-                    w->self, sf);
+    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame %p", sf);
 
     sf->flags = CILK_FRAME_VERSION;
     sf->call_parent = w->current_stack_frame;
@@ -33,9 +32,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    __cilkrts_alert(ALERT_CFRAME,
-                    "[%d]: (__cilkrts_enter_frame_fast) frame %p\n", w->self,
-                    sf);
+    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
 
     sf->flags = CILK_FRAME_VERSION;
     sf->call_parent = w->current_stack_frame;
@@ -47,8 +44,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_detach(__cilkrts_stack_frame *sf) {
     struct __cilkrts_worker *w = sf->worker;
-    __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_detach) frame %p\n",
-                    w->self, sf);
+    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_detach %p", sf);
 
     CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -74,23 +70,20 @@ void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
     __cilkrts_worker *w = sf->worker;
-    __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) syncing frame %p\n",
-                    w->self, sf);
+    cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync syncing frame %p", sf);
 
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
     CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
     CILK_ASSERT(w, sf == w->current_stack_frame);
 
     if (Cilk_sync(w, sf) == SYNC_READY) {
-        __cilkrts_alert(ALERT_SYNC, "[%d]: (__cilkrts_sync) synced frame %p!\n",
-                        w->self, sf);
+        cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync synced frame %p!", sf);
         // The Cilk_sync restores the original rsp stored in sf->ctx
         // if this frame is ready to sync.
         sysdep_longjmp_to_sf(sf);
     } else {
-        __cilkrts_alert(ALERT_SYNC,
-                        "[%d]: (__cilkrts_sync) waiting to sync frame %p!\n",
-                        w->self, sf);
+        cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync waiting to sync frame %p!",
+                      sf);
         longjmp_to_runtime(w);
     }
 }
@@ -98,8 +91,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = sf->worker;
-    __cilkrts_alert(ALERT_CFRAME, "[%d]: (__cilkrts_pop_frame) frame %p\n",
-                    w->self, sf);
+    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_pop_frame %p", sf);
 
     CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -115,9 +107,7 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
 void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
 
     __cilkrts_worker *w = sf->worker;
-    __cilkrts_alert(ALERT_CFRAME,
-                    "[%d]: (__cilkrts_leave_frame) leaving frame %p\n", w->self,
-                    sf);
+    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_leave_frame %p", sf);
 
     CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -149,10 +139,8 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
         // frame returning is done via a different protocol, which is
         // triggered in Cilk_exception_handler.
         if (sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
-            __cilkrts_alert(
-                ALERT_RETURN,
-                "[%d]: (__cilkrts_leave_frame) parent is call_parent!\n",
-                w->self);
+            cilkrts_alert(ALERT_RETURN, w,
+                          "__cilkrts_leave_frame parent is call_parent!");
             // leaving a full frame; need to get the full frame of its call
             // parent back onto the deque
             Cilk_set_return(w);
