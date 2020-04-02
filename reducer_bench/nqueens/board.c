@@ -35,8 +35,8 @@ void print_board(board_t board) {
   printf("\n");
 }
 
-void append_node(BoardList * board_list, board_t board) {
-  BoardNode* new_node = malloc(sizeof(BoardNode));
+void append_node(BoardList *board_list, board_t board) {
+  BoardNode *new_node = malloc(sizeof(BoardNode));
   if (new_node == NULL) {
     return;
   }
@@ -51,15 +51,15 @@ void append_node(BoardList * board_list, board_t board) {
   board_list->size++;
 }
 
-void init_nodes(BoardList * board_list) {
+void init_nodes(BoardList *board_list) {
   board_list->head = NULL;
   board_list->tail = NULL;
   board_list->size = 0;
 }
 
-void delete_nodes(BoardList * board_list) {
-  BoardNode* cur_node = board_list->head;
-  BoardNode* next_node = NULL;
+void delete_nodes(BoardList *board_list) {
+  BoardNode *cur_node = board_list->head;
+  BoardNode *next_node = NULL;
   while (cur_node != NULL) {
     next_node = cur_node->next;
     free(cur_node);

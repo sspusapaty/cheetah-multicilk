@@ -33,13 +33,13 @@
 
 // board.h defines N, board_t, and helper functions.
 
-#ifndef TIMING_COUNT 
-#define TIMING_COUNT 1 
+#ifndef TIMING_COUNT
+#define TIMING_COUNT 1
 #endif
 
 // Feel free to make this 0.
 #define TO_PRINT (3)  // number of sample solutions to print
-#define BITMASK (255)  // 8 "1"s
+#define BITMASK (255) // 8 "1"s
 #define N (8)
 
 // Saves a queen in (row, col) in the (row * N + col)th bit.
@@ -47,26 +47,25 @@
 typedef uint64_t board_t;
 
 static inline board_t board_bitmask(int row, int col) {
-  return ((board_t) 1) << (row * N + col);
+  return ((board_t)1) << (row * N + col);
 }
 typedef int BoardList;
 
-void board_list_identity(void* reducer, void* sum) {
-  *((int*)sum) = 0;
-}
+void board_list_identity(void *reducer, void *sum) { *((int *)sum) = 0; }
 
-void board_list_reduce(void* reducer, void* left, void* right) {
-  *((int*)left) += *((int*)right);
+void board_list_reduce(void *reducer, void *left, void *right) {
+  *((int *)left) += *((int *)right);
 }
 
 typedef CILK_C_DECLARE_REDUCER(BoardList) BoardListReducer;
 
-BoardListReducer X = CILK_C_INIT_REDUCER(BoardList,             // type
-  board_list_reduce, board_list_identity, __cilkrts_hyperobject_noop_destroy,   // functions
-  (BoardList) 0);       // initial value
+BoardListReducer X =
+    CILK_C_INIT_REDUCER(BoardList, // type
+                        board_list_reduce, board_list_identity,
+                        __cilkrts_hyperobject_noop_destroy, // functions
+                        (BoardList)0);                      // initial value
 
-void queens(board_t cur_board, int row, int down,
-            int left, int right) {
+void queens(board_t cur_board, int row, int down, int left, int right) {
   if (row == N) {
     // A solution to 8 queens!
     REDUCER_VIEW(X) += 1;
@@ -80,17 +79,16 @@ void queens(board_t cur_board, int row, int down,
 
       // Recurse! This can be parallelized.
       cilk_spawn queens(cur_board | board_bitmask(row, col), row + 1,
-          down | bit, (left | bit) << 1, (right | bit) >> 1);
+                        down | bit, (left | bit) << 1, (right | bit) >> 1);
     }
     cilk_sync;
   }
-
 }
 
 int run_queens(bool verbose) {
   CILK_C_REGISTER_REDUCER(X);
   *(&REDUCER_VIEW(X)) = 0;
-  queens((board_t) 0, 0, 0, 0, 0);
+  queens((board_t)0, 0, 0, 0, 0);
   BoardList board_list = REDUCER_VIEW(X);
 
   int num_solutions = board_list;
@@ -101,12 +99,12 @@ int run_queens(bool verbose) {
 
 int main(int argc, char *argv[]) {
   int i;
-  clockmark_t begin, end; 
+  clockmark_t begin, end;
   uint64_t running_time[TIMING_COUNT];
-  
+
   int num_solutions = 92, res = 0;
 
-  for(i = 0; i < TIMING_COUNT; i++) {
+  for (i = 0; i < TIMING_COUNT; i++) {
     begin = ktiming_getmark();
     int run_solutions = run_queens(false);
 

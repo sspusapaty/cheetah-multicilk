@@ -32,28 +32,28 @@
 typedef uint64_t board_t;
 
 static inline board_t board_bitmask(int row, int col) {
-  return ((board_t) 1) << (row * N + col);
+  return ((board_t)1) << (row * N + col);
 }
 
 void print_board(board_t board);
 
 struct BoardNode {
   board_t board;
-  struct BoardNode* next;
+  struct BoardNode *next;
 };
 typedef struct BoardNode BoardNode;
 
 struct BoardList {
-  BoardNode* head;
-  BoardNode* tail;
+  BoardNode *head;
+  BoardNode *tail;
   int size;
 };
 typedef struct BoardList BoardList;
 
-void append_node(BoardList * board_list, board_t board);
+void append_node(BoardList *board_list, board_t board);
 
-void init_nodes(BoardList * board_list);
+void init_nodes(BoardList *board_list);
 
-void delete_nodes(BoardList * board_list);
+void delete_nodes(BoardList *board_list);
 
-#endif  // _BOARD_H_
+#endif // _BOARD_H_

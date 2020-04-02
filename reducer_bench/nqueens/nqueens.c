@@ -23,26 +23,27 @@
 #include <cilk/cilk.h>
 #include <cilk/reducer.h>
 
+#include "board.h"
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "board.h"
 // #include "fasttime.h"
 #include "ktiming.h"
 
 // board.h defines N, board_t, and helper functions.
 
-#ifndef TIMING_COUNT 
-#define TIMING_COUNT 1 
+#ifndef TIMING_COUNT
+#define TIMING_COUNT 1
 #endif
 
 // Feel free to make this 0.
 #define TO_PRINT (3)  // number of sample solutions to print
-#define BITMASK (255)  // 8 "1"s
+#define BITMASK (255) // 8 "1"s
 
-void merge_lists(BoardList* list1, BoardList* list2) {
-  if (list2->head == NULL) return; // Nothing to do...
+void merge_lists(BoardList *list1, BoardList *list2) {
+  if (list2->head == NULL)
+    return; // Nothing to do...
 
   if (list1->head == NULL) {
     // Set list1 to list2
@@ -54,7 +55,7 @@ void merge_lists(BoardList* list1, BoardList* list2) {
     list1->size += list2->size;
   }
 
-  list1->tail = list2->tail; 
+  list1->tail = list2->tail;
 
   // Set list2 to empty
   list2->head = NULL;
@@ -63,34 +64,34 @@ void merge_lists(BoardList* list1, BoardList* list2) {
 }
 
 // Evaluates *left = *left OPERATOR *right.
-void board_list_reduce(void* key, void* left, void* right) {
-  BoardList * a = (BoardList *)left;
-  BoardList * b = (BoardList *)right;
+void board_list_reduce(void *key, void *left, void *right) {
+  BoardList *a = (BoardList *)left;
+  BoardList *b = (BoardList *)right;
   merge_lists(a, b);
 }
 
 // Sets *value to the the identity value.
-void board_list_identity(void* key, void* value) {
-  BoardList * a = (BoardList *)value;
+void board_list_identity(void *key, void *value) {
+  BoardList *a = (BoardList *)value;
   a->head = NULL;
   a->tail = NULL;
   a->size = 0;
 }
 
 // Destroys any dynamically allocated memory. Hint: delete_nodes.
-void board_list_destroy(void* key, void* value) {
-  BoardList * a = (BoardList *)value;
+void board_list_destroy(void *key, void *value) {
+  BoardList *a = (BoardList *)value;
   delete_nodes(a);
 }
 
 typedef CILK_C_DECLARE_REDUCER(BoardList) BoardListReducer;
 
-BoardListReducer X = CILK_C_INIT_REDUCER(BoardList,             // type
-  board_list_reduce, board_list_identity, board_list_destroy,   // functions
-  (BoardList) { .head = NULL, .tail = NULL, .size = 0 });       // initial value
+BoardListReducer X = CILK_C_INIT_REDUCER(
+    BoardList,                                                  // type
+    board_list_reduce, board_list_identity, board_list_destroy, // functions
+    (BoardList){.head = NULL, .tail = NULL, .size = 0});        // initial value
 
-void queens(board_t cur_board, int row, int down,
-            int left, int right) {
+void queens(board_t cur_board, int row, int down, int left, int right) {
   if (row == N) {
     // A solution to 8 queens!
     append_node(&REDUCER_VIEW(X), cur_board);
@@ -104,24 +105,23 @@ void queens(board_t cur_board, int row, int down,
 
       // Recurse! This can be parallelized.
       cilk_spawn queens(cur_board | board_bitmask(row, col), row + 1,
-          down | bit, (left | bit) << 1, (right | bit) >> 1);
+                        down | bit, (left | bit) << 1, (right | bit) >> 1);
     }
     cilk_sync;
   }
-
 }
 
 int run_queens(bool verbose) {
   CILK_C_REGISTER_REDUCER(X);
   init_nodes(&REDUCER_VIEW(X));
-  queens((board_t) 0, 0, 0, 0, 0);
+  queens((board_t)0, 0, 0, 0, 0);
   BoardList board_list = REDUCER_VIEW(X);
 
   int num_solutions = board_list.size;
 
   if (verbose) {
     // Print the first few solutions to check correctness.
-    BoardNode* cur_node = board_list.head;
+    BoardNode *cur_node = board_list.head;
     int num_printed = 0;
     while (cur_node != NULL && num_printed < TO_PRINT) {
       printf("Solution # %d / %d\n", num_printed + 1, num_solutions);
@@ -136,12 +136,12 @@ int run_queens(bool verbose) {
 
 int main(int argc, char *argv[]) {
   int i;
-  clockmark_t begin, end; 
+  clockmark_t begin, end;
   uint64_t running_time[TIMING_COUNT];
-  
+
   int num_solutions = 92, res = 0;
 
-  for(i = 0; i < TIMING_COUNT; i++) {
+  for (i = 0; i < TIMING_COUNT; i++) {
     begin = ktiming_getmark();
     int run_solutions = run_queens(false);
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
     printf("Success\n");
   } else {
     printf("Result: %d/%d successes (%d failures)\n", res, TIMING_COUNT,
-	   TIMING_COUNT - res);
+           TIMING_COUNT - res);
   }
   print_runtime(running_time, TIMING_COUNT);
 
