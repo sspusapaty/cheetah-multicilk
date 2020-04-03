@@ -21,11 +21,11 @@
  ****************************************************************************/
 #include <cilk/cilk.h>
 
-#include <stdlib.h>
+#include <assert.h>
+#include <math.h>
 #include <memory.h>
 #include <stdio.h>
-#include <math.h>
-#include <assert.h>
+#include <stdlib.h>
 
 #ifndef TIMING_COUNT
 #define TIMING_COUNT 0
@@ -36,7 +36,6 @@
 #endif
 
 #include "getoptions.h"
-
 
 /* Define the size of a block. */
 #ifndef BLOCK_SIZE
@@ -54,11 +53,11 @@
 
 /* A block is a 2D array of doubles. */
 typedef double Block[BLOCK_SIZE][BLOCK_SIZE];
-#define BLOCK(B,I,J) (B[I][J])
+#define BLOCK(B, I, J) (B[I][J])
 
 /* A matrix is a 1D array of blocks. */
 typedef Block *Matrix;
-#define MATRIX(M,I,J) ((M)[(I)*nBlocks+(J)])
+#define MATRIX(M, I, J) ((M)[(I)*nBlocks + (J)])
 
 /* Matrix size in blocks. */
 static int nBlocks;
@@ -82,7 +81,7 @@ static void init_matrix(Matrix M, int nb) {
         for (J = 0; J < nb; J++)
             for (i = 0; i < BLOCK_SIZE; i++)
                 for (j = 0; j < BLOCK_SIZE; j++)
-                    BLOCK(MATRIX(M, I, J), i, j) = 
+                    BLOCK(MATRIX(M, I, J), i, j) =
                         ((double)rand()) / (double)RAND_MAX;
 
     /* Inflate diagonal entries. */
@@ -101,9 +100,8 @@ static void print_matrix(Matrix M, int nb) {
     /* Print out matrix. */
     for (i = 0; i < nb * BLOCK_SIZE; i++) {
         for (j = 0; j < nb * BLOCK_SIZE; j++)
-            printf(" %6.4f",
-                   BLOCK(MATRIX(M, i / BLOCK_SIZE, j / BLOCK_SIZE),
-                   i % BLOCK_SIZE, j % BLOCK_SIZE));
+            printf(" %6.4f", BLOCK(MATRIX(M, i / BLOCK_SIZE, j / BLOCK_SIZE),
+                                   i % BLOCK_SIZE, j % BLOCK_SIZE));
         printf("\n");
     }
 }
@@ -129,19 +127,16 @@ static int test_result(Matrix LU, Matrix M, int nb) {
             v = 0.0;
             for (k = 0; k < i && k <= j; k++) {
                 K = k / BLOCK_SIZE;
-                v += BLOCK(MATRIX(LU, I, K), i % BLOCK_SIZE,
-                        k % BLOCK_SIZE) *
-                    BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE,
-                            j % BLOCK_SIZE);
+                v += BLOCK(MATRIX(LU, I, K), i % BLOCK_SIZE, k % BLOCK_SIZE) *
+                     BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE, j % BLOCK_SIZE);
             }
             if (k == i && k <= j) {
                 K = k / BLOCK_SIZE;
-                v += BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE,
-                        j % BLOCK_SIZE);
+                v += BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE, j % BLOCK_SIZE);
             }
-            diff = fabs(BLOCK(MATRIX(M, I, J), i % BLOCK_SIZE,
-                        j % BLOCK_SIZE) - v);
-            if (diff > 0.000001) 
+            diff = fabs(BLOCK(MATRIX(M, I, J), i % BLOCK_SIZE, j % BLOCK_SIZE) -
+                        v);
+            if (diff > 0.000001)
                 return 0;
         }
     }
@@ -182,8 +177,8 @@ static void block_lu(Block B) {
     for (k = 0; k < BLOCK_SIZE; k++)
         for (i = k + 1; i < BLOCK_SIZE; i++) {
             BLOCK(B, i, k) /= BLOCK(B, k, k);
-            elem_daxmy(BLOCK(B, i, k), &BLOCK(B, k, k + 1),
-                    &BLOCK(B, i, k + 1), BLOCK_SIZE - k - 1);
+            elem_daxmy(BLOCK(B, i, k), &BLOCK(B, k, k + 1), &BLOCK(B, i, k + 1),
+                       BLOCK_SIZE - k - 1);
         }
 }
 
@@ -197,8 +192,8 @@ static void block_lower_solve(Block B, Block L) {
     /* Perform forward substitution. */
     for (i = 1; i < BLOCK_SIZE; i++)
         for (k = 0; k < i; k++)
-            elem_daxmy(BLOCK(L, i, k), &BLOCK(B, k, 0),
-                    &BLOCK(B, i, 0), BLOCK_SIZE);
+            elem_daxmy(BLOCK(L, i, k), &BLOCK(B, k, 0), &BLOCK(B, i, 0),
+                       BLOCK_SIZE);
 }
 
 /*
@@ -213,8 +208,8 @@ static void block_upper_solve(Block B, Block U) {
     for (i = 0; i < BLOCK_SIZE; i++)
         for (k = 0; k < BLOCK_SIZE; k++) {
             BLOCK(B, i, k) /= BLOCK(U, k, k);
-            elem_daxmy(BLOCK(B, i, k), &BLOCK(U, k, k + 1),
-                    &BLOCK(B, i, k + 1), BLOCK_SIZE - k - 1);
+            elem_daxmy(BLOCK(B, i, k), &BLOCK(U, k, k + 1), &BLOCK(B, i, k + 1),
+                       BLOCK_SIZE - k - 1);
         }
 }
 
@@ -228,14 +223,13 @@ static void block_schur(Block B, Block A, Block C) {
     /* Compute Schur complement. */
     for (i = 0; i < BLOCK_SIZE; i++)
         for (k = 0; k < BLOCK_SIZE; k++)
-            elem_daxmy(BLOCK(A, i, k), &BLOCK(C, k, 0),
-                    &BLOCK(B, i, 0), BLOCK_SIZE);
+            elem_daxmy(BLOCK(A, i, k), &BLOCK(C, k, 0), &BLOCK(B, i, 0),
+                       BLOCK_SIZE);
 }
 
 /****************************************************************************\
  * Divide-and-conquer matrix LU decomposition.
  \****************************************************************************/
-
 
 /*
  * schur - Compute M' = M - VW.
@@ -282,7 +276,7 @@ void schur(Matrix M, Matrix V, Matrix W, int nb) {
     cilk_spawn schur(M10, V11, W10, hnb);
     schur(M11, V11, W11, hnb);
 
-    cilk_sync; 
+    cilk_sync;
 
     return;
 }
@@ -334,7 +328,7 @@ void lower_solve(Matrix M, Matrix L, int nb) {
     cilk_spawn aux_lower_solve(M00, M10, L, hnb);
     aux_lower_solve(M01, M11, L, hnb);
 
-    cilk_sync; 
+    cilk_sync;
 
     return;
 }
@@ -347,22 +341,22 @@ void upper_solve(Matrix M, Matrix U, int nb);
 
 void aux_upper_solve(Matrix Ma, Matrix Mb, Matrix U, int nb) {
 
-  Matrix U00, U01, U10, U11;
+    Matrix U00, U01, U10, U11;
 
-  /* Break U matrix into 4 pieces. */
-  U00 = &MATRIX(U, 0, 0);
-  U01 = &MATRIX(U, 0, nb);
-  U10 = &MATRIX(U, nb, 0);
-  U11 = &MATRIX(U, nb, nb);
+    /* Break U matrix into 4 pieces. */
+    U00 = &MATRIX(U, 0, 0);
+    U01 = &MATRIX(U, 0, nb);
+    U10 = &MATRIX(U, nb, 0);
+    U11 = &MATRIX(U, nb, nb);
 
-  /* Solve with recursive calls. */
-  upper_solve(Ma, U00, nb);
+    /* Solve with recursive calls. */
+    upper_solve(Ma, U00, nb);
 
-  schur(Mb, Ma, U01, nb);
+    schur(Mb, Ma, U01, nb);
 
-  upper_solve(Mb, U11, nb);
+    upper_solve(Mb, U11, nb);
 
-  return;
+    return;
 }
 
 void upper_solve(Matrix M, Matrix U, int nb) {
@@ -388,7 +382,7 @@ void upper_solve(Matrix M, Matrix U, int nb) {
     cilk_spawn aux_upper_solve(M00, M01, U, hnb);
     aux_upper_solve(M10, M11, U, hnb);
 
-    cilk_sync; 
+    cilk_sync;
 
     return;
 }
@@ -444,7 +438,7 @@ int usage(void) {
     printf("\nUsage: lu <options>\n\n");
     printf("Options:\n");
     printf("  -n N : Decompose NxN matrix, where N is at least 16 "
-            "and power of 2.\n");
+           "and power of 2.\n");
     printf("  -o   : Print matrix before and after decompose.\n");
     printf("  -c   : Check result.\n\n");
     printf("Default: lu -n %d\n\n", DEFAULT_SIZE);
@@ -461,7 +455,7 @@ int invalid_input(int n) {
         return usage();
 
     /* Check that matrix is power-of-2 sized. */
-    while (!((unsigned) v & (unsigned) 1))
+    while (!((unsigned)v & (unsigned)1))
         v >>= 1;
     if (v != 1)
         return usage();
@@ -473,8 +467,8 @@ int invalid_input(int n) {
  * main
  */
 
-const char *specifiers[] = { "-n", "-o", "-c", "-h", 0 };
-int opt_types[] = { INTARG, BOOLARG, BOOLARG, BOOLARG, 0 };
+const char *specifiers[] = {"-n", "-o", "-c", "-h", 0};
+int opt_types[] = {INTARG, BOOLARG, BOOLARG, BOOLARG, 0};
 
 int main(int argc, char *argv[]) {
 
@@ -488,14 +482,15 @@ int main(int argc, char *argv[]) {
     /* Parse arguments. */
     get_options(argc, argv, specifiers, opt_types, &n, &print, &test, &help);
 
-    if (help) return usage();
+    if (help)
+        return usage();
 
     if (invalid_input(n))
         return 1;
     nBlocks = n / BLOCK_SIZE;
 
     /* Allocate matrix. */
-    M = (Matrix) malloc(n * n * sizeof(double));
+    M = (Matrix)malloc(n * n * sizeof(double));
     if (!M) {
         fprintf(stderr, "Allocation failed.\n");
         return 1;
@@ -507,20 +502,20 @@ int main(int argc, char *argv[]) {
     if (print)
         print_matrix(M, nBlocks);
 
-    Msave = (Matrix) malloc(n * n * sizeof(double));
+    Msave = (Matrix)malloc(n * n * sizeof(double));
     if (!Msave) {
         fprintf(stderr, "Allocation failed.\n");
         return 1;
     }
-    memcpy((void *) Msave, (void *) M, n * n * sizeof(double));
+    memcpy((void *)Msave, (void *)M, n * n * sizeof(double));
 
 #if TIMING_COUNT
     clockmark_t begin, end;
     uint64_t elapsed[TIMING_COUNT];
 
-    for(int i=0; i < TIMING_COUNT; i++) {
-        if(i > 0) { /* reset */
-            memcpy((void *) M, (void *) Msave, n * n * sizeof(double));
+    for (int i = 0; i < TIMING_COUNT; i++) {
+        if (i > 0) { /* reset */
+            memcpy((void *)M, (void *)Msave, n * n * sizeof(double));
         }
         begin = ktiming_getmark();
         lu(M, nBlocks);
@@ -529,17 +524,17 @@ int main(int argc, char *argv[]) {
     }
     print_runtime(elapsed, TIMING_COUNT);
 
-#else 
+#else
     lu(M, nBlocks);
 #endif
 
     /* Test result. */
-    if(print)
+    if (print)
         print_matrix(M, nBlocks);
 
     failed = ((test) && (!(test_result(M, Msave, nBlocks))));
 
-    if(failed)
+    if (failed)
         printf("WRONG ANSWER!\n");
     else {
         printf("\nCilk Example: lu\n");
@@ -550,5 +545,5 @@ int main(int argc, char *argv[]) {
     free(M);
     free(Msave);
 
-    return 0;
+    return failed;
 }

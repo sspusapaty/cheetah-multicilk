@@ -30,7 +30,7 @@
  *
  *
  * The procedure cilkmerge does the following:
- *       
+ *
  *       cilkmerge(A[1..n], B[1..m], C[1..(n+m)]) =
  *          find the median of A \union B using binary
  *          search.  The binary search gives a pair
@@ -63,14 +63,13 @@
 
 #ifndef TIMING_COUNT
 #define TIMING_COUNT 0
-#endif 
+#endif
 
 #if TIMING_COUNT
 #include "ktiming.h"
-#endif 
+#endif
 
 #include "getoptions.h"
-
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
@@ -92,10 +91,7 @@ static inline unsigned long my_rand(void) {
     return rand_nxt;
 }
 
-static inline void my_srand(unsigned long seed) {
-
-    rand_nxt = seed;
-}
+static inline void my_srand(unsigned long seed) { rand_nxt = seed; }
 
 static inline ELM med3(ELM a, ELM b, ELM c) {
 
@@ -166,13 +162,13 @@ static ELM *seqpart(ELM *low, ELM *high) {
         return curr_high - 1;
 }
 
-#define swap(a, b) \
-{ \
-  ELM tmp;\
-  tmp = a;\
-  a = b;\
-  b = tmp;\
-}
+#define swap(a, b)                                                             \
+    {                                                                          \
+        ELM tmp;                                                               \
+        tmp = a;                                                               \
+        a = b;                                                                 \
+        b = tmp;                                                               \
+    }
 
 static void insertion_sort(ELM *low, ELM *high) {
 
@@ -203,8 +199,7 @@ void seqquick(ELM *low, ELM *high) {
     insertion_sort(low, high);
 }
 
-void seqmerge(ELM *low1, ELM *high1, 
-              ELM *low2, ELM *high2, ELM *lowdest) {
+void seqmerge(ELM *low1, ELM *high1, ELM *low2, ELM *high2, ELM *lowdest) {
 
     ELM a1, a2;
 
@@ -229,7 +224,7 @@ void seqmerge(ELM *low1, ELM *high1,
      * loading an element out of range.  While this is
      * probably not a problem in practice, yet I don't feel
      * comfortable with an incorrect algorithm.  Therefore,
-     * I use the 'fast' loop on the array (except for the last 
+     * I use the 'fast' loop on the array (except for the last
      * element) and the 'slow' loop for the rest, saving both
      * performance and correctness.
      */
@@ -277,13 +272,13 @@ void seqmerge(ELM *low1, ELM *high1,
     }
 }
 
-#define swap_indices(a, b) \
-{ \
-  ELM *tmp;\
-  tmp = a;\
-  a = b;\
-  b = tmp;\
-}
+#define swap_indices(a, b)                                                     \
+    {                                                                          \
+        ELM *tmp;                                                              \
+        tmp = a;                                                               \
+        a = b;                                                                 \
+        b = tmp;                                                               \
+    }
 
 ELM *binsplit(ELM val, ELM *low, ELM *high) {
 
@@ -293,9 +288,9 @@ ELM *binsplit(ELM val, ELM *low, ELM *high) {
      */
     ELM *mid;
 
-    while(low != high) {
+    while (low != high) {
         mid = low + ((high - low + 1) >> 1);
-        if(val <= *mid)
+        if (val <= *mid)
             high = mid - 1;
         else
             low = mid;
@@ -307,29 +302,28 @@ ELM *binsplit(ELM val, ELM *low, ELM *high) {
         return low;
 }
 
-void cilkmerge(ELM *low1, ELM *high1, 
-               ELM *low2, ELM *high2, ELM *lowdest) {
+void cilkmerge(ELM *low1, ELM *high1, ELM *low2, ELM *high2, ELM *lowdest) {
 
     /*
-     * Cilkmerge: Merges range [low1, high1] with range [low2, high2] 
-     * into the range [lowdest, ...]  
+     * Cilkmerge: Merges range [low1, high1] with range [low2, high2]
+     * into the range [lowdest, ...]
      */
 
     /*
      * We want to take the middle element (indexed by split1) from the
      * larger of the two arrays.  The following code assumes that split1
      * is taken from range [low1, high1].  So if [low1, high1] is
-     * actually the smaller range, we should swap it with [low2, high2] 
+     * actually the smaller range, we should swap it with [low2, high2]
      */
 
-    ELM *split1, *split2;	/*
-                                 * where each of the ranges are broken for 
-                                 * recursive merge 
-                                 */
-    long int lowsize;		/*
-                                 * total size of lower halves of two
-                                 * ranges - 2 
-                                 */
+    ELM *split1, *split2; /*
+                           * where each of the ranges are broken for
+                           * recursive merge
+                           */
+    long int lowsize;     /*
+                           * total size of lower halves of two
+                           * ranges - 2
+                           */
 
     if (high2 - low2 > high1 - low1) {
         swap_indices(low1, low2);
@@ -350,14 +344,14 @@ void cilkmerge(ELM *low1, ELM *high1,
      * Basic approach: Find the middle element of one range (indexed by
      * split1). Find where this element would fit in the other range
      * (indexed by split 2). Then merge the two lower halves and the two
-     * upper halves. 
+     * upper halves.
      */
 
     split1 = ((high1 - low1 + 1) / 2) + low1;
     split2 = binsplit(*split1, low2, high2);
     lowsize = split1 - low1 + split2 - low2;
 
-    /* 
+    /*
      * directly put the splitting element into
      * the appropriate location
      */
@@ -425,21 +419,20 @@ void scramble_array(ELM *arr, unsigned long size) {
 }
 
 void fill_array(ELM *arr, unsigned long size) {
-  unsigned long i;
+    unsigned long i;
 
-  my_srand(1);
-  /* first, fill with integers 1..size */
-  for (i = 0; i < size; ++i) {
-    arr[i] = i;
-  }
+    my_srand(1);
+    /* first, fill with integers 1..size */
+    for (i = 0; i < size; ++i) {
+        arr[i] = i;
+    }
 
-  /* then, scramble randomly */
-  scramble_array(arr, size);
+    /* then, scramble randomly */
+    scramble_array(arr, size);
 }
 
 int usage(void) {
-    fprintf(stderr, 
-            "\nUsage: cilksort [-n size] [-c] [-h]\n\n");
+    fprintf(stderr, "\nUsage: cilksort [-n size] [-c] [-h]\n\n");
     return -1;
 }
 
@@ -459,16 +452,17 @@ int main(int argc, char **argv) {
 
     get_options(argc, argv, specifiers, opt_types, &size, &check, &help);
 
-    if(help) return usage();
+    if (help)
+        return usage();
 
-    array = (ELM *) malloc(size * sizeof(ELM));
-    tmp = (ELM *) malloc(size * sizeof(ELM));
+    array = (ELM *)malloc(size * sizeof(ELM));
+    tmp = (ELM *)malloc(size * sizeof(ELM));
 
 #if TIMING_COUNT
     clockmark_t begin, end;
     uint64_t elapsed[TIMING_COUNT];
 
-    for(int i=0; i < TIMING_COUNT; i++) {
+    for (int i = 0; i < TIMING_COUNT; i++) {
         fill_array(array, size);
         begin = ktiming_getmark();
         cilksort(array, tmp, size);
@@ -481,7 +475,7 @@ int main(int argc, char **argv) {
     cilksort(array, tmp, size);
 #endif
 
-    if(check) {
+    if (check) {
         printf("Now check result ... \n");
 
         success = 1;
@@ -489,9 +483,9 @@ int main(int argc, char **argv) {
             if (array[i] != i)
                 success = 0;
 
-        if(!success)
+        if (!success)
             printf("SORTING FAILURE!");
-        else 
+        else
             printf("Sorting successful.");
     }
 
@@ -503,4 +497,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-

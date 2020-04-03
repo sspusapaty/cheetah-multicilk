@@ -1,16 +1,16 @@
 /**
  * Copyright (c) 2012 MIT License by 6.172 Staff
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
  * deal in the Software without restriction, including without limitation the
  * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
  * sell copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,7 +38,6 @@
 
 #define NSEC_TO_SEC(x) ((double)(x)*1.0e-9)
 
-
 clockmark_t ktiming_getmark(void) {
     struct timespec temp = {0, 0};
     uint64_t nanos;
@@ -53,26 +52,26 @@ clockmark_t ktiming_getmark(void) {
     return nanos;
 }
 
-uint64_t ktiming_diff_nsec(const clockmark_t* const 
-                           start, const clockmark_t* const end) {
+uint64_t ktiming_diff_nsec(const clockmark_t *const start,
+                           const clockmark_t *const end) {
     return *end - *start;
 }
 
-double ktiming_diff_sec(const clockmark_t* const start, 
-                       const clockmark_t* const end) {
+double ktiming_diff_sec(const clockmark_t *const start,
+                        const clockmark_t *const end) {
     return NSEC_TO_SEC(ktiming_diff_nsec(start, end));
 }
 
-static void 
-print_runtime_helper(uint64_t *nsec_elapsed, int size, int summary) {
+static void print_runtime_helper(uint64_t *nsec_elapsed, int size,
+                                 int summary) {
 
-    int i; 
+    int i;
     uint64_t total = 0;
     double ave, std_dev = 0, dev_sq_sum = 0;
 
     for (i = 0; i < size; i++) {
         total += nsec_elapsed[i];
-        if(!summary) {
+        if (!summary) {
             printf("Running time %d: %gs\n", (i + 1),
                    NSEC_TO_SEC(nsec_elapsed[i]));
         }
@@ -84,13 +83,13 @@ print_runtime_helper(uint64_t *nsec_elapsed, int size, int summary) {
             double diff = (double)nsec_elapsed[i] - ave;
             dev_sq_sum += diff * diff;
         }
-        std_dev = sqrt(dev_sq_sum / (size-1));
+        std_dev = sqrt(dev_sq_sum / (size - 1));
     }
 
     printf("Running time average: %g s\n", NSEC_TO_SEC(ave));
-    if( std_dev != 0 ) {
-        printf( "Std. dev: %g s (%2.3f%%)\n", 
-                NSEC_TO_SEC(std_dev), 100.0*std_dev/ave );
+    if (std_dev != 0) {
+        printf("Std. dev: %g s (%2.3f%%)\n", NSEC_TO_SEC(std_dev),
+               100.0 * std_dev / ave);
     }
 }
 
@@ -101,4 +100,3 @@ void print_runtime(uint64_t *tm_elapsed, int size) {
 void print_runtime_summary(uint64_t *tm_elapsed, int size) {
     print_runtime_helper(tm_elapsed, size, 1);
 }
-
