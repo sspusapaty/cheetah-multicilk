@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <unistd.h> /* usleep */
 
 #include "cilk-internal.h"
 #include "closure.h"
@@ -1137,6 +1138,9 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
 
     CILK_START_TIMING(w, INTERVAL_SCHED);
     worker_change_state(w, WORKER_SCHED);
+
+    int fails = 0;
+
     while (!atomic_load_explicit(&w->g->done, memory_order_acquire)) {
         if (!t) {
             // try to get work from our local queue
@@ -1169,6 +1173,28 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
                 CILK_DROP_TIMING(w, INTERVAL_SCHED);
             }
 #endif
+            if (t) {
+                fails = 0;
+                break;
+            }
+            /* TODO: Use condition variables or a similar controlled blocking
+               mechanism.  When a thread finds something to steal it should
+               wake up another thread to enter the loop. */
+            ++fails;
+            if (fails > 10000) {
+                usleep(10);
+            } else if (fails > 1000) {
+                usleep(1);
+            } else if (fails > 100) {
+                pthread_yield();
+            } else {
+#ifdef __SSE__
+                __builtin_ia32_pause();
+#endif
+#ifdef __aarch64__
+                __builtin_arm_yield();
+#endif
+            }
         }
         CILK_START_TIMING(w, INTERVAL_SCHED);
         if (!atomic_load_explicit(&w->g->done, memory_order_acquire)) {

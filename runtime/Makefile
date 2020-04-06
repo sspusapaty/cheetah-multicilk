@@ -12,10 +12,11 @@ MAIN = libcheetah
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
+ARCH=-mavx2
 OPT = -O1 -g
 INCLUDES = $(REDUCER_INC)
 DEFINES = $(REDUCER_DEF) $(ABI) $(ALERT_DEF)
-OPTIONS = $(OPT) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
+OPTIONS = $(OPT) $(ARCH) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
 .PHONY: all clean build
  

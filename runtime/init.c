@@ -170,6 +170,10 @@ static void *scheduler_thread_proc(void *arg) {
     cilkrts_alert(ALERT_BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
+    /* TODO: Use a condition variable or similar mechanism instead
+       of busy wait.  Starting Cilk wakes up just worker 0.  Worker 0
+       wakes up some more threads.  */
+
     int delay = 1;
 
     while (!atomic_load_explicit(&w->g->start, memory_order_acquire)) {
