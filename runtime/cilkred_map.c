@@ -112,10 +112,15 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w) {
  * @param h The cilkred_map to be deallocated.
  */
 void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h) {
+    if (!h) {
+        return;
+    }
     cilkrts_alert(ALERT_REDUCE, w,
                   "(cilkred_map_destroy_map) freeing cilkred_map %p", h);
     free(h->vinfo);
+    h->vinfo = NULL;
     free(h->log);
+    h->log = NULL;
     free(h);
 
     cilkrts_alert(ALERT_REDUCE, w,
