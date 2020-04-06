@@ -95,18 +95,26 @@ int main(int argc, char *argv[]) {
 
     int n = 13;
 
-    if (argc > 2 && !strcmp(argv[1], "-c")) {
+    if (argc > 1 && !strcmp(argv[1], "-c")) {
         --argc;
         ++argv;
     }
 
-    if (argc < 2) {
+    switch (argc) {
+    case 1:
+        break;
+    case 2:
+        n = atoi(argv[1]);
+        if (n <= 0 || n > 100) {
+            fprintf(stderr, "Invalid board size %s\n", argv[1]);
+            exit(1);
+        }
+        printf("Running %s with n = %d.\n", prog, n);
+        break;
+    default:
         fprintf(stderr, "Usage: %s <n>\n", prog);
         fprintf(stderr, "Use default board size, n = 13.\n");
-        exit(0);
-    } else {
-        n = atoi(argv[1]);
-        printf("Running %s with n = %d.\n", prog, n);
+        exit(1);
     }
 
     int res = 0;

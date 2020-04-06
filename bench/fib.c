@@ -8,6 +8,10 @@
 #define TIMING_COUNT 1
 #endif
 
+#ifdef SIMULATE_RACE
+int race = 0;
+#endif
+
 static const int expected[] = {
     0, 1, 1, 2, 3, 5, 8, 13, 21, 34,
     /* 10 */
@@ -26,6 +30,9 @@ extern int fib(int);
    returns the same result for the same argument and moves the call
    outside of the timing loop. */
 __attribute__((weak)) int fib(int n) {
+#ifdef SIMULATE_RACE
+    ++race;
+#endif
     int x, y;
 
     if (n < 2) {

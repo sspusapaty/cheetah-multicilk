@@ -213,8 +213,8 @@ double maxerror_rm(REAL *M1, REAL *M2, int n) {
 // recursive parallel solution to matrix multiplication
 void mat_mul_par(REAL *A, REAL *B, REAL *C, int n) {
     // BASE CASE: here computation is switched to itterative matrix
-    // multiplication At the base case A, B, and C point to row order matrices of
-    // n x n
+    // multiplication At the base case A, B, and C point to row order matrices
+    // of n x n
     if (n == BASE_CASE) {
         int i, j, k;
         for (i = 0; i < n; i++) {
@@ -263,8 +263,8 @@ void mat_mul_par(REAL *A, REAL *B, REAL *C, int n) {
 // recursive parallel solution to matrix multiplication - row major order
 void mat_mul_par_rm(REAL *A, REAL *B, REAL *C, int n, int orig_n) {
     // BASE CASE: here computation is switched to itterative matrix
-    // multiplication At the base case A, B, and C point to row order matrices of
-    // n x n
+    // multiplication At the base case A, B, and C point to row order matrices
+    // of n x n
     if (n == BASE_CASE) {
         int i, j, k;
         for (i = 0; i < n; i++) {
