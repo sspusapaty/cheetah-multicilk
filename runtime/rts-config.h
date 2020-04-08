@@ -6,10 +6,11 @@
 
 #define __CILKRTS_VERSION 0x0
 
-#ifdef OPENCILK_ABI
-#define __CILKRTS_ABI_VERSION 0x2
+/* The definition must be spelled the same as in cilk/common.h, 1 not 0x1. */
+#if __cilk >= 300 || defined OPENCILK_ABI
+#define __CILKRTS_ABI_VERSION 2
 #else
-#define __CILKRTS_ABI_VERSION 0x1
+#define __CILKRTS_ABI_VERSION 1
 #endif
 
 #define CILK_DEBUG 1
