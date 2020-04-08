@@ -7,11 +7,16 @@ SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
+MANY = 8 # how many cores is a lot?
+ENABLE_X11 = false
+
 CTESTS   = intlist serialsum intsum multispawnsum repeatedintsum
 CXXTESTS = cppsum
 DIRTESTS = nqueens # quad_tree
 TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
-OPTIONS  = -g -Wall $(OPT) -fno-omit-frame-pointer -fcilkplus -ftapir=cilkr
+ABI      = -fopencilk # or -fcilk
+WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
+OPTIONS  = -g3 -Wall $(OPT) -fno-omit-frame-pointer $(ABI) $(WARN)
 
 RTS_LIBS = ../runtime/libcheetah.a $(patsubst %,../runtime/%/module.a,$(MODS))
 
@@ -37,7 +42,7 @@ $(DIRTESTS):
 	$(CXX) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
 
 check:
-	make clean; make TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
+	$(MAKE) clean; $(MAKE) TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
 	./intlist --nproc 2 40000000
 	./serialsum --nproc 1 200000000
 	./intsum --nproc 1 200000000
@@ -48,17 +53,18 @@ check:
 #	$(MAKE) -C quad_tree check $(TOPASS)
 
 stress:
-	make clean; make TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
-	./intlist --nproc 8 40000000
-	./intsum --nproc 8 200000000
-	./repeatedintsum --nproc 2 10000000
-	$(MAKE) -C quad_tree check $(TOPASS)
+	$(MAKE) clean; $(MAKE) TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
+	./intlist --nproc $(MANY) 40000000
+	./intsum --nproc $(MANY) 200000000
+	# Assertion failure: SPA resize not supported yet!
+	#./repeatedintsum --nproc $(MANY) 10000000
+	if $(ENABLE_X11); then $(MAKE) -C quad_tree MANY="$(MANY)" check $(TOPASS) ; else : ; fi
 
 #redcheck:
-#	make clean; make TIMING_COUNT=1 $(TOPASS) > /dev/null 2>&1
+#	$(MAKE) clean; $(MAKE) TIMING_COUNT=1 $(TOPASS) > /dev/null 2>&1
 #	./intlist --nproc 2 2048
 #redgdb:
-#	make clean; make TIMING_COUNT=1 $(TOPASS) > /dev/null 2>&1
+#	$(MAKE) clean; $(MAKE) TIMING_COUNT=1 $(TOPASS) > /dev/null 2>&1
 #	gdb --args ./intlist --nproc 2 2048
 
 clean:
