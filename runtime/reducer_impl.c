@@ -10,10 +10,10 @@
 // =================================================================
 
 typedef struct reducer_id_manager {
-    uint16_t spa_cap;
-    uint16_t curr_id;
     cilk_mutex mutex; // enfore mutual exclusion on access to this desc
     int mutex_owner;  // worker id who holds the mutex
+    uint32_t spa_cap;
+    uint32_t curr_id;
 } reducer_id_manager;
 
 static reducer_id_manager *id_manager = NULL;
@@ -51,18 +51,18 @@ static void free_reducer_id_manager(global_state *const g) {
     free(id_manager);
 }
 
-static void reducer_id_get(__cilkrts_worker *ws, uint16_t *id) {
+static uint32_t reducer_id_get(__cilkrts_worker *ws) {
 
     reducer_id_manager_lock(ws);
-    *id = id_manager->curr_id;
-    id_manager->curr_id++;
-    if (id_manager->curr_id >= id_manager->spa_cap) {
+    uint32_t id = id_manager->curr_id++;
+    if (id >= id_manager->spa_cap) {
         cilkrts_bug(ws, "SPA resize not supported yet!");
     }
     reducer_id_manager_unlock(ws);
+    return id;
 }
 
-void reducer_id_free(__cilkrts_worker *const ws, uint16_t *id) {
+static void reducer_id_free(__cilkrts_worker *const ws, uint32_t id) {
     reducer_id_manager_lock(ws);
     // A big NOOP
     reducer_id_manager_unlock(ws);
@@ -133,7 +133,7 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
     vinfo->key = NULL;
     vinfo->val = NULL;
     cilkred_map_unlog_id(w, h, key->__id_num);
-    reducer_id_free(w, (uint16_t *)&key->__id_num);
+    reducer_id_free(w, key->__id_num);
 }
 
 void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
@@ -160,8 +160,7 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 
     CILK_ASSERT(w, w->reducer_map == h);
 
-    uint16_t id;
-    reducer_id_get(w, &id);
+    uint32_t id = reducer_id_get(w);
     ViewInfo *vinfo = &h->vinfo[id];
     vinfo->key = key;
     vinfo->val = (char *)key + key->__view_offset; // init with left most view

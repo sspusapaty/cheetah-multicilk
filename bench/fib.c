@@ -74,7 +74,7 @@ int main(int argc, char *args[]) {
 
     char const *result = "(unchecked)";
     int status = 0;
-    if (check && n >= 0 && n < sizeof expected / sizeof expected[0]) {
+    if (check && (size_t)n < sizeof expected / sizeof expected[0]) {
         for (int i = 0; i < TIMING_COUNT; ++i) {
             if (expected[n] != res[i]) {
                 status = 1;

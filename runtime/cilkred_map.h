@@ -1,6 +1,10 @@
 #ifndef _CILKRED_MAP_H
 #define _CILKRED_MAP_H
 
+#ifdef OPENCILK_ABI
+#define __cilk 300
+#endif
+
 #include "cilk-internal.h"
 #include "debug.h"
 #include <cilk/hyperobject_base.h>

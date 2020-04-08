@@ -1,8 +1,5 @@
 include ../config.mk
 
-#	$(CC) -O0 -g -ftapir=cilkr main.c -c -o main.o
-#	$(CC) main.o ../runtime/libcheetah.a ../runtime/reducer/module.a -lpthread -o main
-
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
@@ -14,9 +11,8 @@ CTESTS   = intlist serialsum intsum multispawnsum repeatedintsum
 CXXTESTS = cppsum
 DIRTESTS = nqueens # quad_tree
 TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
-ABI      = -fopencilk # or -fcilk
 WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
-OPTIONS  = -g3 -Wall $(OPT) -fno-omit-frame-pointer $(ABI) $(WARN)
+OPTIONS  = $(OPT) $(ARCH) $(DBG) -fno-omit-frame-pointer $(RTS_OPT) $(WARN)
 
 RTS_LIBS = ../runtime/libcheetah.a $(patsubst %,../runtime/%/module.a,$(MODS))
 
@@ -42,23 +38,23 @@ $(DIRTESTS):
 	$(CXX) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
 
 check:
-	$(MAKE) clean; $(MAKE) TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
+	$(MAKE) TIMING_COUNT=5 $(TOPASS)
 	./intlist --nproc 2 40000000
 	./serialsum --nproc 1 200000000
 	./intsum --nproc 1 200000000
-	./intsum --nproc 2 200000000
+	./intsum --nproc $(MANY) 200000000
 	./multispawnsum --nproc 2 100000000
 	./cppsum --nproc 2 200000000
 	$(MAKE) -C nqueens check $(TOPASS)
-#	$(MAKE) -C quad_tree check $(TOPASS)
+	if $(ENABLE_X11); then $(MAKE) -C quad_tree check $(TOPASS) ; else : ; fi
 
 stress:
-	$(MAKE) clean; $(MAKE) TIMING_COUNT=5 $(TOPASS) > /dev/null 2>&1
+	$(MAKE) TIMING_COUNT=5 $(TOPASS)
 	./intlist --nproc $(MANY) 40000000
 	./intsum --nproc $(MANY) 200000000
-	# Assertion failure: SPA resize not supported yet!
-	#./repeatedintsum --nproc $(MANY) 10000000
-	if $(ENABLE_X11); then $(MAKE) -C quad_tree MANY="$(MANY)" check $(TOPASS) ; else : ; fi
+	if $(ENABLE_X11); then $(MAKE) -C quad_tree check $(TOPASS) ; else : ; fi
+#	 Assertion failure: SPA resize not supported yet!
+#	./repeatedintsum --nproc $(MANY) 10000000
 
 #redcheck:
 #	$(MAKE) clean; $(MAKE) TIMING_COUNT=1 $(TOPASS) > /dev/null 2>&1

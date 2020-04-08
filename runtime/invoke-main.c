@@ -1,3 +1,4 @@
+#include <stdatomic.h>
 #include <stdio.h>
 
 #include "cilk-internal.h"
@@ -53,11 +54,13 @@ CHEETAH_INTERNAL void cleanup_invoke_main(Closure *invoke_main) {
     Closure_destroy_main(invoke_main);
 }
 
-CHEETAH_INTERNAL void spawn_cilk_main(int *res, int argc, char *args[]) {
+CHEETAH_INTERNAL void spawn_cilk_main(volatile atomic_int *res, int argc,
+                                      char *args[]) {
     __cilkrts_stack_frame *sf = alloca(sizeof(__cilkrts_stack_frame));
     __cilkrts_enter_frame_fast(sf);
     __cilkrts_detach(sf);
-    *res = cilk_main(argc, args);
+    /* Make this an atomic so the store is completed before done is set true. */
+    atomic_store_explicit(res, cilk_main(argc, args), memory_order_relaxed);
     __cilkrts_pop_frame(sf);
     __cilkrts_leave_frame(sf);
 }
@@ -77,7 +80,6 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
 
     char *rsp;
     char *nsp;
-    int _tmp;
     int argc = w->g->cilk_main_argc;
     char **args = w->g->cilk_main_args;
 
@@ -89,7 +91,10 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
 
     __cilkrts_save_fp_ctrl_state(sf);
     if (__builtin_setjmp(sf->ctx) == 0) {
-        spawn_cilk_main(&_tmp, argc, args);
+        /* JFC: This code originally stored to a temporary variable
+           that was later stored to cilk_main_return.  llvm's optimizer
+           was overly clever and lost the value. */
+        spawn_cilk_main(&w->g->cilk_main_return, argc, args);
     } else {
         // ANGE: Important to reset using sf->worker;
         // otherwise w gets cached in a register
@@ -117,7 +122,6 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     }
 
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
-    w->g->cilk_main_return = _tmp;
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
     atomic_store_explicit(&w->g->done, 1, memory_order_release);
@@ -161,7 +165,9 @@ int main(int argc, char *argv[]) {
             g->options.nproc);
 
     __cilkrts_run(g);
-    ret = g->cilk_main_return;
+    /* The store to cilk_main_return precedes the release store to done.
+       An acquire load from done precedes the load below. */
+    ret = atomic_load_explicit(&g->cilk_main_return, memory_order_relaxed);
     __cilkrts_exit(g);
 
     return ret;

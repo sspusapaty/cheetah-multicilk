@@ -220,16 +220,15 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
-    volatile int invoke_main_initialized;
-    atomic_bool start;
-    atomic_bool done;
+    volatile _Bool invoke_main_initialized;
+    volatile atomic_bool start;
+    volatile atomic_bool done;
+    volatile atomic_int cilk_main_return;
+
     cilk_mutex print_lock; // global lock for printing messages
 
     int cilk_main_argc;
     char **cilk_main_args;
-
-    int cilk_main_return;
-    int cilk_main_exit;
 
     WHEN_SCHED_STATS(struct global_sched_stats stats;)
 };

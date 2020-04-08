@@ -7,11 +7,9 @@ SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
-TESTS          = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-OPT=-O3 -mavx2
+TESTS   = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
 #SAN=-fsanitize=cilk
-CILK=-fopencilk
-OPTIONS = $(OPT) $(SAN) -g $(RTS_OPT) -fno-exceptions -Werror # -Wall 
+OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W -fno-omit-frame-pointer
 # dynamic linking
 RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
 LD_FLAGS = $(RTS_DLIBS) $(SAN)

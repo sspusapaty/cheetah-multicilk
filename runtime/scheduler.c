@@ -950,8 +950,9 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         // init_fiber_run is going to setup the fiber for unning user code
         // and "longjmp" into invoke_main (at the very beginning of the
         // function) after user fiber is set up.
-        if (t == w->g->invoke_main && w->g->invoke_main_initialized == 0) {
-            w->g->invoke_main_initialized = 1;
+        volatile _Bool *initialized = &w->g->invoke_main_initialized;
+        if (t == w->g->invoke_main && *initialized == 0) {
+            *initialized = 1;
             init_fiber_run(w, fiber, sf);
         } else {
             void *new_rsp = sysdep_reset_stack_for_resume(fiber, sf);
