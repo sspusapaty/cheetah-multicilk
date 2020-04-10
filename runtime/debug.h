@@ -43,7 +43,6 @@ void cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
 
 /** Standard text for failed assertion */
 CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed;
-CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed_g;
 
 #define CILK_ASSERT(w, ex)                                                     \
     (__builtin_expect((ex) != 0, 1)                                            \
@@ -54,7 +53,7 @@ CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed_g;
 #define CILK_ASSERT_G(ex)                                                      \
     (__builtin_expect((ex) != 0, 1)                                            \
          ? (void)0                                                             \
-         : cilkrts_bug(NULL, __cilkrts_assertion_failed_g, __FILE__, __LINE__, \
+         : cilkrts_bug(NULL, __cilkrts_assertion_failed, __FILE__, __LINE__,   \
                        #ex))
 
 #define CILK_ABORT(w, msg)                                                     \

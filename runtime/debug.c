@@ -7,9 +7,7 @@
 #include <stdlib.h>
 
 const char *const __cilkrts_assertion_failed =
-    "[W%02u]: %s:%d: cilk assertion failed: %s\n";
-const char *const __cilkrts_assertion_failed_g =
-    "[M]: %s:%d: cilk assertion failed: %s\n";
+    "%s:%d: cilk assertion failed: %s\n";
 
 void cilk_die_internal(struct global_state *const g, const char *complain) {
     cilk_mutex_lock(&(g->print_lock));
