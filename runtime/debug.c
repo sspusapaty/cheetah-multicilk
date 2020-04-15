@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+CHEETAH_INTERNAL unsigned int alert_level = 0;
+
 const char *const __cilkrts_assertion_failed =
     "%s:%d: cilk assertion failed: %s\n";
 
@@ -36,6 +38,8 @@ void cilkrts_bug(__cilkrts_worker *w, const char *fmt, ...) {
 }
 
 #if CILK_DEBUG
+#undef cilkrts_alert
+
 CHEETAH_INTERNAL
 void cilkrts_alert(const int lvl, __cilkrts_worker *w, const char *fmt, ...) {
     /* To reduce user confusion, write all user-generated output

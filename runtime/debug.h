@@ -14,7 +14,7 @@ struct __cilkrts_worker;
     cilk_die_internal(g, complain)
 
 #ifndef ALERT_LVL
-#define ALERT_LVL 0 /* ALERT_BOOT */
+#define ALERT_LVL 0x1ff
 #endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x1
@@ -27,6 +27,8 @@ struct __cilkrts_worker;
 #define ALERT_CFRAME 0x80
 #define ALERT_REDUCE 0x100
 
+extern CHEETAH_INTERNAL unsigned int alert_level;
+
 // Unused: compiler inlines the stack frame creation
 // #define CILK_STACKFRAME_MAGIC 0xCAFEBABE
 
@@ -37,6 +39,11 @@ void cilk_die_internal(struct global_state *const g, const char *complain);
 
 #if CILK_DEBUG
 void cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
+#define cilkrts_alert(LVL, W, FMT, ...)                                        \
+    (alert_level & (LVL)&ALERT_LVL)                                            \
+        ? cilkrts_alert(LVL, W, FMT, ##__VA_ARGS__)                            \
+        : (void)0
+
 /*#define __cilkrts_alert(lvl, w, fmt, ...) __cilkrts_alert(lvl, w, fmt,
  * ##__VA_ARGS__)*/
 #define WHEN_CILK_DEBUG(ex) ex

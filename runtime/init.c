@@ -2,7 +2,7 @@
 #include <sched.h>
 
 #include <pthread.h>
-#if ALERT_LVL != 0
+#ifdef DEBUG
 #include <stdio.h>
 #endif
 #include <stdlib.h>
@@ -38,7 +38,7 @@ CHEETAH_INTERNAL extern int cilkg_nproc;
 typedef cpuset_t cpu_set_t;
 #endif
 
-static int env_get_int(char const *var) {
+static long env_get_int(char const *var) {
     const char *envstr = getenv(var);
     if (envstr)
         return strtol(envstr, NULL, 0);
@@ -51,7 +51,7 @@ static global_state *global_state_init(int argc, char *argv[]) {
     global_state *g = (global_state *)aligned_alloc(__alignof(global_state),
                                                     sizeof(global_state));
 
-#if ALERT_LVL != 0
+#ifdef DEBUG
     setlinebuf(stderr);
 #endif
 
@@ -60,6 +60,8 @@ static global_state *global_state_init(int argc, char *argv[]) {
         free(g);
         exit(0);
     }
+
+    alert_level = env_get_int("CILK_ALERT");
 
     if (g->options.nproc == 0) {
         // use the number of cores online right now
@@ -98,7 +100,7 @@ static global_state *global_state_init(int argc, char *argv[]) {
     cilk_mutex_init(&(g->print_lock));
 
     g->workers =
-        (__cilkrts_worker **)malloc(active_size * sizeof(__cilkrts_worker *));
+        (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
     g->deques = (ReadyDeque *)aligned_alloc(__alignof__(ReadyDeque),
                                             active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *)malloc(active_size * sizeof(pthread_t));
