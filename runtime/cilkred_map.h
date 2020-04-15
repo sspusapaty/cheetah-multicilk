@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define INVALID_RMAP (cilkred_map *)(-1)
+typedef uint32_t hyper_id_t;
 
 enum merge_kind {
     MERGE_UNORDERED, ///< Assertion fails
@@ -35,22 +35,28 @@ typedef struct view_info {
  * view for a strand.
  */
 struct cilkred_map {
-    uint16_t spa_cap;
-    uint16_t num_of_vinfo; // max is spa_cap
-    uint16_t num_of_logs;  // max is spa_cap / 2
-    // SPA structure
-    ViewInfo *vinfo;
-    uint16_t *log;
-
+    hyper_id_t spa_cap;
+    hyper_id_t num_of_vinfo; // max is spa_cap
+    hyper_id_t num_of_logs;  // max is spa_cap / 2
     /** Set true if merging (for debugging purposes) */
     bool merging;
+    hyper_id_t *log;
+    // SPA structure, may be reallocated when entries are added or removed
+    ViewInfo *vinfo;
 };
 typedef struct cilkred_map cilkred_map;
 
+CHEETAH_INTERNAL
 void cilkred_map_log_id(__cilkrts_worker *const w, cilkred_map *this_map,
-                        uint16_t id);
+                        hyper_id_t id);
+CHEETAH_INTERNAL
 void cilkred_map_unlog_id(__cilkrts_worker *const w, cilkred_map *this_map,
-                          uint16_t id);
+
+                          hyper_id_t id);
+
+/* Calling this function potentially invalidates any older ViewInfo pointers
+   from the same map. */
+CHEETAH_INTERNAL
 ViewInfo *cilkred_map_lookup(cilkred_map *this_map,
                              __cilkrts_hyperobject_base *key);
 /**
@@ -62,7 +68,8 @@ ViewInfo *cilkred_map_lookup(cilkred_map *this_map,
  *
  * @return Pointer to the initialized cilkred_map.
  */
-cilkred_map *cilkred_map_make_map(__cilkrts_worker *w);
+CHEETAH_INTERNAL
+cilkred_map *cilkred_map_make_map(__cilkrts_worker *w, size_t size);
 
 /**
  * Destroy a reducer map.  The map must have been allocated from the worker's
@@ -71,18 +78,23 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w);
  * @param w __cilkrts_worker the cilkred_map was created for.
  * @param h The cilkred_map to be deallocated.
  */
+CHEETAH_INTERNAL
 void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h);
 
-__cilkrts_worker *cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
-                                    cilkred_map *other_map, merge_kind kind);
+CHEETAH_INTERNAL
+void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
+                       cilkred_map *other_map, merge_kind kind);
 
 /** @brief Test whether the cilkred_map is empty */
+CHEETAH_INTERNAL
 bool cilkred_map_is_empty(cilkred_map *this_map);
 
 /** @brief Get number of views in the cilkred_map */
-uint64_t cilkred_map_num_views(cilkred_map *this_map);
+CHEETAH_INTERNAL
+size_t cilkred_map_num_views(cilkred_map *this_map);
 
 /** @brief Is the cilkred_map leftmost */
+CHEETAH_INTERNAL
 bool cilkred_map_is_leftmost(cilkred_map *this_map);
 
 #endif

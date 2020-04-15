@@ -12,59 +12,62 @@
 typedef struct reducer_id_manager {
     cilk_mutex mutex; // enfore mutual exclusion on access to this desc
     int mutex_owner;  // worker id who holds the mutex
-    uint32_t spa_cap;
-    uint32_t curr_id;
+    hyper_id_t spa_cap;
+    hyper_id_t curr_id;
 } reducer_id_manager;
 
-static reducer_id_manager *id_manager = NULL;
+static reducer_id_manager id_manager;
 
 static void reducer_id_manager_assert_ownership(__cilkrts_worker *const ws) {
 
-    CILK_ASSERT(ws, id_manager->mutex_owner == ws->self);
+    CILK_ASSERT(ws, id_manager.mutex_owner == ws->self);
 }
 
 static inline void reducer_id_manager_lock(__cilkrts_worker *const ws) {
 
-    cilk_mutex_lock(&id_manager->mutex);
-    id_manager->mutex_owner = ws->self;
+    cilk_mutex_lock(&id_manager.mutex);
+    id_manager.mutex_owner = ws->self;
 }
 
-static inline void reducer_id_manager_unlock(__cilkrts_worker *const ws) {
+static void reducer_id_manager_unlock(__cilkrts_worker *const ws) {
 
     reducer_id_manager_assert_ownership(ws);
-    id_manager->mutex_owner = NOBODY;
-    cilk_mutex_unlock(&id_manager->mutex);
+    id_manager.mutex_owner = NOBODY;
+    cilk_mutex_unlock(&id_manager.mutex);
 }
 
 static void init_reducer_id_manager(global_state *const g) {
-    id_manager = (reducer_id_manager *)malloc(sizeof(reducer_id_manager));
-    id_manager->spa_cap = 64;
-    id_manager->curr_id = 0;
-
-    cilk_mutex_init(&id_manager->mutex);
-    id_manager->mutex_owner = NOBODY;
+    cilk_mutex_init(&id_manager.mutex);
+    id_manager.mutex_owner = NOBODY;
+    id_manager.spa_cap = 1000;
+    id_manager.curr_id = 0;
 }
 
 static void free_reducer_id_manager(global_state *const g) {
-    CILK_ASSERT_G(id_manager->mutex_owner == NOBODY);
-    cilk_mutex_destroy(&id_manager->mutex);
-    free(id_manager);
+    CILK_ASSERT_G(id_manager.mutex_owner == NOBODY);
+    cilk_mutex_destroy(&id_manager.mutex);
+    id_manager.spa_cap = 0;
+    id_manager.curr_id = ~(hyper_id_t)0;
 }
 
-static uint32_t reducer_id_get(__cilkrts_worker *ws) {
+static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
 
     reducer_id_manager_lock(ws);
-    uint32_t id = id_manager->curr_id++;
-    if (id >= id_manager->spa_cap) {
+    hyper_id_t id = id_manager.curr_id++;
+    if (id >= id_manager.spa_cap) {
         cilkrts_bug(ws, "SPA resize not supported yet!");
     }
     reducer_id_manager_unlock(ws);
     return id;
 }
 
-static void reducer_id_free(__cilkrts_worker *const ws, uint32_t id) {
+static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
     reducer_id_manager_lock(ws);
-    // A big NOOP
+    /* Return the ID to the system to be reallocated.
+       TODO: This only works if reducer lifetimes are nested. */
+    if (id == id_manager.curr_id - 1) {
+        id_manager.curr_id = id;
+    }
     reducer_id_manager_unlock(ws);
 }
 
@@ -90,7 +93,7 @@ void reducers_deinit(global_state *g) {
 static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     cilkred_map *h;
     // MAK: w.out worker mem pools, need to reexamine
-    h = cilkred_map_make_map(w);
+    h = cilkred_map_make_map(w, id_manager.spa_cap);
     w->reducer_map = h;
 
     cilkrts_alert(ALERT_REDUCE, w,
@@ -129,9 +132,6 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
         cilkrts_bug(w, "User error: hyperobject used by another hyperobject");
     }
 
-    ViewInfo *vinfo = &h->vinfo[key->__id_num];
-    vinfo->key = NULL;
-    vinfo->val = NULL;
     cilkred_map_unlog_id(w, h, key->__id_num);
     reducer_id_free(w, key->__id_num);
 }
@@ -160,12 +160,15 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 
     CILK_ASSERT(w, w->reducer_map == h);
 
-    uint32_t id = reducer_id_get(w);
+    hyper_id_t id = reducer_id_get(w);
     ViewInfo *vinfo = &h->vinfo[id];
     vinfo->key = key;
     vinfo->val = (char *)key + key->__view_offset; // init with left most view
     key->__id_num = id;
     cilkred_map_log_id(w, h, key->__id_num);
+
+    static_assert(sizeof(__cilkrts_hyperobject_base) <= __CILKRTS_CACHE_LINE__,
+                  "hyperobject base is too large");
 }
 
 void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
@@ -183,7 +186,9 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
 
     ViewInfo *vinfo = cilkred_map_lookup(h, key);
     if (vinfo == NULL) {
-        vinfo = &h->vinfo[key->__id_num];
+        hyper_id_t id = key->__id_num;
+        CILK_ASSERT(w, id < h->spa_cap);
+        vinfo = &h->vinfo[id];
 
         void *val = key->__c_monoid.allocate_fn(key, key->__view_size);
         key->__c_monoid.identity_fn(key, val);
@@ -192,9 +197,8 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
         // allocate space for the val and initialize it to identity
         vinfo->key = key;
         vinfo->val = val;
-        cilkred_map_log_id(w, h, key->__id_num);
+        cilkred_map_log_id(w, h, id);
     }
-
     return vinfo->val;
 }
 

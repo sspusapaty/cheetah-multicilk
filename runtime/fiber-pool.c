@@ -102,7 +102,7 @@ static void fiber_pool_init(struct cilk_fiber_pool *pool, int64_t stacksize,
     pool->parent = parent;
     pool->capacity = bufsize;
     pool->size = 0;
-    pool->fibers = malloc(bufsize * sizeof(*pool->fibers));
+    pool->fibers = calloc(bufsize, sizeof(*pool->fibers));
 }
 
 /* Helper function for destroying fiber pool */
