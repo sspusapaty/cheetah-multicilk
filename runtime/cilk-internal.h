@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 // Includes
@@ -220,7 +221,7 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
-    volatile _Bool invoke_main_initialized;
+    volatile bool invoke_main_initialized;
     volatile atomic_bool start;
     volatile atomic_bool done;
     volatile atomic_int cilk_main_return;
@@ -246,8 +247,8 @@ struct local_state {
     __cilkrts_stack_frame **shadow_stack;
 
     unsigned short state; /* __cilkrts_worker_state */
-    _Bool lock_wait;
-    _Bool provably_good_steal;
+    bool lock_wait;
+    bool provably_good_steal;
     unsigned int rand_next;
 
     jmpbuf rts_ctx;

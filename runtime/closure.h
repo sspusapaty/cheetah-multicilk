@@ -52,8 +52,8 @@ struct Closure {
     worker_id mutex_owner;       /* debug only */
 
     enum ClosureStatus status : 16; /* doubles as magic number */
-    _Bool lock_wait;
-    _Bool has_cilk_callee;
+    bool lock_wait;
+    bool has_cilk_callee;
     unsigned int join_counter; /* number of outstanding spawned children */
 
     char *orig_rsp; /* the rsp one should use when sync successfully */

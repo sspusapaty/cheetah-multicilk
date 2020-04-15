@@ -92,7 +92,7 @@ static global_state *global_state_init(int argc, char *argv[]) {
     CILK_ASSERT_G(active_size > 0);
     cilkg_nproc = active_size;
 
-    g->invoke_main_initialized = 0;
+    g->invoke_main_initialized = false;
     atomic_store_explicit(&g->start, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
     cilk_mutex_init(&(g->print_lock));
@@ -121,8 +121,8 @@ static local_state *worker_local_init(global_state *g) {
     }
     l->fiber_to_free = NULL;
     l->state = WORKER_IDLE;
-    l->lock_wait = 0;
-    l->provably_good_steal = 0;
+    l->lock_wait = false;
+    l->provably_good_steal = false;
     l->rand_next = 0; /* will be reset in scheduler loop */
     cilk_sched_stats_init(&(l->stats));
 

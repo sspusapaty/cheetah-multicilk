@@ -29,9 +29,9 @@ static inline void deque_lock_self(__cilkrts_worker *const w) {
     struct local_state *l = w->l;
     worker_id id = w->self;
     global_state *g = w->g;
-    l->lock_wait = 1;
+    l->lock_wait = true;
     cilk_mutex_lock(&g->deques[id].mutex);
-    l->lock_wait = 0;
+    l->lock_wait = false;
     g->deques[id].mutex_owner = id;
 }
 
@@ -54,9 +54,9 @@ static inline int deque_trylock(__cilkrts_worker *const w, worker_id pn) {
 static inline void deque_lock(__cilkrts_worker *const w, worker_id pn) {
     global_state *g = w->g;
     struct local_state *l = w->l;
-    l->lock_wait = 1;
+    l->lock_wait = true;
     cilk_mutex_lock(&g->deques[pn].mutex);
-    l->lock_wait = 0;
+    l->lock_wait = false;
     g->deques[pn].mutex_owner = w->self;
 }
 

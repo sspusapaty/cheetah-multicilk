@@ -249,7 +249,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
     Closure_assert_ownership(w, parent);
     // cilkrts_alert(ALERT_STEAL, w, "(provably_good_steal_maybe) cl %p",
     // parent);
-    CILK_ASSERT(w, w->l->provably_good_steal == 0);
+    CILK_ASSERT(w, !w->l->provably_good_steal);
 
     if (!Closure_has_children(parent) && parent->status == CLOSURE_SUSPENDED) {
         // cilkrts_alert(ALERT_STEAL | ALERT_SYNC, w,
@@ -259,7 +259,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
         CILK_ASSERT(w, parent->frame->worker == (__cilkrts_worker *)NOBODY);
 
         /* do a provably-good steal; this is *really* simple */
-        w->l->provably_good_steal = 1;
+        w->l->provably_good_steal = true;
 
         setup_for_sync(w, parent);
         CILK_ASSERT(w, parent->owner_ready_deque == NOBODY);
@@ -814,8 +814,6 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
     struct cilk_fiber *fiber = NULL;
     struct cilk_fiber *parent_fiber = NULL;
 
-    int success = 0;
-
     //----- EVENT_STEAL_ATTEMPT
 
     if (deque_trylock(w, victim) == 0) {
@@ -888,7 +886,6 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
                 Closure_unlock(w, res);
 
                 //----- EVENT_STEAL
-                success = 1;
 
             } else {
                 goto give_up;
@@ -944,15 +941,15 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
                            ((char *)FP(sf) < fiber->m_stack_base));
         CILK_ASSERT(w, ((char *)SP(sf) > fiber->m_stack) &&
                            ((char *)SP(sf) < fiber->m_stack_base));
-        w->l->provably_good_steal = 0; // unset
+        w->l->provably_good_steal = false;
     } else { // this is stolen work; the fiber is a new fiber
         // This is the first time we run the root frame, invoke_main
         // init_fiber_run is going to setup the fiber for unning user code
         // and "longjmp" into invoke_main (at the very beginning of the
         // function) after user fiber is set up.
-        volatile _Bool *initialized = &w->g->invoke_main_initialized;
+        volatile bool *initialized = &w->g->invoke_main_initialized;
         if (t == w->g->invoke_main && *initialized == 0) {
-            *initialized = 1;
+            *initialized = true;
             init_fiber_run(w, fiber, sf);
         } else {
             void *new_rsp = sysdep_reset_stack_for_resume(fiber, sf);

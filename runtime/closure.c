@@ -50,9 +50,9 @@ int Closure_trylock(__cilkrts_worker *const w, Closure *t) {
 
 void Closure_lock(__cilkrts_worker *const w, Closure *t) {
     Closure_checkmagic(w, t);
-    t->lock_wait = 1;
+    t->lock_wait = true;
     cilk_mutex_lock(&(t->mutex));
-    t->lock_wait = 0;
+    t->lock_wait = false;
     t->mutex_owner = w->self;
 }
 
@@ -93,8 +93,8 @@ static inline void Closure_init(Closure *t) {
     t->mutex_owner = NOBODY;
     t->owner_ready_deque = NOBODY;
     t->status = CLOSURE_PRE_INVALID;
-    t->lock_wait = 0;
-    t->has_cilk_callee = 0;
+    t->lock_wait = false;
+    t->has_cilk_callee = false;
     t->join_counter = 0;
 
     t->frame = NULL;
@@ -235,8 +235,7 @@ void Closure_remove_child(__cilkrts_worker *const w, Closure *parent,
     }
 
 #ifdef REDUCER_MODULE
-    CILK_ASSERT(w, child->right_rmap == (cilkred_map *)NULL ||
-                       child->right_rmap == INVALID_RMAP);
+    CILK_ASSERT(w, child->right_rmap == (cilkred_map *)NULL);
 #endif
 
     unlink_child(w, child);
@@ -258,7 +257,7 @@ void Closure_add_temp_callee(__cilkrts_worker *const w, Closure *caller,
     CILK_ASSERT(w, callee->spawn_parent == NULL);
 
     callee->call_parent = caller;
-    caller->has_cilk_callee = 1;
+    caller->has_cilk_callee = true;
 }
 
 void Closure_add_callee(__cilkrts_worker *const w, Closure *caller,
@@ -274,7 +273,7 @@ void Closure_add_callee(__cilkrts_worker *const w, Closure *caller,
 
     callee->call_parent = caller;
     caller->callee = callee;
-    caller->has_cilk_callee = 1;
+    caller->has_cilk_callee = true;
 }
 
 void Closure_remove_callee(__cilkrts_worker *const w, Closure *caller) {
@@ -283,7 +282,7 @@ void Closure_remove_callee(__cilkrts_worker *const w, Closure *caller) {
     // so there is no need to unlink it.
     CILK_ASSERT(w, caller->status == CLOSURE_SUSPENDED);
     CILK_ASSERT(w, caller->has_cilk_callee);
-    caller->has_cilk_callee = 0;
+    caller->has_cilk_callee = false;
     caller->callee = NULL;
 }
 
@@ -362,8 +361,7 @@ static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
 #ifdef REDUCER_MODULE
         CILK_ASSERT(w, t->user_rmap == (cilkred_map *)NULL);
         CILK_ASSERT(w, t->child_rmap == (cilkred_map *)NULL);
-        CILK_ASSERT(w, t->right_rmap == INVALID_RMAP ||
-                           t->right_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT(w, t->right_rmap == (cilkred_map *)NULL);
 #endif
     } else {
         CILK_ASSERT_G(t->left_sib == (Closure *)NULL);
@@ -372,8 +370,7 @@ static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
 #ifdef REDUCER_MODULE
         CILK_ASSERT_G(t->user_rmap == (cilkred_map *)NULL);
         CILK_ASSERT_G(t->child_rmap == (cilkred_map *)NULL);
-        CILK_ASSERT_G(t->right_rmap == INVALID_RMAP ||
-                      t->right_rmap == (cilkred_map *)NULL);
+        CILK_ASSERT_G(t->right_rmap == (cilkred_map *)NULL);
 #endif
     }
 
