@@ -62,7 +62,7 @@ int main(int argc, char *args[]) {
         res += IntList_check(&result, 0, n);
         CILK_C_UNREGISTER_REDUCER(my_int_list_reducer);
         end = ktiming_getmark();
-        running_time[i] = ktiming_diff_usec(&begin, &end);
+        running_time[i] = ktiming_diff_nsec(&begin, &end);
     }
     printf("Result: %d/%d successes!\n", res, TIMING_COUNT);
     print_runtime(running_time, TIMING_COUNT);

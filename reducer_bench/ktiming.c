@@ -31,14 +31,15 @@
 
 #include "./ktiming.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define USEC_TO_SEC(x) ((double)x * 1.0e-9)
+#define NSEC_TO_SEC(x) ((double)(x)*1.0e-9)
 
 clockmark_t ktiming_getmark(void) {
-    struct timespec temp;
+    struct timespec temp = {0, 0};
     uint64_t nanos;
 
     int stat = clock_gettime(CLOCK_MONOTONIC, &temp);
@@ -51,17 +52,17 @@ clockmark_t ktiming_getmark(void) {
     return nanos;
 }
 
-uint64_t ktiming_diff_usec(const clockmark_t *const start,
+uint64_t ktiming_diff_nsec(const clockmark_t *const start,
                            const clockmark_t *const end) {
     return *end - *start;
 }
 
 double ktiming_diff_sec(const clockmark_t *const start,
                         const clockmark_t *const end) {
-    return ((double)ktiming_diff_usec(start, end)) / 1000000000.0f;
+    return NSEC_TO_SEC(ktiming_diff_nsec(start, end));
 }
 
-static void print_runtime_helper(uint64_t *usec_elapsed, int size,
+static void print_runtime_helper(uint64_t *nsec_elapsed, int size,
                                  int summary) {
 
     int i;
@@ -69,26 +70,26 @@ static void print_runtime_helper(uint64_t *usec_elapsed, int size,
     double ave, std_dev = 0, dev_sq_sum = 0;
 
     for (i = 0; i < size; i++) {
-        total += usec_elapsed[i];
+        total += nsec_elapsed[i];
         if (!summary) {
             printf("Running time %d: %gs\n", (i + 1),
-                   USEC_TO_SEC(usec_elapsed[i]));
+                   NSEC_TO_SEC(nsec_elapsed[i]));
         }
     }
     ave = total / size;
 
     if (size > 1) {
         for (i = 0; i < size; i++) {
-            dev_sq_sum += ((ave - (double)usec_elapsed[i]) *
-                           (ave - (double)usec_elapsed[i]));
+            double diff = (double)nsec_elapsed[i] - ave;
+            dev_sq_sum += diff * diff;
         }
-        std_dev = dev_sq_sum / (size - 1);
+        std_dev = sqrt(dev_sq_sum / (size - 1));
     }
 
-    printf("Running time average: %g s\n", USEC_TO_SEC(ave));
+    printf("Running time average: %g s\n", NSEC_TO_SEC(ave));
     if (std_dev != 0) {
-        printf("Std. dev: %g s (%2.3f%%)\n", USEC_TO_SEC(std_dev),
-               100.0 * USEC_TO_SEC(std_dev / ave));
+        printf("Std. dev: %g s (%2.3f%%)\n", NSEC_TO_SEC(std_dev),
+               100.0 * std_dev / ave);
     }
 }
 

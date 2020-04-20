@@ -12,7 +12,7 @@ TESTS   = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strass
 OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W -fno-omit-frame-pointer
 # dynamic linking
 RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
-LD_FLAGS = $(RTS_DLIBS) $(SAN)
+LD_FLAGS = $(RTS_OPT) $(RTS_DLIBS) $(SAN)
 # static linking
 # RTS_SLIBS = $(RTS_DIR)/$(RTS_LIB).a
 # LD_FLAGS = $(RTS_SLIBS)

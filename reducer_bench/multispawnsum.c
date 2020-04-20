@@ -51,7 +51,7 @@ int main(int argc, const char **args) {
         CILK_C_UNREGISTER_REDUCER(my_int_sum_reducer);
         end = ktiming_getmark();
         // printf("The final sum is %d\n", sum);
-        running_time[i] = ktiming_diff_usec(&begin, &end);
+        running_time[i] = ktiming_diff_nsec(&begin, &end);
     }
     printf("Result: %d/%d successes!\n", res, TIMING_COUNT);
     print_runtime(running_time, TIMING_COUNT);

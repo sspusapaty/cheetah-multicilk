@@ -67,3 +67,10 @@ clean:
 	rm -f *.o *~ $(CTESTS) $(CXXTESTS) core.*
 	$(foreach test,$(DIRTESTS),$(MAKE) -C $(test) clean;)
 
+cppsum.o: ktiming.h
+intlist.o: ktiming.h
+intsum.o: ktiming.h
+ktiming.o: ktiming.h
+multispawnsum.o: ktiming.h
+repeatedintsum.o: ktiming.h
+serialsum.o: ktiming.h
