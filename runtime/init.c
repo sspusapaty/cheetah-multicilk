@@ -103,7 +103,7 @@ static global_state *global_state_init(int argc, char *argv[]) {
         (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
     g->deques = (ReadyDeque *)aligned_alloc(__alignof__(ReadyDeque),
                                             active_size * sizeof(ReadyDeque));
-    g->threads = (pthread_t *)malloc(active_size * sizeof(pthread_t));
+    g->threads = (pthread_t *)calloc(active_size, sizeof(pthread_t));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
     cilk_global_sched_stats_init(&(g->stats));
@@ -336,8 +336,11 @@ static void global_state_deinit(global_state *g) {
     cilk_internal_malloc_global_destroy(g); // internal malloc last
     cilk_mutex_destroy(&(g->print_lock));
     free(g->workers);
+    g->workers = NULL;
     free(g->deques);
+    g->deques = NULL;
     free(g->threads);
+    g->threads = NULL;
     free(g);
 }
 
@@ -361,6 +364,7 @@ static void workers_deinit(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(workers_deinit) Clean up workers");
     for (int i = 0; i < g->options.nproc; i++) {
         __cilkrts_worker *w = g->workers[i];
+        g->workers[i] = NULL;
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);
 
 #ifdef REDUCER_MODULE
@@ -375,9 +379,10 @@ static void workers_deinit(global_state *g) {
         cilk_fiber_pool_per_worker_destroy(w);
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
+        w->l->shadow_stack = NULL;
         free(w->l);
+        w->l = NULL;
         free(w);
-        g->workers[i] = NULL;
     }
 }
 

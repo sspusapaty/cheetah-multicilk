@@ -1,4 +1,4 @@
-COMPILER_BASE=/home/jfc/build/compiler/bin/
+COMPILER_BASE=/home/jfc/build/opencilk/bin/
 CC=$(COMPILER_BASE)clang
 CXX=$(COMPILER_BASE)clang++
 LINK_CC=$(CC)
@@ -8,7 +8,7 @@ ABI_DEF=-DOPENCILK_ABI
 RTS_OPT=-fopencilk
 RTS_DIR=../runtime
 RTS_LIB=libcheetah
-RTS_LIB_FLAG=-lcheetah
+#RTS_LIB_FLAG=-lcheetah
 ARCH = -mavx2
 OPT = -O3
 DBG = -g3
