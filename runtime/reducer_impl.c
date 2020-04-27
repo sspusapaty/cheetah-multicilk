@@ -101,6 +101,7 @@ static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     return h;
 }
 
+#if 0 /* unused? */
 // Given a __cilkrts_hyperobject_base, return the key to that hyperobject in
 // the reducer map.
 void *get_hyperobject_val(__cilkrts_hyperobject_base *hb) {
@@ -108,6 +109,7 @@ void *get_hyperobject_val(__cilkrts_hyperobject_base *hb) {
     // key.
     return ((char *)hb) + hb->__view_offset;
 }
+#endif
 
 /* remove the reducer from the current reducer map.  If the reducer
    exists in maps other than the current one, the behavior is

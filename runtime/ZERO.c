@@ -1,1 +1,3 @@
-unsigned long ZERO = 0;
+#include "cilk2c.h"
+
+unsigned long cilkrts_zero = 0;

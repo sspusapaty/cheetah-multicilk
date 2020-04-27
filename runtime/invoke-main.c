@@ -86,8 +86,8 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     ASM_GET_SP(rsp);
     cilkrts_alert(ALERT_BOOT, w, "invoke_main rsp = %p", rsp);
 
-    /* TODO(jfc): This can be optimized away. */
-    alloca(ZERO);
+    /* TODO(jfc): This could be optimized out by link time optimization. */
+    alloca(cilkrts_zero);
 
     __cilkrts_save_fp_ctrl_state(sf);
     if (__builtin_setjmp(sf->ctx) == 0) {
@@ -161,8 +161,9 @@ int main(int argc, char *argv[]) {
     int ret;
 
     global_state *g = __cilkrts_init(argc, argv);
-    fprintf(stderr, "Cheetah: invoking user main with %d workers.\n",
-            g->options.nproc);
+    cilkrts_alert(ALERT_START, NULL,
+                  "Cheetah: invoking user main with %d workers",
+                  g->options.nproc);
 
     __cilkrts_run(g);
     /* The store to cilk_main_return precedes the release store to done.

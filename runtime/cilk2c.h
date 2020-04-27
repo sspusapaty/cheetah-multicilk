@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 // mainly used by invoke-main.c
-extern unsigned long ZERO;
+CHEETAH_INTERNAL unsigned long cilkrts_zero;
 
 /* Rename a mandatory symbol to prevent accidentally linking the
    wrong library version. */

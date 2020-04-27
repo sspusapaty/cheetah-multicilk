@@ -14,7 +14,7 @@ struct __cilkrts_worker;
     cilk_die_internal(g, complain)
 
 #ifndef ALERT_LVL
-#define ALERT_LVL 0x1ff
+#define ALERT_LVL 0x33e
 #endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x1
@@ -26,6 +26,7 @@ struct __cilkrts_worker;
 #define ALERT_BOOT 0x40
 #define ALERT_CFRAME 0x80
 #define ALERT_REDUCE 0x100
+#define ALERT_START 0x200
 
 extern CHEETAH_INTERNAL unsigned int alert_level;
 
@@ -44,8 +45,6 @@ void cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
         ? cilkrts_alert(LVL, W, FMT, ##__VA_ARGS__)                            \
         : (void)0
 
-/*#define __cilkrts_alert(lvl, w, fmt, ...) __cilkrts_alert(lvl, w, fmt,
- * ##__VA_ARGS__)*/
 #define WHEN_CILK_DEBUG(ex) ex
 
 /** Standard text for failed assertion */

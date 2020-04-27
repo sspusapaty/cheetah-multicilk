@@ -31,7 +31,8 @@ static void rts_srand(__cilkrts_worker *const w, unsigned int seed) {
     w->l->rand_next = seed;
 }
 
-void worker_change_state(__cilkrts_worker *w, enum __cilkrts_worker_state s) {
+static void worker_change_state(__cilkrts_worker *w,
+                                enum __cilkrts_worker_state s) {
     /* TODO: Update statistics based on state change. */
     CILK_ASSERT(w, w->l->state != s);
     w->l->state = s;

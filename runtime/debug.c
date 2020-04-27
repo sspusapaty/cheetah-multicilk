@@ -6,7 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-CHEETAH_INTERNAL unsigned int alert_level = 0;
+#ifndef ALERT_DEFAULT
+#define ALERT_DEFAULT 0
+#endif
+CHEETAH_INTERNAL unsigned int alert_level = ALERT_DEFAULT;
 
 const char *const __cilkrts_assertion_failed =
     "%s:%d: cilk assertion failed: %s\n";
