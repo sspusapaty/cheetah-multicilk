@@ -93,12 +93,12 @@ static void fiber_init(struct cilk_fiber *fiber) {
 static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
 #ifdef CHEETAH_SAVE_MXCSR
     __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
-    /* TODO: AVX-2 and AVX-512 code should use VZEROUPPER here.
-       To test for AVX-2 support, do
-         unsigned a = 0, c = 0, d = 0;
-         asm("xgetbv" : "=a" (a), "=d" (d) : "c" (c));
-         if (a & 4) ...
-     */
+#ifdef __AVX__
+    /* VZEROUPPER improves performance when mixing SSE and AVX code.
+       VZEROALL would work as well here because vector registers are
+       dead but takes about 10 cycles longer. */
+    __builtin_ia32_vzeroupper();
+#endif
 #endif
 #ifdef CHEETAH_SAVE_FPCSR
     asm volatile("fnclex\n\t"
