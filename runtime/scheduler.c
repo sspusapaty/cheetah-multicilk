@@ -1,4 +1,7 @@
 #include <pthread.h>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #include <stdio.h>
 #include <unistd.h> /* usleep */
 
@@ -1180,12 +1183,16 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
                mechanism.  When a thread finds something to steal it should
                wake up another thread to enter the loop. */
             ++fails;
-            if (fails > 10000) {
+            if (fails > 100000) {
                 usleep(10);
-            } else if (fails > 1000) {
+            } else if (fails > 10000) {
                 usleep(1);
-            } else if (fails > 100) {
+            } else if (fails > 1000) {
+#ifdef __linux__
+                sched_yield();
+#else
                 pthread_yield();
+#endif
             } else {
 #ifdef __SSE__
                 __builtin_ia32_pause();
