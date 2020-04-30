@@ -9,49 +9,47 @@
 // ID managers for reducers
 // =================================================================
 
+/* This structure may need to exist before Cilk is started.
+ */
 typedef struct reducer_id_manager {
-    cilk_mutex mutex; // enfore mutual exclusion on access to this desc
-    int mutex_owner;  // worker id who holds the mutex
+    pthread_mutex_t mutex; // enfore mutual exclusion on access to this desc
+    int mutex_owner;       // worker id who holds the mutex
     hyper_id_t spa_cap;
     hyper_id_t curr_id;
 } reducer_id_manager;
 
-static reducer_id_manager id_manager;
+static reducer_id_manager id_manager = {PTHREAD_MUTEX_INITIALIZER, NOBODY, 1000,
+                                        0};
 
 static void reducer_id_manager_assert_ownership(__cilkrts_worker *const ws) {
-
-    CILK_ASSERT(ws, id_manager.mutex_owner == ws->self);
+    CILK_ASSERT(ws, !ws || id_manager.mutex_owner == ws->self);
 }
 
-static inline void reducer_id_manager_lock(__cilkrts_worker *const ws) {
-
-    cilk_mutex_lock(&id_manager.mutex);
-    id_manager.mutex_owner = ws->self;
+static inline void reducer_id_manager_lock(__cilkrts_worker *const w) {
+    int error = pthread_mutex_lock(&id_manager.mutex);
+    if (error == 0) {
+        id_manager.mutex_owner = w ? w->self : NOBODY;
+    } else {
+        cilkrts_bug(w, "unable to lock reducer ID manager");
+    }
 }
 
 static void reducer_id_manager_unlock(__cilkrts_worker *const ws) {
-
     reducer_id_manager_assert_ownership(ws);
     id_manager.mutex_owner = NOBODY;
-    cilk_mutex_unlock(&id_manager.mutex);
+    pthread_mutex_unlock(&id_manager.mutex);
 }
 
 static void init_reducer_id_manager(global_state *const g) {
-    cilk_mutex_init(&id_manager.mutex);
-    id_manager.mutex_owner = NOBODY;
+    /* Currently nothing to do */
+}
+
+static void free_reducer_id_manager(global_state *const g) {
     id_manager.spa_cap = 1000;
     id_manager.curr_id = 0;
 }
 
-static void free_reducer_id_manager(global_state *const g) {
-    CILK_ASSERT_G(id_manager.mutex_owner == NOBODY);
-    cilk_mutex_destroy(&id_manager.mutex);
-    id_manager.spa_cap = 0;
-    id_manager.curr_id = ~(hyper_id_t)0;
-}
-
 static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
-
     reducer_id_manager_lock(ws);
     hyper_id_t id = id_manager.curr_id++;
     if (id >= id_manager.spa_cap) {
@@ -118,8 +116,10 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
 
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
 
-    if (!w)
+    if (!w) {
+        reducer_id_free(w, key->__id_num);
         return;
+    }
 
     const char *UNSYNCED_REDUCER_MSG =
         "Destroying a reducer while it is visible to unsynced child tasks, or\n"
@@ -144,7 +144,9 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     // leftmost view of the reducer.
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
 
-    //
+    hyper_id_t id = reducer_id_get(w);
+    key->__id_num = id;
+
     if (!w)
         return;
 
@@ -162,11 +164,9 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 
     CILK_ASSERT(w, w->reducer_map == h);
 
-    hyper_id_t id = reducer_id_get(w);
     ViewInfo *vinfo = &h->vinfo[id];
     vinfo->key = key;
     vinfo->val = (char *)key + key->__view_offset; // init with left most view
-    key->__id_num = id;
     cilkred_map_log_id(w, h, key->__id_num);
 
     static_assert(sizeof(__cilkrts_hyperobject_base) <= __CILKRTS_CACHE_LINE__,

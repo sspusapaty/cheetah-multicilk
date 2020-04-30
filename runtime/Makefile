@@ -11,7 +11,7 @@ HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
 INCLUDES = 
 DEFINES = $(REDUCER_DEF) $(ABI_DEF) $(ALERT_DEF)
-OPTIONS = $(OPT) $(ARCH) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
+OPTIONS = $(OPT) $(DBG) $(ARCH) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
 .PHONY: all clean build
  
