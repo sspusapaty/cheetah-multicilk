@@ -14,6 +14,8 @@
 #define TRUE 1
 #define FALSE 0
 
+extern size_t ZERO;
+
 unsigned int randomSeed = 1;
 
 static void mm_dac_serial(int *C, const int *A, const int *B, int n, int length) {

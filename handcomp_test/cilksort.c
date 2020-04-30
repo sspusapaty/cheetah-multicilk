@@ -62,6 +62,8 @@
 #include "ktiming.h"
 #include "getoptions.h"
 
+extern size_t ZERO;
+
 #ifndef TIMING_COUNT
 #define TIMING_COUNT 0
 #endif 

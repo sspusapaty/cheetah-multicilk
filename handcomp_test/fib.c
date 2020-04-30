@@ -33,7 +33,7 @@ int fib(int n) {
 }
 */
 
-extern unsigned long ZERO;
+extern size_t ZERO;
 
 static void __attribute__ ((noinline)) fib_spawn_helper(int *x, int n); 
 

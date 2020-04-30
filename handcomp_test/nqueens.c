@@ -8,7 +8,8 @@
 
 #include "../runtime/cilk2c.h"
 #include "ktiming.h"
- 
+
+extern size_t ZERO;
 
 // int * count;
 
