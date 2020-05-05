@@ -16,26 +16,30 @@ enum {
     END_OPTIONS
 };
 
+static const char *option_prefix = "cheetah-";
+
+// TODO: Incorporate option_prefix into all of the optarray help
+// entries in place of 'cheetah-'.
 CHEETAH_INTERNAL
 static struct options {
-    char *string;
+    const char *string;
     int option;
-    char *help;
+    const char *help;
 } optarray[] = {
-    {"", END_OPTIONS, "-- : end of option parsing"},
-    {"nproc", NPROC, "--nproc <n> : set number of processors"},
-    {"deqdepth", DEQ_DEPTH, "--deqdepth <n> : set number of entries per deque"},
-    {"stacksize", STACK_SIZE, "--stacksize <n> : set the size of a fiber"},
-    {"per-worker fiber pool capacity", FIBER_POOL_CAP,
-     "--fiber-pool <n> : set the per-worker fiber pool capacity"},
-    {"version", VERSION, "--v: print version of the runtime"},
-    {"help", HELP, "--help : print this message"},
+    {"", END_OPTIONS, "--cheetah- : end of option parsing"},
+    {"nproc", NPROC, "--cheetah-nproc <n> : set number of processors"},
+    {"deqdepth", DEQ_DEPTH, "--cheetah-deqdepth <n> : set number of entries per deque"},
+    {"stacksize", STACK_SIZE, "--cheetah-stacksize <n> : set the size of a fiber"},
+    {"fiber-pool", FIBER_POOL_CAP,
+     "--cheetah-fiber-pool <n> : set the per-worker fiber pool capacity"},
+    {"version", VERSION, "--cheetah-version: print version of the runtime"},
+    {"help", HELP, "--cheetah-help : print this message"},
     {(char *)0, NONE, ""}};
 
 static void print_help(void) {
     struct options *p;
     fprintf(stderr, "cheetah runtime options:\n");
-    for (p = optarray; p->string; ++p)
+    for (p = optarray + 1; p->string; ++p)
         if (p->help)
             fprintf(stderr, "     %s\n", p->help);
     fprintf(stderr, "\n");
@@ -86,8 +90,9 @@ CHEETAH_INTERNAL int parse_command_line(struct rts_options *options, int *argc,
 
     int j = 1;
     for (int i = 1; i < *argc; ++i) {
-        if (argv[i][0] == '-' && argv[i][1] == '-') {
-            p = parse_option(argv[i] + 2);
+        if (argv[i][0] == '-' && argv[i][1] == '-' &&
+            strncmp(argv[i] + 2, option_prefix, strlen(option_prefix)) == 0) {
+            p = parse_option(argv[i] + 2 + strlen(option_prefix));
 
             switch (p->option) {
             case NPROC:

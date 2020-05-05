@@ -28,18 +28,18 @@ $(TESTS): %: %.o ktiming.o getoptions.o
 memcheck: 
 	$(MAKE) clean; $(MAKE) > /dev/null
 	date
-	valgrind ./fib --nproc 8 26
-	valgrind ./mm_dac --nproc 8 -n 512 
-	valgrind ./cilksort --nproc 8 -n 3000000
-	valgrind ./nqueens --nproc 8 10
+	valgrind ./fib --cheetah-nproc 8 26
+	valgrind ./mm_dac --cheetah-nproc 8 -n 512
+	valgrind ./cilksort --cheetah-nproc 8 -n 3000000
+	valgrind ./nqueens --cheetah-nproc 8 10
 	date
 
 check:
 	$(MAKE) clean; $(MAKE) TIMING_COUNT=5 > /dev/null
-	./fib --nproc $(MANYPROC) 40
-	./mm_dac --nproc $(MANYPROC) -n 1024 -c
-	./cilksort --nproc $(MANYPROC) -n 30000000 -c
-	./nqueens --nproc $(MANYPROC) 14
+	./fib --cheetah-nproc $(MANYPROC) 40
+	./mm_dac --cheetah-nproc $(MANYPROC) -n 1024 -c
+	./cilksort --cheetah-nproc $(MANYPROC) -n 30000000 -c
+	./nqueens --cheetah-nproc $(MANYPROC) 14
 
 clean:
 	rm -f *.o *~ $(TESTS) core.*
