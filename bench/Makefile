@@ -9,7 +9,7 @@ OBJS = $(patsubst %.c,%.o,$(SRCS))
 
 TESTS   = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
 #SAN=-fsanitize=cilk
-OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W -fno-omit-frame-pointer
+OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W # -fno-omit-frame-pointer
 # dynamic linking
 RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
 LD_FLAGS = $(RTS_OPT) $(RTS_DLIBS) $(SAN)

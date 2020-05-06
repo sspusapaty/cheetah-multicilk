@@ -12,7 +12,7 @@ CXXTESTS = cppsum
 DIRTESTS = nqueens # quad_tree
 TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
 WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
-OPTIONS  = $(OPT) $(ARCH) $(DBG) -fno-omit-frame-pointer $(RTS_OPT) $(WARN)
+OPTIONS  = $(OPT) $(ARCH) $(DBG) $(RTS_OPT) $(WARN) # -fno-omit-frame-pointer
 
 RTS_LIBS = ../runtime/libcheetah.a $(patsubst %,../runtime/%/module.a,$(MODS))
 
