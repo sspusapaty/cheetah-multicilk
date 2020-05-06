@@ -51,8 +51,9 @@ test:: nqueens
 	CILK_NWORKERS=$(TEST_WORKERS) ./nqueens -c
 
 # lu -c is too slow so skip test
-#test:: lu
-#	CILK_NWORKERS=$(TEST_WORKERS) ./lu -c
+# TB 20200505: I do not find this test particularly slow.
+test:: lu
+	CILK_NWORKERS=$(TEST_WORKERS) ./lu -c
 
 test:: cilksort
 	CILK_NWORKERS=$(TEST_WORKERS) ./cilksort -c
