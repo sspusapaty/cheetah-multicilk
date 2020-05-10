@@ -591,9 +591,13 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
     CILK_ASSERT(w, youngest->worker == victim_w);
     CILK_ASSERT(w, __cilkrts_not_stolen(youngest));
 
-    CILK_ASSERT(w, (oldest_cl->frame == NULL && oldest != youngest) ||
-                       (oldest_cl->frame == oldest->call_parent &&
-                        __cilkrts_stolen(oldest_cl->frame)));
+    // TODO: Replace the following assertion with something that
+    // checks a correct invariant when a spawn helper can itself
+    // spawn.
+
+    /* CILK_ASSERT(w, (oldest_cl->frame == NULL && oldest != youngest) || */
+    /*                    (oldest_cl->frame == oldest->call_parent && */
+    /*                     __cilkrts_stolen(oldest_cl->frame))); */
 
     if (oldest_cl->frame == NULL) {
         CILK_ASSERT(w, __cilkrts_not_stolen(oldest));
