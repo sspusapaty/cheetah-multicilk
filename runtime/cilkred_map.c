@@ -68,10 +68,15 @@ void cilkred_map_unlog_id(__cilkrts_worker *const w, cilkred_map *this_map,
 /** @brief Return element mapped to 'key' or null if not found. */
 ViewInfo *cilkred_map_lookup(cilkred_map *this_map,
                              __cilkrts_hyperobject_base *key) {
-    if (key->__id_num >= this_map->spa_cap) {
+    hyper_id_t id = key->__id_num;
+    if (__builtin_expect(!(id & HYPER_ID_VALID), 0)) {
+        return NULL;
+    }
+    id &= ~HYPER_ID_VALID;
+    if (id >= this_map->spa_cap) {
         return NULL; /* TODO: grow map */
     }
-    ViewInfo *ret = this_map->vinfo + key->__id_num;
+    ViewInfo *ret = this_map->vinfo + id;
     if (ret->key == NULL && ret->val == NULL) {
         return NULL;
     }

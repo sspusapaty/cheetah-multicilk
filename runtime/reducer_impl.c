@@ -116,8 +116,16 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
 
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
 
+    hyper_id_t id = key->__id_num;
+    if (!__builtin_expect(id & HYPER_ID_VALID, HYPER_ID_VALID)) {
+        cilkrts_bug(w, "unregistering unregistered hyperobject");
+        return;
+    }
+    id &= ~HYPER_ID_VALID;
+    key->__id_num = id;
+
     if (!w) {
-        reducer_id_free(w, key->__id_num);
+        reducer_id_free(w, id);
         return;
     }
 
@@ -134,8 +142,8 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
         cilkrts_bug(w, "User error: hyperobject used by another hyperobject");
     }
 
-    cilkred_map_unlog_id(w, h, key->__id_num);
-    reducer_id_free(w, key->__id_num);
+    cilkred_map_unlog_id(w, h, id);
+    reducer_id_free(w, id);
 }
 
 void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
@@ -145,7 +153,7 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
 
     hyper_id_t id = reducer_id_get(w);
-    key->__id_num = id;
+    key->__id_num = id | HYPER_ID_VALID;
 
     if (!w)
         return;
@@ -167,7 +175,7 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     ViewInfo *vinfo = &h->vinfo[id];
     vinfo->key = key;
     vinfo->val = (char *)key + key->__view_offset; // init with left most view
-    cilkred_map_log_id(w, h, key->__id_num);
+    cilkred_map_log_id(w, h, id);
 
     static_assert(sizeof(__cilkrts_hyperobject_base) <= __CILKRTS_CACHE_LINE__,
                   "hyperobject base is too large");
@@ -176,6 +184,13 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     // MAK: Requires runtime started
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
+
+    hyper_id_t id = key->__id_num;
+
+    if (!__builtin_expect(id & HYPER_ID_VALID, HYPER_ID_VALID)) {
+        cilkrts_bug(w, "User error: reference to unregistered hyperobject");
+    }
+    id &= ~HYPER_ID_VALID;
 
     cilkred_map *h = w->reducer_map;
 
@@ -188,7 +203,6 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
 
     ViewInfo *vinfo = cilkred_map_lookup(h, key);
     if (vinfo == NULL) {
-        hyper_id_t id = key->__id_num;
         CILK_ASSERT(w, id < h->spa_cap);
         vinfo = &h->vinfo[id];
 

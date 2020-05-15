@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 typedef uint32_t hyper_id_t;
+#define HYPER_ID_VALID 0x80000000
 
 enum merge_kind {
     MERGE_UNORDERED, ///< Assertion fails
