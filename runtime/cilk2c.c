@@ -11,7 +11,7 @@
 CHEETAH_INTERNAL int cilkg_nproc = 0;
 
 // ================================================================
-// This file comtains the compiler ABI, which corresponds to
+// This file contains the compiler ABI, which corresponds to
 // conceptually what the compiler generates to implement Cilk code.
 // They are included here in part as documentation, and in part
 // allow one to write and run "hand-compiled" Cilk code.

@@ -28,8 +28,10 @@ static struct options {
 } optarray[] = {
     {"", END_OPTIONS, "--cheetah- : end of option parsing"},
     {"nproc", NPROC, "--cheetah-nproc <n> : set number of processors"},
-    {"deqdepth", DEQ_DEPTH, "--cheetah-deqdepth <n> : set number of entries per deque"},
-    {"stacksize", STACK_SIZE, "--cheetah-stacksize <n> : set the size of a fiber"},
+    {"deqdepth", DEQ_DEPTH,
+     "--cheetah-deqdepth <n> : set number of entries per deque"},
+    {"stacksize", STACK_SIZE,
+     "--cheetah-stacksize <n> : set the size of a fiber"},
     {"fiber-pool", FIBER_POOL_CAP,
      "--cheetah-fiber-pool <n> : set the per-worker fiber pool capacity"},
     {"version", VERSION, "--cheetah-version: print version of the runtime"},
