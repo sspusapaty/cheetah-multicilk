@@ -676,7 +676,7 @@ static Closure *promote_child(__cilkrts_worker *const w,
                               __cilkrts_worker *const victim_w, Closure *cl,
                               Closure **res) {
 
-    int pn = victim_w->self;
+    worker_id pn = victim_w->self;
 
     deque_assert_ownership(w, pn);
     Closure_assert_ownership(w, cl);

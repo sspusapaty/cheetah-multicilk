@@ -134,7 +134,7 @@ static local_state *worker_local_init(global_state *g) {
 
 static void deques_init(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(deques_init) Initializing deques");
-    for (int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
         g->deques[i].mutex_owner = NOBODY;
@@ -269,7 +269,7 @@ static void threads_init(global_state *g) {
         }
     }
 
-    for (unsigned int w = 0; w < n_threads; w++) {
+    for (int w = 0; w < n_threads; w++) {
         int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,
                                     g->workers[w]);
 
@@ -348,14 +348,14 @@ static void global_state_deinit(global_state *g) {
 
 static void deques_deinit(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(deques_deinit) Clean up deques");
-    for (int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
         CILK_ASSERT_G(g->deques[i].mutex_owner == NOBODY);
         cilk_mutex_destroy(&(g->deques[i].mutex));
     }
 }
 
 static void workers_terminate(global_state *g) {
-    for (int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
         __cilkrts_worker *w = g->workers[i];
         cilk_fiber_pool_per_worker_terminate(w);
         cilk_internal_malloc_per_worker_terminate(w); // internal malloc last
@@ -364,7 +364,7 @@ static void workers_terminate(global_state *g) {
 
 static void workers_deinit(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(workers_deinit) Clean up workers");
-    for (int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->options.nproc; i++) {
         __cilkrts_worker *w = g->workers[i];
         g->workers[i] = NULL;
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);
