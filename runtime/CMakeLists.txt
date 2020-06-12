@@ -20,6 +20,8 @@ set(CHEETAH_SOURCES
   ZERO.c
 )
 
+include_directories(${CHEETAH_SOURCE_DIR}/include)
+
 add_library_flags_if(CHEETAH_HAS_PTHREAD_LIB pthread)
 if (CHEETAH_USE_COMPILER_RT)
   find_compiler_rt_library(builtins CHEETAH_BUILTINS_LIBRARY)

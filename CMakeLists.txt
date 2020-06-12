@@ -188,6 +188,7 @@ include_directories(runtime)
 
 # Add source code. This also contains all of the logic for deciding linker flags
 # soname, etc...
+add_subdirectory(include)
 add_subdirectory(runtime)
 
 if (CHEETAH_INCLUDE_TESTS)
