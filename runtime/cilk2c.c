@@ -10,6 +10,16 @@
 
 CHEETAH_INTERNAL int cilkg_nproc = 0;
 
+void (*init_callback)(void) = NULL;
+void (*exit_callback)(void) = NULL;
+
+void __cilkrts_atinit(void (*callback)(void)) {
+  init_callback = callback;
+}
+void __cilkrts_atexit(void (*callback)(void)) {
+  exit_callback = callback;
+}
+
 // ================================================================
 // This file contains the compiler ABI, which corresponds to
 // conceptually what the compiler generates to implement Cilk code.

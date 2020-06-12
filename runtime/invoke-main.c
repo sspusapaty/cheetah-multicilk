@@ -9,6 +9,9 @@
 
 extern unsigned long ZERO;
 
+extern void (*init_callback)(void);
+extern void (*exit_callback)(void);
+
 CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
 
     Closure *t;
@@ -78,6 +81,9 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     __cilkrts_stack_frame *sf = w->current_stack_frame;
 
+    if (init_callback)
+        init_callback();
+
     char *rsp;
     char *nsp;
     int argc = w->g->cilk_main_argc;
@@ -123,6 +129,9 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
 
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
+
+    if (exit_callback)
+        exit_callback();
 
     atomic_store_explicit(&w->g->done, 1, memory_order_release);
 

@@ -232,6 +232,19 @@ CILK_API(int) __cilkrts_get_force_reduce(void);
 CILK_API(void)
     __cilkrts_metacall(unsigned int tool, unsigned int code, void *data);
 
+/** Registers a function to be called when the Cilk runtime is initialized.
+ *
+ * @param  callback A pointer to the callback function to be called at the end
+ *                  of Cilk runtime initialization.
+ */
+CILK_API(void) __cilkrts_atinit(void (*callback)(void));
+
+/** Registers a function to be called when the Cilk runtime exits.
+ *
+ * @param  callback A pointer to the callback function to be called when the
+ *                  Cilk runtime exits.
+ */
+CILK_API(void) __cilkrts_atexit(void (*callback)(void));
 
 #ifdef _WIN32
 /// Windows exception description record.
