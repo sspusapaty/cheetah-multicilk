@@ -30,6 +30,8 @@ else()
   add_library_flags_if(CHEETAH_HAS_GCC_S_LIB gcc_s)
 endif()
 
+add_flags_if_supported(-g3)
+add_flags_if_supported(-mavx2)
 add_flags_if_supported(-fPIC)
 
 # Add definitions for cheetah build
