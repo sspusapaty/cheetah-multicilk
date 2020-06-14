@@ -11,3 +11,6 @@ endif ()
 check_library_exists(dl dladdr "" CHEETAH_HAS_DL_LIB)
 check_library_exists(pthread pthread_create "" CHEETAH_HAS_PTHREAD_LIB)
 check_library_exists(rt clock_gettime "" CHEETAH_HAS_RT_LIB)
+
+# Check compiler flags
+check_c_compiler_flag(-fomit-frame-pointer CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
