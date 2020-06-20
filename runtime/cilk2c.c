@@ -20,6 +20,13 @@ void __cilkrts_atexit(void (*callback)(void)) {
   exit_callback = callback;
 }
 
+// Internal method to get the Cilk worker ID.  Intended for debugging purposes.
+//
+// TODO: Figure out how we want to support worker-local storage.
+int __cilkrts_internal_worker_id(void) {
+  return __cilkrts_get_tls_worker()->self;
+}
+
 // ================================================================
 // This file contains the compiler ABI, which corresponds to
 // conceptually what the compiler generates to implement Cilk code.
