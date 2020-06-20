@@ -10,14 +10,35 @@
 
 CHEETAH_INTERNAL int cilkg_nproc = 0;
 
-void (*init_callback)(void) = NULL;
-void (*exit_callback)(void) = NULL;
+CHEETAH_INTERNAL void (*init_callback[MAX_CALLBACKS])(void) = { NULL };
+CHEETAH_INTERNAL int last_init_callback = 0;
+CHEETAH_INTERNAL void (*exit_callback[MAX_CALLBACKS])(void) = { NULL };
+CHEETAH_INTERNAL int last_exit_callback = 0;
 
-void __cilkrts_atinit(void (*callback)(void)) {
-  init_callback = callback;
+// These callback-registration methods can run before the runtime system has
+// started.
+//
+// Init callbacks are called in order of registration.  Exit callbacks are
+// called in reverse order of registration.
+
+// Register a callback to run at Cilk-runtime initialization.  Returns 0 on
+// successful registration, nonzero otherwise.
+int __cilkrts_atinit(void (*callback)(void)) {
+  if (last_init_callback == MAX_CALLBACKS)
+    return -1;
+
+  init_callback[last_init_callback++] = callback;
+  return 0;
 }
-void __cilkrts_atexit(void (*callback)(void)) {
-  exit_callback = callback;
+
+// Register a callback to run at Cilk-runtime exit.  Returns 0 on successful
+// registration, nonzero otherwise.
+int __cilkrts_atexit(void (*callback)(void)) {
+  if (last_exit_callback == MAX_CALLBACKS)
+    return -1;
+
+  exit_callback[last_exit_callback++] = callback;
+  return 0;
 }
 
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.

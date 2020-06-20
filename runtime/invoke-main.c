@@ -9,8 +9,10 @@
 
 extern unsigned long ZERO;
 
-extern void (*init_callback)(void);
-extern void (*exit_callback)(void);
+extern void (*init_callback[MAX_CALLBACKS])(void);
+extern int last_init_callback;
+extern void (*exit_callback[MAX_CALLBACKS])(void);
+extern int last_exit_callback;
 
 CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
 
@@ -81,8 +83,8 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     __cilkrts_stack_frame *sf = w->current_stack_frame;
 
-    if (init_callback)
-        init_callback();
+    for (int i = 0; i < last_init_callback; ++i)
+        init_callback[i]();
 
     char *rsp;
     char *nsp;
@@ -130,8 +132,8 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
-    if (exit_callback)
-        exit_callback();
+    for (int i = last_exit_callback-1; i >= 0; --i)
+        exit_callback[i]();
 
     atomic_store_explicit(&w->g->done, 1, memory_order_release);
 
