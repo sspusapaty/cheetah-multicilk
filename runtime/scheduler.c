@@ -529,6 +529,12 @@ void Cilk_exception_handler() {
 // Steal related functions
 // ==============================================
 
+static inline bool trivial_stacklet(const __cilkrts_stack_frame *head) {
+  return !(head && (head->flags & CILK_FRAME_DETACHED) == 0 &&
+           head->call_parent &&
+           __cilkrts_not_stolen(head->call_parent));
+}
+
 /*
  * This return the oldest frame in stacklet that has not been promoted to
  * full frame (i.e., never been stolen), or the closest detached frame
@@ -591,13 +597,9 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
     CILK_ASSERT(w, youngest->worker == victim_w);
     CILK_ASSERT(w, __cilkrts_not_stolen(youngest));
 
-    // TODO: Replace the following assertion with something that
-    // checks a correct invariant when a spawn helper can itself
-    // spawn.
-
-    /* CILK_ASSERT(w, (oldest_cl->frame == NULL && oldest != youngest) || */
-    /*                    (oldest_cl->frame == oldest->call_parent && */
-    /*                     __cilkrts_stolen(oldest_cl->frame))); */
+    CILK_ASSERT(w, (oldest_cl->frame == NULL && oldest != youngest) ||
+                       (oldest_cl->frame == oldest->call_parent &&
+                        __cilkrts_stolen(oldest_cl->frame)));
 
     if (oldest_cl->frame == NULL) {
         CILK_ASSERT(w, __cilkrts_not_stolen(oldest));
@@ -713,7 +715,26 @@ static Closure *promote_child(__cilkrts_worker *const w,
     // helper which can only call a Cilk function.  On the other hand, if
     // cl's frame is set AND equal to the frame at *HEAD, cl must be either
     // the root frame (invoke_main) or have been stolen before.
-    if (cl->frame == frame_to_steal) {
+    //
+    // TBS: The OpenCilk compiler makes it possible that a spawn
+    // helper can itself spawn, resulting in trivial stacklets that
+    // break the above invariant described in the text.  We check for
+    // this case, specifically excluding the spawn from invoke_main by
+    // checking that frame_to_steal is not LAST, which is only set for
+    // this stack frame.
+    if (cl->frame == frame_to_steal ||
+        // Check for a trivial stacklet.
+        (!cl->frame && ((frame_to_steal->flags & CILK_FRAME_DETACHED) != 0) &&
+         // Exclude the spawn from invoke_main, for which we set
+         // (flags & CILK_FRAME_LAST).
+         ((frame_to_steal->flags & CILK_FRAME_LAST) == 0))) {
+        // If we're missing a frame for a trivial stacklet, set it.
+        if (trivial_stacklet(frame_to_steal)) {
+            CILK_ASSERT(w, !cl->frame || cl->frame == frame_to_steal);
+            if (cl->frame != frame_to_steal) {
+                cl->frame = frame_to_steal;
+            }
+        }
         spawn_parent = cl;
 
     } else {
@@ -797,6 +818,13 @@ static void finish_promote(__cilkrts_worker *const w,
     // flag is set), but its frame_rsp is not set, because it didn't
     // spawn until now.
     if (__cilkrts_not_stolen(parent->frame)) {
+        if (!parent->call_parent) {
+            __cilkrts_set_stolen(parent->frame);
+            __cilkrts_set_unsynced(parent->frame);
+            /* Make the parent ready */
+            Closure_make_ready(parent);
+            return;
+        }
         setup_closures_in_stacklet(w, victim_w, parent);
     }
     // fixup_stack_mapping(w, parent);

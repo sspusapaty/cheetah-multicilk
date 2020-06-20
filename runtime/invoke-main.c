@@ -63,6 +63,7 @@ CHEETAH_INTERNAL void spawn_cilk_main(volatile atomic_int *res, int argc,
                                       char *args[]) {
     __cilkrts_stack_frame *sf = alloca(sizeof(__cilkrts_stack_frame));
     __cilkrts_enter_frame_fast(sf);
+    sf->flags |= CILK_FRAME_LAST;
     __cilkrts_detach(sf);
     /* Make this an atomic so the store is completed before done is set true. */
     atomic_store_explicit(res, cilk_main(argc, args), memory_order_relaxed);
