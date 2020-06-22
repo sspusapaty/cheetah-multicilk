@@ -53,8 +53,13 @@ install(
   DESTINATION ${header_install_dir}/cilk
   COMPONENT cilk-headers)
 
-if (NOT LLVM_ENABLE_IDE)
-  add_llvm_install_targets(install-cilk-headers
-                           DEPENDS cilk-headers
-                           COMPONENT cilk-headers)
+if (NOT CMAKE_CONFIGURATION_TYPES AND CHEETAH_INSTALL_HEADERS)
+  if(CHEETAH_INSTALL_HEADERS)
+    set(header_install_target install-cheetah-headers)
+  endif()
+  add_custom_target(install-cilk-headers
+                    DEPENDS cilk-headers
+		    COMMAND "${CMAKE_COMMAND}"
+                           -DCMAKE_INSTALL_COMPONENT="cilk-headers"
+                           -P "${CMAKE_BINARY_DIR}/cmake_install.cmake")
 endif()

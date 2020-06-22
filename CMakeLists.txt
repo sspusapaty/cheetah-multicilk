@@ -100,7 +100,7 @@ else()
     "Path where built cheetah library should be stored.")
   set(CHEETAH_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH
     "Path where built cheetah library should be installed.")
-  set(CHEETAH_LIBRARY_DIR ${CMAKE_OUTPUT_DIR}/lib${CHEETAH_LIBDIR_SUFFIX})
+  set(CHEETAH_LIBRARY_DIR ${CHEETAH_OUTPUT_DIR}/lib${CHEETAH_LIBDIR_SUFFIX})
   set(CHEETAH_LIBRARY_INSTALL_DIR ${CHEETAH_INSTALL_PREFIX}/lib${CHEETAH_LIBDIR_SUFFIX})
 endif()
 
