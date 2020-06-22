@@ -41,6 +41,10 @@ endif()
 list(APPEND CHEETAH_COMPILE_DEFS OPENCILK_ABI)
 list(APPEND CHEETAH_COMPILE_DEFS REDUCER_MODULE)
 
+# Set optimization levels for Debug and Release builds
+set(CHEETAH_DEBUG_OPTIONS -Og)
+set(CHEETAH_RELEASE_OPTIONS -O3)
+
 split_list(CHEETAH_COMPILE_FLAGS)
 split_list(CHEETAH_LINK_FLAGS)
 
@@ -57,6 +61,8 @@ if (CHEETAH_ENABLE_SHARED)
       VERSION       "${CHEETAH_ABI_VERSION}.0"
       SOVERSION     "${CHEETAH_ABI_VERSION}"
   )
+  target_compile_options(cheetah_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_shared PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_shared")
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_shared")
@@ -75,6 +81,8 @@ if (CHEETAH_ENABLE_STATIC)
       LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
       OUTPUT_NAME   "opencilk"
   )
+  target_compile_options(cheetah_static PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_static PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_static")
   if (CHEETAH_INSTALL_STATIC_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_static")
