@@ -1,12 +1,16 @@
 #ifndef _CILK_INTERNAL_H
 #define _CILK_INTERNAL_H
 
-#include <pthread.h>
-#include <stdatomic.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
+#include <pthread.h>
 #include <stdint.h>
 
-// Includes
+#include <stdatomic.h> /* must follow stdbool.h */
+
 #include "debug.h"
 #include "fiber.h"
 #include "internal-malloc.h"
@@ -40,15 +44,11 @@
  */
 struct __cilkrts_stack_frame {
     // Flags is a bitfield with values defined below. Client code
-    // initializes flags to 0 (except for the ABI version field)
-    // before the first Cilk operation.
+    // initializes flags to 0 before the first Cilk operation.
     uint32_t flags;
-
-#ifdef OPENCILK_ABI
+    // The magic number includes the ABI version and a hash of the
+    // layout of this structure.
     uint32_t magic;
-#else
-    /* 32 bit hole here on 64 bit machines */
-#endif
 
     // call_parent points to the __cilkrts_stack_frame of the closest
     // ancestor spawning function, including spawn helpers, of this frame.
@@ -65,35 +65,17 @@ struct __cilkrts_stack_frame {
     jmpbuf ctx;
 
     /**
-     * Architecture-specific floating point state.
-     * mxcsr and fpcsr should be set when setjmp is called in client code.
-     *
-     * They are for linux / x86_64 platforms only.  Note that the Win64
-     * jmpbuf for the Intel64 architecture already contains this information
-     * so there is no need to use these fields on that OS/architecture.
+     * Architecture-specific floating point state that should be carried
+     * along with a context from thread to thread.  On Win64 this is in
+     * jmpbuf.
      */
+#if defined __i386__ || defined __x86_64__
 #ifdef __SSE__
 #define CHEETAH_SAVE_MXCSR
     uint32_t mxcsr;
 #else
     uint32_t reserved1;
 #endif
-#ifndef OPENCILK_ABI /* x87 flags not preserved in OpenCilk */
-#if defined i386 || defined __x86_64__
-#define CHEETAH_SAVE_FPCSR
-    uint16_t fpcsr;
-#else
-    uint16_t reserved2;
-#endif
-#endif
-
-#ifndef OPENCILK_ABI
-    /**
-     * reserved is not used at this time.  Client code should initialize it
-     * to 0 before the first Cilk operation
-     */
-    uint16_t reserved3; // ANGE: leave it to make it 8-byte aligned.
-    uint32_t magic;
 #endif
 };
 
@@ -210,6 +192,8 @@ struct global_state {
     /* globally-visible options (read-only after init) */
     struct rts_options options;
 
+    uint32_t frame_magic;
+
     /*
      * this string is printed when an assertion fails.  If we just inline
      * it, apparently gcc generates many copies of the string.
@@ -292,10 +276,12 @@ struct __cilkrts_worker {
     // A slot that points to the currently executing Cilk frame.
     __cilkrts_stack_frame *current_stack_frame;
 
-#ifdef REDUCER_MODULE
     // Map from reducer names to reducer values
     cilkred_map *reducer_map;
-#endif
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _CILK_INTERNAL_H

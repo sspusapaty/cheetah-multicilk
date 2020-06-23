@@ -85,26 +85,25 @@ static void fiber_init(struct cilk_fiber *fiber) {
 
 /*
  * Restore the floating point state that is stored in a stack frame at each
- * spawn.  This should be called each time a frame is resumed.
- *
- * MXCSR is used by SSE code.  The 80387 status word should not be used
- * on any processor from this century but is maintained for compatibility.
+ * spawn.  This should be called each time a frame is resumed.  OpenCilk
+ * only saves MXCSR.  The 80387 status word is obsolete.
  */
 static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
+    /* TODO: Find a way to do this only when using floating point. */
 #ifdef CHEETAH_SAVE_MXCSR
-    __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
+#if 1
+    asm volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
+#else
+    /* Disabled because LLVM's implementation is bad. */
+    __builtin_ia32_ldmxcsr(sf->mxcsr);    /* aka _mm_getcsr */
+#endif
+#endif
+
 #ifdef __AVX__
     /* VZEROUPPER improves performance when mixing SSE and AVX code.
        VZEROALL would work as well here because vector registers are
        dead but takes about 10 cycles longer. */
     __builtin_ia32_vzeroupper();
-#endif
-#endif
-#ifdef CHEETAH_SAVE_FPCSR
-    asm volatile("fnclex\n\t"
-                 "fldcw %0"
-                 :
-                 : "m"(sf->fpcsr));
 #endif
 }
 
@@ -114,10 +113,12 @@ static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
 
 void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 #ifdef CHEETAH_SAVE_MXCSR
+#if 1
+    asm("stmxcsr %0" : "=m"(sf->mxcsr));
+#else
+    /* Disabled because LLVM's implementation is bad. */
     sf->mxcsr = __builtin_ia32_stmxcsr(); /* aka _mm_setcsr */
 #endif
-#ifdef CHEETAH_SAVE_FPCSR
-    asm volatile("fnstcw %0" : "=m"(sf->fpcsr));
 #endif
 }
 
@@ -145,11 +146,9 @@ __attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     cilkrts_alert(ALERT_FIBER, sf->worker, "longjmp to sf, BP/SP/PC: %p/%p/%p",
                   FP(sf), SP(sf), PC(sf));
 
-#if defined CHEETAH_SAVE_MXCSR || defined CHEETAH_SAVE_FPCSR
+#if defined CHEETAH_SAVE_MXCSR
     // Restore the floating point state that was set in this frame at the
     // last spawn.
-    // This feature is only available in ABI 1 or later frames, and only
-    // needed on IA64 or Intel64 processors.
     sysdep_restore_fp_state(sf);
 #endif
     __builtin_longjmp(sf->ctx, 1);

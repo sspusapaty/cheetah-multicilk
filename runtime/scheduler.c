@@ -826,7 +826,7 @@ static Closure *promote_child(__cilkrts_worker *const w,
         spawn_parent->call_parent = cl;
 
         // suspend cl & remove it from deque
-        Closure_suspend_victim(w, pn, cl);
+        Closure_suspend_victim(w, victim_w, cl);
         Closure_unlock(w, cl);
 
         Closure_lock(w, spawn_parent);

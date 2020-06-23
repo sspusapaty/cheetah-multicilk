@@ -294,36 +294,28 @@ void Closure_remove_callee(__cilkrts_worker *const w, Closure *caller) {
     caller->callee = NULL;
 }
 
-/*
- * ANGE: w must have locks on closure and its own deque.
- * Ws first sets cl from RUNNING to SUSPENDED, then removes closure
- * cl from the ready deque.  Since this function is called from
- * promote_child (steal), the thief's stack is not remapped yet, so we can't
- * access the oldest frame nor the fields of the frame.  Hence, this is a
- * separate and distinctly different function from Closure_suspend (which
- * suspend a closure owned by the worker with appropriate stack mapping).
- * JFC: Without TLMM does this merge with Closure_suspend?
- */
-void Closure_suspend_victim(__cilkrts_worker *const w, int victim,
+/* This function is used for steal, the next function for sync.
+   The invariants are slightly different. */
+void Closure_suspend_victim(__cilkrts_worker *thief, __cilkrts_worker *victim,
                             Closure *cl) {
 
     Closure *cl1;
 
 #ifdef REDUCER_MODULE
-    CILK_ASSERT(w, !cl->user_rmap);
+    CILK_ASSERT(thief, !cl->user_rmap);
 #endif
 
-    Closure_checkmagic(w, cl);
-    Closure_assert_ownership(w, cl);
-    deque_assert_ownership(w, victim);
+    Closure_checkmagic(thief, cl);
+    Closure_assert_ownership(thief, cl);
+    deque_assert_ownership(thief, victim->self);
 
-    CILK_ASSERT(w,
-                cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
+    CILK_ASSERT(thief, cl == thief->g->invoke_main || cl->spawn_parent ||
+                           cl->call_parent);
 
-    Closure_change_status(w, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
+    Closure_change_status(thief, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
 
-    cl1 = deque_xtract_bottom(w, victim);
-    CILK_ASSERT(w, cl == cl1);
+    cl1 = deque_xtract_bottom(thief, victim->self);
+    CILK_ASSERT(thief, cl == cl1);
     USE_UNUSED(cl1);
 }
 

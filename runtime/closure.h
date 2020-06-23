@@ -170,8 +170,9 @@ CHEETAH_INTERNAL void Closure_add_callee(__cilkrts_worker *const w,
 CHEETAH_INTERNAL void Closure_remove_callee(__cilkrts_worker *const w,
                                             Closure *caller);
 
-CHEETAH_INTERNAL void Closure_suspend_victim(__cilkrts_worker *const w,
-                                             int victim, Closure *cl);
+CHEETAH_INTERNAL void Closure_suspend_victim(__cilkrts_worker *thief,
+                                             __cilkrts_worker *victim,
+                                             Closure *cl);
 CHEETAH_INTERNAL void Closure_suspend(__cilkrts_worker *const w, Closure *cl);
 
 CHEETAH_INTERNAL void Closure_make_ready(Closure *cl);

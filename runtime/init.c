@@ -112,6 +112,30 @@ static global_state *global_state_init(int argc, char *argv[]) {
     g->cilk_main_argc = argc;
     g->cilk_main_args = argv;
 
+    /* This must match the compiler */
+    uint32_t hash = __CILKRTS_ABI_VERSION;
+
+    hash *= 11;
+    hash += offsetof(struct _cilkrts_stack_frame, worker);
+    hash *= 11;
+    hash += offsetof(struct _cilkrts_stack_frame, ctx);
+    hash *= 11;
+    hash += offsetof(struct _cilkrts_stack_frame, magic);
+    hash *= 11;
+#if defined __i386__ || defined __x86_64__
+#ifdef __SSE__
+    hash += offsetof(struct _cilkrts_stack_frame, mxcsr);
+#else
+    hash += offsetof(struct _cilkrts_stack_frame, reserved1);
+#endif
+    hash *= 11;
+#endif
+    hash += offsetof(struct _cilkrts_stack_frame, flags);
+    hash *= 11;
+    hash += offsetof(struct _cilkrts_stack_frame, parent);
+
+    g->frame_magic = hash;
+
     return g;
 }
 
