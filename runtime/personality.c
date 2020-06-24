@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include <stdatomic.h>
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
@@ -7,15 +9,39 @@
 #include "closure.h"
 #include "readydeque.h"
 
+static char *get_cfa(struct _Unwind_Context* context)
+{
+  /* _Unwind_GetCFA is originally a gcc extension.  FreeBSD has its
+     own library without that extension. */
+#ifdef __linux__
+  return (char *)_Unwind_GetCFA(context);
+#else
+  /* See *RegisterInfo.td in LLVM source */
+#ifdef __i386__
+  int sp_regno = 5; /* unclear if 5 or 6 is right here */
+#elif defined __x86_64__
+  int sp_regno = 7;
+#elif defined __aarch64__
+  int sp_regno = 31;
+#elif defined __arm__
+  int sp_regno = 13;
+#else
+  /* Probably 14 for SPARC, 2 for RISCV, and 1 for PPC. */
+#error "no CFA"
+#endif
+  return (char *)_Unwind_GetGR(context, sp_regno);
+#endif
+}
+
 _Unwind_Reason_Code
 __gxx_personality_v0(int version, _Unwind_Action actions,
-                     _Unwind_Exception_Class exception_class,
+                     uint64_t exception_class,
                      struct _Unwind_Exception *ue_header,
                      struct _Unwind_Context *context);
 
 _Unwind_Reason_Code
 __cilk_personality_v0(int version, _Unwind_Action actions,
-                      _Unwind_Exception_Class exception_class,
+                      uint64_t exception_class,
                       struct _Unwind_Exception *ue_header,
                       struct _Unwind_Context *context) {
 
@@ -29,7 +55,7 @@ __cilk_personality_v0(int version, _Unwind_Action actions,
     } else if (actions & _UA_CLEANUP_PHASE) {
         cilkrts_alert(ALERT_EXCEPT, sf->worker,
                       "cilk_personality called %p  CFA %p\n", sf,
-                      (char *)_Unwind_GetCFA(context));
+                      (char *)get_cfa(context));
 
         if (sf->flags & CILK_FRAME_UNSYNCHED) {
             // save floating point state
@@ -67,7 +93,7 @@ __cilk_personality_v0(int version, _Unwind_Action actions,
         Closure *t = deque_peek_bottom(w, w->self);
         deque_unlock_self(w);
         bool in_reraised_cfa =
-            (t->reraise_cfa == (char *)_Unwind_GetCFA(context));
+            (t->reraise_cfa == (char *)get_cfa(context));
         bool skip_leaveframe = ((t->reraise_cfa != NULL) && !in_reraised_cfa);
         if (in_reraised_cfa)
             t->reraise_cfa = NULL;
@@ -78,7 +104,7 @@ __cilk_personality_v0(int version, _Unwind_Action actions,
                           sf->worker->self, sf);
 
             // Remember the CFA from which we raised the new exception.
-            t->reraise_cfa = (char *)_Unwind_GetCFA(context);
+            t->reraise_cfa = (char *)get_cfa(context);
             // Raise the new exception.
             // __cilkrts_check_exception_raise(sf);
             // Calling Resume instead of RaiseException also appears to work,
