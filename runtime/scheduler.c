@@ -530,9 +530,14 @@ void Cilk_exception_handler() {
 // ==============================================
 
 static inline bool trivial_stacklet(const __cilkrts_stack_frame *head) {
-  return !(head && (head->flags & CILK_FRAME_DETACHED) == 0 &&
-           head->call_parent &&
-           __cilkrts_not_stolen(head->call_parent));
+  assert(head);
+
+  bool is_trivial = (head->flags & CILK_FRAME_DETACHED);
+
+  // NOTE: The following assertion can fail:
+  // assert(!is_trivial || !head->call_parent || __cilkrts_stolen(head->call_parent));
+
+  return is_trivial;
 }
 
 /*
@@ -716,27 +721,21 @@ static Closure *promote_child(__cilkrts_worker *const w,
     // cl's frame is set AND equal to the frame at *HEAD, cl must be either
     // the root frame (invoke_main) or have been stolen before.
     //
-    // TBS: The OpenCilk compiler makes it possible that a spawn
-    // helper can itself spawn, resulting in trivial stacklets that
-    // break the above invariant described in the text.  We check for
-    // this case, specifically excluding the spawn from invoke_main by
-    // checking that frame_to_steal is not LAST, which is only set for
-    // this stack frame.
-    if (cl->frame == frame_to_steal ||
-        // Check for a trivial stacklet.
-        (!cl->frame && ((frame_to_steal->flags & CILK_FRAME_DETACHED) != 0) &&
-         // Exclude the spawn from invoke_main, for which we set
-         // (flags & CILK_FRAME_LAST).
-         ((frame_to_steal->flags & CILK_FRAME_LAST) == 0))) {
-        // If we're missing a frame for a trivial stacklet, set it.
-        if (trivial_stacklet(frame_to_steal)) {
-            CILK_ASSERT(w, !cl->frame || cl->frame == frame_to_steal);
-            if (cl->frame != frame_to_steal) {
-                cl->frame = frame_to_steal;
-            }
-        }
+    if (cl->frame == frame_to_steal) {
+        CILK_ASSERT(w, __cilkrts_stolen(frame_to_steal));
         spawn_parent = cl;
+    } else if (!cl->frame && trivial_stacklet(frame_to_steal)) {
+        // NOTE: The check of !cl->frame above seems to be necessary, because it
+        // is apparently possible that cl->frame is non-null and cl->frame !=
+        // frame_to_steal and trivial_stacklet(frame_to_steal).
 
+        CILK_ASSERT(w, __cilkrts_not_stolen(frame_to_steal));
+        CILK_ASSERT(w, (frame_to_steal->flags & CILK_FRAME_LAST) == 0);
+        /* CILK_ASSERT(w, cl->frame == NULL); */
+
+        cl->frame = frame_to_steal;
+        spawn_parent = cl;
+        __cilkrts_set_stolen(spawn_parent->frame);
     } else {
         // cl->frame could either be NULL or some older frame (e.g.,
         // cl->frame was stolen and resumed, it calls another frame which
@@ -818,13 +817,6 @@ static void finish_promote(__cilkrts_worker *const w,
     // flag is set), but its frame_rsp is not set, because it didn't
     // spawn until now.
     if (__cilkrts_not_stolen(parent->frame)) {
-        if (!parent->call_parent) {
-            __cilkrts_set_stolen(parent->frame);
-            __cilkrts_set_unsynced(parent->frame);
-            /* Make the parent ready */
-            Closure_make_ready(parent);
-            return;
-        }
         setup_closures_in_stacklet(w, victim_w, parent);
     }
     // fixup_stack_mapping(w, parent);
