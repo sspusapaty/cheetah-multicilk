@@ -16,6 +16,10 @@
 #include "reducer_impl.h"
 #endif
 
+// Itanium ABI exception handling calls, for manually cleaning up exception objs
+extern void __cxa_free_exception(void *thrown_exception);
+extern void *__cxa_get_exception_ptr(void *exception_object);
+
 __thread __cilkrts_worker *tls_worker = NULL;
 
 // ==============================================
@@ -342,11 +346,68 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
     Closure_lock(w, parent);
     Closure_lock(w, child);
 
-#ifdef REDUCER_MODULE
+    // "Reduce" exceptions. Deallocate any exception objects and other fibers
+    // that have been reduced away.
     while (1) {
         // invariant: a closure cannot unlink itself w/out lock on parent
         // so what this points to cannot change while we have lock on parent
 
+        struct closure_exception right_exn = child->right_exn;
+        clear_closure_exception(&(child->right_exn));
+
+        struct closure_exception left_exn;
+        Closure *const left_sib = child->left_sib;
+        struct closure_exception *left_ptr;
+        if (left_sib != NULL) {
+            left_exn = left_sib->right_exn;
+            left_ptr = &(left_sib->right_exn);
+            clear_closure_exception(left_ptr);
+        } else {
+            left_exn = parent->child_exn;
+            left_ptr = &(parent->child_exn);
+            clear_closure_exception(left_ptr);
+        }
+
+        struct closure_exception active = child->user_exn;
+
+        if (left_exn.exn == NULL && right_exn.exn == NULL) {
+            *left_ptr = active;
+            break;
+        }
+
+        Closure_unlock(w, child);
+        Closure_unlock(w, parent);
+        // clean up exception objects
+        // TODO: determine exactly when it's safe to clean up exception objects
+        if (left_exn.exn) {
+            active = left_exn;
+            if (child->user_exn.exn) {
+                // can safely delete this exception.
+                __cxa_free_exception(
+                    __cxa_get_exception_ptr((void *)(child->user_exn.exn)));
+            }
+            if (right_exn.exn) {
+                __cxa_free_exception(
+                    __cxa_get_exception_ptr((void *)(right_exn.exn)));
+            }
+        } else if (child->user_exn.exn) {
+            if (right_exn.exn) {
+                __cxa_free_exception(
+                    __cxa_get_exception_ptr((void *)(right_exn.exn)));
+            }
+        } else {
+            active = right_exn;
+        }
+
+        child->user_exn = active;
+        Closure_lock(w, parent);
+        Closure_lock(w, child);
+    }
+
+#ifdef REDUCER_MODULE
+    while (1) {
+        // invariant: a closure cannot unlink itself w/out lock on parent
+        // so what this points to cannot change while we have lock on parent
         cilkred_map *right =
             atomic_load_explicit(&child->right_rmap, memory_order_acquire);
         atomic_store_explicit(&child->right_rmap, NULL, memory_order_relaxed);
@@ -422,8 +483,24 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
 
     res = provably_good_steal_maybe(w, parent);
 
-#ifdef REDUCER_MODULE
     if (res) {
+        struct closure_exception child_exn = parent->child_exn;
+        struct closure_exception active_exn = parent->user_exn;
+        clear_closure_exception(&(parent->child_exn));
+        clear_closure_exception(&(parent->user_exn));
+        // reduce the exception
+        if (!child_exn.exn) {
+            parent->user_exn = active_exn;
+        } else {
+            if (active_exn.exn) {
+                __cxa_free_exception(
+                    __cxa_get_exception_ptr((void *)(active_exn.exn)));
+            }
+            parent->user_exn = child_exn;
+            parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
+        }
+
+#ifdef REDUCER_MODULE
         CILK_ASSERT(w, !w->reducer_map);
         cilkred_map *child =
             atomic_load_explicit(&parent->child_rmap, memory_order_acquire);
@@ -431,8 +508,8 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         atomic_store_explicit(&parent->child_rmap, NULL, memory_order_relaxed);
         parent->user_rmap = NULL;
         w->reducer_map = merge_two_rmaps(w, child, active);
-    }
 #endif
+    }
 
     Closure_unlock(w, parent);
     return res;
@@ -480,7 +557,7 @@ static Closure *return_value(__cilkrts_worker *const w, Closure *t) {
  *       Cilk_cilk2c_before_return, which destroys the shadow frame and
  *       return back to caller.
  */
-void Cilk_exception_handler() {
+void Cilk_exception_handler(char *exn) {
 
     Closure *t;
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
@@ -508,6 +585,8 @@ void Cilk_exception_handler() {
     if (head > tail) {
         cilkrts_alert(ALERT_EXCEPT, w,
                       "(Cilk_exception_handler) this is a steal!");
+        if (NULL != exn)
+            t->user_exn.exn = exn;
 
         if (t->status == CLOSURE_RUNNING) {
             CILK_ASSERT(w, Closure_has_children(t) == 0);
@@ -965,11 +1044,19 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
     if (w->l->provably_good_steal) {
         // in this case, we simply longjmp back into the original fiber
         // the SP(sf) has been updated with the right orig_rsp already
-        CILK_ASSERT(w, t->orig_rsp == NULL);
-        CILK_ASSERT(w, ((char *)FP(sf) > fiber->m_stack) &&
-                           ((char *)FP(sf) < fiber->m_stack_base));
-        CILK_ASSERT(w, ((char *)SP(sf) > fiber->m_stack) &&
-                           ((char *)SP(sf) < fiber->m_stack_base));
+
+        // NOTE: this is a hack to disable these asserts if we are
+        // longjmping to the personality function. (CILK_FRAME_EXCEPTING is
+        // only set in the personality function.)
+        if ((sf->flags & CILK_FRAME_EXCEPTING) == 0) {
+            CILK_ASSERT(w, t->orig_rsp == NULL);
+            CILK_ASSERT(w, ((char *)FP(sf) > fiber->m_stack) &&
+                               ((char *)FP(sf) < fiber->m_stack_base));
+            CILK_ASSERT(w, ((char *)SP(sf) > fiber->m_stack) &&
+                               ((char *)SP(sf) < fiber->m_stack_base));
+        }
+        sf->flags &= ~CILK_FRAME_EXCEPTING;
+
         w->l->provably_good_steal = false;
     } else { // this is stolen work; the fiber is a new fiber
         // This is the first time we run the root frame, invoke_main
@@ -1052,8 +1139,13 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     if (Closure_has_children(t)) {
         cilkrts_alert(ALERT_SYNC, w, "(Cilk_sync) outstanding children", frame);
 
-        w->l->fiber_to_free = t->fiber;
-        t->fiber = NULL;
+        // if we are syncing from the personality function (i.e. if an
+        // exception in the continuation was thrown), we still need this
+        // fiber for unwinding.
+        if (t->user_exn.exn == NULL) {
+            w->l->fiber_to_free = t->fiber;
+        }
+        t->fiber = NULL; /* JFC: is this a leak? */
 #ifdef REDUCER_MODULE
         // place holder for reducer map; the view in tlmm (if any) are
         // updated by the last strand in Closure t before sync; need to
@@ -1073,8 +1165,18 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     Closure_unlock(w, t);
     deque_unlock_self(w);
 
-#ifdef REDUCER_MODULE
     if (res == SYNC_READY) {
+        struct closure_exception child_exn = t->child_exn;
+        if (child_exn.exn) {
+            if (t->user_exn.exn) {
+                __cxa_free_exception(
+                    __cxa_get_exception_ptr((void *)(t->user_exn.exn)));
+            }
+            t->user_exn = child_exn;
+            clear_closure_exception(&(t->child_exn));
+            frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
+        }
+#ifdef REDUCER_MODULE
         cilkred_map *child_rmap =
             atomic_load_explicit(&t->child_rmap, memory_order_acquire);
         if (child_rmap) {
@@ -1082,8 +1184,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             /* reducer_map may be accessed without lock */
             w->reducer_map = merge_two_rmaps(w, child_rmap, w->reducer_map);
         }
-    }
 #endif
+    }
 
     return res;
 }

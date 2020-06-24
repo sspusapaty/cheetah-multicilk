@@ -28,6 +28,8 @@ void Closure_checkmagic(__cilkrts_worker *const w, Closure *t) {
     }
 }
 
+void clear_closure_exception(struct closure_exception *exn) { exn->exn = NULL; }
+
 void Closure_change_status(__cilkrts_worker *const w, Closure *t,
                            enum ClosureStatus old, enum ClosureStatus status) {
     CILK_ASSERT(w, t->status == old);
@@ -114,6 +116,12 @@ static inline void Closure_init(Closure *t) {
 
     t->next_ready = NULL;
     t->prev_ready = NULL;
+
+    clear_closure_exception(&(t->right_exn));
+    clear_closure_exception(&(t->child_exn));
+    clear_closure_exception(&(t->user_exn));
+    t->reraise_cfa = NULL;
+    t->parent_rsp = NULL;
 
 #ifdef REDUCER_MODULE
     atomic_store_explicit(&t->child_rmap, NULL, memory_order_relaxed);

@@ -13,6 +13,7 @@ set(CHEETAH_SOURCES
   internal-malloc.c
   invoke-main.c
   mutex.c
+  personality.c
   readydeque.c
   reducer_impl.c
   sched_stats.c
