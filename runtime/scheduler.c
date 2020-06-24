@@ -724,14 +724,10 @@ static Closure *promote_child(__cilkrts_worker *const w,
     if (cl->frame == frame_to_steal) {
         CILK_ASSERT(w, __cilkrts_stolen(frame_to_steal));
         spawn_parent = cl;
-    } else if (!cl->frame && trivial_stacklet(frame_to_steal)) {
-        // NOTE: The check of !cl->frame above seems to be necessary, because it
-        // is apparently possible that cl->frame is non-null and cl->frame !=
-        // frame_to_steal and trivial_stacklet(frame_to_steal).
-
+    } else if (trivial_stacklet(frame_to_steal)) {
         CILK_ASSERT(w, __cilkrts_not_stolen(frame_to_steal));
         CILK_ASSERT(w, (frame_to_steal->flags & CILK_FRAME_LAST) == 0);
-        /* CILK_ASSERT(w, cl->frame == NULL); */
+        CILK_ASSERT(w, cl->frame == NULL);
 
         cl->frame = frame_to_steal;
         spawn_parent = cl;
