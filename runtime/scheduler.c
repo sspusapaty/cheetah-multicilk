@@ -440,8 +440,9 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
 
 /*
  * ANGE: t is returning; call the return protocol; see comments above
- * Closure_return.  res is either the next closure to execute (provably-good-
- * steal the parent closure), or NULL is nothing should be executed next.
+ * Closure_return.  res is either the next closure to execute
+ * (provably-good-steal the parent closure), or NULL is nothing should be
+ * executed next.
  *
  * Only called from do_what_it_says when the closure->status =
  * CLOSURE_RETURNING
@@ -705,8 +706,8 @@ static Closure *promote_child(__cilkrts_worker *const w,
     // Note that it can be that H == T here; victim could have done T--
     // after the thief passes Dekker; in which case, thief gets the last
     // frame, and H == T.  Victim won't be able to proceed further until
-    // the thief finishes stealing, releasing the deque lock; at which point,
-    // the victim will realize that it should return back to runtime.
+    // the thief finishes stealing, releasing the deque lock; at which
+    // point, the victim will realize that it should return back to runtime.
     CILK_ASSERT(w, head <= victim_w->exc);
     CILK_ASSERT(w, head <= victim_w->tail);
     CILK_ASSERT(w, frame_to_steal != NULL);
@@ -733,9 +734,9 @@ static Closure *promote_child(__cilkrts_worker *const w,
     } else { // spawning a function and stacklet never gotten stolen before
         // cl->frame could either be NULL or some older frame (e.g.,
         // cl->frame was stolen and resumed, it calls another frame which
-        // spawned, and the spawned frame is the frame_to_steal now). ANGE: if
-        // this is the case, we must create a new Closure representing the
-        // left-most frame (the one to be stolen and resume).
+        // spawned, and the spawned frame is the frame_to_steal now). ANGE:
+        // if this is the case, we must create a new Closure representing
+        // the left-most frame (the one to be stolen and resume).
         spawn_parent = Closure_create(w);
         spawn_parent->frame = frame_to_steal;
         __cilkrts_set_stolen(frame_to_steal);
@@ -1036,13 +1037,14 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     CILK_ASSERT(w, t->user_rmap == (cilkred_map *)NULL);
 #endif
 
-    // ANGE: we might have passed a sync successfully before and never gotten
-    // back to runtime but returning to another ancestor that needs to sync ...
-    // in which case we might have a fiber to free, but it's never the same
-    // fiber that we are on right now.
+    // ANGE: we might have passed a sync successfully before and never
+    // gotten back to runtime but returning to another ancestor that needs
+    // to sync ... in which case we might have a fiber to free, but it's
+    // never the same fiber that we are on right now.
     if (w->l->fiber_to_free) {
         CILK_ASSERT(w, w->l->fiber_to_free != t->fiber);
-        // we should free this fiber now and we can as long as we are not on it
+        // we should free this fiber now and we can as long as we are not on
+        // it
         cilk_fiber_deallocate_to_pool(w, w->l->fiber_to_free);
         w->l->fiber_to_free = NULL;
     }
@@ -1053,9 +1055,9 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         w->l->fiber_to_free = t->fiber;
         t->fiber = NULL;
 #ifdef REDUCER_MODULE
-        // place holder for reducer map; the view in tlmm (if any) are updated
-        // by the last strand in Closure t before sync; need to reduce
-        // these when successful provably good steal occurs
+        // place holder for reducer map; the view in tlmm (if any) are
+        // updated by the last strand in Closure t before sync; need to
+        // reduce these when successful provably good steal occurs
         cilkred_map *reducers = w->reducer_map;
         w->reducer_map = NULL;
 #endif
@@ -1203,9 +1205,9 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
                 fails = 0;
                 break;
             }
-            /* TODO: Use condition variables or a similar controlled blocking
-               mechanism.  When a thread finds something to steal it should
-               wake up another thread to enter the loop. */
+            /* TODO: Use condition variables or a similar controlled
+               blocking mechanism.  When a thread finds something to steal
+               it should wake up another thread to enter the loop. */
             ++fails;
             if (fails > 100000) {
                 usleep(10);

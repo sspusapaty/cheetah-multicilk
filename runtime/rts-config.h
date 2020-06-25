@@ -42,4 +42,4 @@
 #define DEFAULT_FIBER_POOL_CAP 128  // initial per-worker fiber pool capacity
 
 #define MAX_CALLBACKS 32 // Maximum number of init or exit callbacks
-#endif                              // _CONFIG_H
+#endif                   // _CONFIG_H

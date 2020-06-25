@@ -133,7 +133,7 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
-    for (int i = last_exit_callback-1; i >= 0; --i)
+    for (int i = last_exit_callback - 1; i >= 0; --i)
         exit_callback[i]();
 
     atomic_store_explicit(&w->g->done, 1, memory_order_release);
