@@ -21,6 +21,14 @@ set(CHEETAH_SOURCES
   ZERO.c
 )
 
+set(CHEETAH_PERSONALITY_C_SOURCES
+  personality-c.c
+)
+
+set(CHEETAH_PERSONALITY_CPP_SOURCES
+  personality-cpp.c
+)
+
 include_directories(${CHEETAH_SOURCE_DIR}/include)
 
 add_library_flags_if(CHEETAH_HAS_PTHREAD_LIB pthread)
@@ -68,6 +76,38 @@ if (CHEETAH_ENABLE_SHARED)
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_shared")
   endif()
+
+  # Build the shared libraries for personality functions
+  add_library(cheetah_personality_c_shared SHARED ${CHEETAH_PERSONALITY_C_SOURCES})
+  target_link_libraries(cheetah_personality_c_shared ${CHEETAH_LIBRARIES})
+  set_target_properties(cheetah_personality_c_shared
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_COMPILE_DEFS}"
+      LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
+      OUTPUT_NAME   "opencilk-personality-c"
+  )
+  target_compile_options(cheetah_personality_c_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_c_shared")
+  if (CHEETAH_INSTALL_SHARED_LIBRARY)
+    list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_c_shared")
+  endif()
+
+  add_library(cheetah_personality_cpp_shared SHARED ${CHEETAH_PERSONALITY_CPP_SOURCES})
+  target_link_libraries(cheetah_personality_cpp_shared ${CHEETAH_LIBRARIES})
+  set_target_properties(cheetah_personality_cpp_shared
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_COMPILE_DEFS}"
+      LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
+      OUTPUT_NAME   "opencilk-personality-cpp"
+  )
+  target_compile_options(cheetah_personality_cpp_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_cpp_shared")
+  if (CHEETAH_INSTALL_SHARED_LIBRARY)
+    list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_cpp_shared")
+  endif()
+
 endif()
 
 # Build the static library.
@@ -87,6 +127,37 @@ if (CHEETAH_ENABLE_STATIC)
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_static")
   if (CHEETAH_INSTALL_STATIC_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_static")
+  endif()
+
+  # Build the static libraries for personality functions
+  add_library(cheetah_personality_c_static STATIC ${CHEETAH_PERSONALITY_C_SOURCES})
+  target_link_libraries(cheetah_personality_c_static ${CHEETAH_LIBRARIES})
+  set_target_properties(cheetah_personality_c_static
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_COMPILE_DEFS}"
+      LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
+      OUTPUT_NAME   "opencilk-personality-c"
+  )
+  target_compile_options(cheetah_personality_c_static PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_c_static")
+  if (CHEETAH_INSTALL_SHARED_LIBRARY)
+    list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_c_static")
+  endif()
+
+  add_library(cheetah_personality_cpp_static STATIC ${CHEETAH_PERSONALITY_CPP_SOURCES})
+  target_link_libraries(cheetah_personality_cpp_static ${CHEETAH_LIBRARIES})
+  set_target_properties(cheetah_personality_cpp_static
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_COMPILE_DEFS}"
+      LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
+      OUTPUT_NAME   "opencilk-personality-cpp"
+  )
+  target_compile_options(cheetah_personality_cpp_static PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_cpp_static")
+  if (CHEETAH_INSTALL_SHARED_LIBRARY)
+    list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_cpp_static")
   endif()
 endif()
 
