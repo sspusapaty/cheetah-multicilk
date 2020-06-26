@@ -5,7 +5,7 @@ REDUCER_DEF = -DREDUCER_MODULE
 #ABI_DEF imported from ../config.mk
 #ALERT_DEF = -DALERT_LVL=0x000
 
-MAIN = libcheetah
+MAIN = $(RTS_LIB)
 SRCS = $(wildcard *.c)
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))

@@ -31,7 +31,7 @@ else()
 endif()
 
 add_flags_if_supported(-g3)
-add_flags_if_supported(-mavx2)
+add_flags_if_supported(-mavx)
 add_flags_if_supported(-fPIC)
 if (CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
   set_source_files_properties(invoke-main.c PROPERTIES COMPILE_FLAGS -fno-omit-frame-pointer)

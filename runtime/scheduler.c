@@ -534,9 +534,6 @@ static inline bool trivial_stacklet(const __cilkrts_stack_frame *head) {
 
   bool is_trivial = (head->flags & CILK_FRAME_DETACHED);
 
-  // NOTE: The following assertion can fail:
-  // assert(!is_trivial || !head->call_parent || __cilkrts_stolen(head->call_parent));
-
   return is_trivial;
 }
 
@@ -600,7 +597,7 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
 
     CILK_ASSERT(w, youngest == youngest_cl->frame);
     CILK_ASSERT(w, youngest->worker == victim_w);
-    CILK_ASSERT(w, __cilkrts_not_stolen(youngest));
+    CILK_ASSERT(w, __cilkrts_stolen(youngest));
 
     CILK_ASSERT(w, (oldest_cl->frame == NULL && oldest != youngest) ||
                        (oldest_cl->frame == oldest->call_parent &&
@@ -617,7 +614,6 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
 
     call_parent = setup_call_parent_closure_helper(
         w, victim_w, youngest->call_parent, oldest_cl);
-    __cilkrts_set_stolen(youngest);
     // ANGE: right now they are not the same, but when the youngest returns they
     // should be.
     CILK_ASSERT(w, youngest_cl->fiber != oldest_cl->fiber);
@@ -715,24 +711,26 @@ static Closure *promote_child(__cilkrts_worker *const w,
     CILK_ASSERT(w, head <= victim_w->tail);
     CILK_ASSERT(w, frame_to_steal != NULL);
 
-    // ANGE: if cl's frame is not set, the top stacklet must contain more
-    // than one frame, because the right-most (oldest) frame must be a spawn
-    // helper which can only call a Cilk function.  On the other hand, if
-    // cl's frame is set AND equal to the frame at *HEAD, cl must be either
-    // the root frame (invoke_main) or have been stolen before.
-    //
-    if (cl->frame == frame_to_steal) {
+    // ANGE: if cl's frame is set AND equal to the frame at *HEAD, cl must be 
+    // either the root frame (invoke_main) or have been stolen before.
+    // On the other hand, if cl's frame is not set, the top stacklet may contain 
+    // one frame (the detached spawn helper resulted from spawning an
+    // expression) or more than one frame, where the right-most (oldest) frame
+    // is a spawn helper that called a Cilk function (regular cilk_spawn of
+    // function).
+    if (cl->frame == frame_to_steal) { // stolen before
         CILK_ASSERT(w, __cilkrts_stolen(frame_to_steal));
         spawn_parent = cl;
-    } else if (trivial_stacklet(frame_to_steal)) {
+    } else if (trivial_stacklet(frame_to_steal)) { // spawning expression
         CILK_ASSERT(w, __cilkrts_not_stolen(frame_to_steal));
+        CILK_ASSERT(w, frame_to_steal->call_parent && 
+                       __cilkrts_stolen(frame_to_steal->call_parent));
         CILK_ASSERT(w, (frame_to_steal->flags & CILK_FRAME_LAST) == 0);
         CILK_ASSERT(w, cl->frame == NULL);
-
         cl->frame = frame_to_steal;
         spawn_parent = cl;
         __cilkrts_set_stolen(spawn_parent->frame);
-    } else {
+    } else { // spawning a function and stacklet never gotten stolen before
         // cl->frame could either be NULL or some older frame (e.g.,
         // cl->frame was stolen and resumed, it calls another frame which
         // spawned, and the spawned frame is the frame_to_steal now). ANGE: if
@@ -740,6 +738,7 @@ static Closure *promote_child(__cilkrts_worker *const w,
         // left-most frame (the one to be stolen and resume).
         spawn_parent = Closure_create(w);
         spawn_parent->frame = frame_to_steal;
+        __cilkrts_set_stolen(frame_to_steal);
         Closure_set_status(w, spawn_parent, CLOSURE_RUNNING);
 
         // ANGE: this is only temporary; will reset this after the stack has
@@ -799,24 +798,23 @@ static Closure *promote_child(__cilkrts_worker *const w,
  ***/
 static void finish_promote(__cilkrts_worker *const w,
                            __cilkrts_worker *const victim_w, Closure *parent,
-                           Closure *child) {
+                           Closure *child, bool has_frames_to_promote) {
 
     CILK_ASSERT(w, parent->frame->worker == victim_w);
 
     Closure_assert_ownership(w, parent);
     Closure_assert_alienation(w, child);
     CILK_ASSERT(w, parent->has_cilk_callee == 0);
+    CILK_ASSERT(w, __cilkrts_stolen(parent->frame));
 
-    // ANGE: the "else" case applies to a closure which has its frame
-    // set, but not its frame_rsp.  These closures may have been stolen
-    // before as part of a stacklet, so its frame is set (and stolen
-    // flag is set), but its frame_rsp is not set, because it didn't
-    // spawn until now.
-    if (__cilkrts_not_stolen(parent->frame)) {
+    // ANGE: if there are more frames to promote, the youngest frame that we
+    // are stealing (i.e., parent) has been promoted and its closure call_parent
+    // has been set to the closure of the oldest frame in the stacklet
+    // temporarily, with multiple shadow frames in between that still need
+    // their own closure.  Set those up.
+    if (has_frames_to_promote) {
         setup_closures_in_stacklet(w, victim_w, parent);
     }
-    // fixup_stack_mapping(w, parent);
-
     CILK_ASSERT(w, parent->frame->worker == victim_w);
 
     __cilkrts_set_unsynced(parent->frame);
@@ -882,12 +880,17 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
                               "cl/res/child = %p/%p/%p",
                               cl, res, child);
 
+                // ANGE: this flag indicates whether there are more frames in
+                // the stacklet that needs to be promoted to closures
+                bool has_frames_to_promote = true;
                 /* detach the parent */
                 if (res == (Closure *)NULL) {
+                    // ANGE: in this case, the spawning parent to steal /
+                    // resume is simply cl (i.e., there is only one frame in 
+                    // the stacklet), so we didn't set res in promote_child.
                     res = deque_xtract_top(w, victim);
-                    // ANGE: the top of the deque could have changed in the else
-                    // case.
                     CILK_ASSERT(w, cl == res);
+                    has_frames_to_promote = false;
                 }
                 res->fiber = fiber;
                 child->fiber = parent_fiber;
@@ -896,14 +899,15 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
                 CILK_ASSERT(w, res->frame->worker == victim_w);
                 Closure_assert_ownership(w, res);
-                finish_promote(w, victim_w, res, child);
+                // ANGE: finish the promotion process in finish_promote
+                finish_promote(w, victim_w, res, child, has_frames_to_promote);
 
                 cilkrts_alert(ALERT_STEAL, w,
                               "(Closure_steal) success; res %p has "
                               "fiber %p; cl %p has fiber %p",
                               res, res->fiber, child, child->fiber);
                 CILK_ASSERT(w, res->fiber);
-                CILK_ASSERT(w, child->fiber);
+                // CILK_ASSERT(w, child->fiber);
 
                 CILK_ASSERT(w, res->right_most_child == child);
                 CILK_ASSERT(w, res->frame->worker == victim_w);
