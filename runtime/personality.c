@@ -8,6 +8,7 @@
 #include "cilk2c.h"
 #include "closure.h"
 #include "readydeque.h"
+#include "cilk-internal.h"
 
 static char *get_cfa(struct _Unwind_Context* context)
 {
@@ -45,39 +46,57 @@ __gcc_personality_v0(int version, _Unwind_Action actions,
                      struct _Unwind_Exception *ue_header,
                      struct _Unwind_Context *context);
 
+CHEETAH_INTERNAL
+_Unwind_Reason_Code
+__cilk_personality_internal(_Unwind_Reason_Code(*std_lib_personality)(
+                                      int version, _Unwind_Action actions,
+                                      uint64_t exception_class,
+                                      struct _Unwind_Exception *ue_header,
+                                      struct _Unwind_Context *context),
+                            int version, _Unwind_Action actions,
+                            uint64_t exception_class,
+                            struct _Unwind_Exception *ue_header,
+                            struct _Unwind_Context *context);
+
 _Unwind_Reason_Code
 __cilk_personality_c_v0(int version, _Unwind_Action actions,
                         uint64_t exception_class,
                         struct _Unwind_Exception *ue_header,
                         struct _Unwind_Context *context) {
-    if (actions & _UA_SEARCH_PHASE) {
-        return __gcc_personality_v0(version, actions, exception_class,
-                                    ue_header, context);
-    } else if (actions & _UA_CLEANUP_PHASE) {
-        __cilkrts_worker *w = __cilkrts_get_tls_worker();
-        __cilkrts_stack_frame *sf = w->current_stack_frame;
-        __cilkrts_pop_frame(sf);
-        __cilkrts_leave_frame(sf);
-        return __gcc_personality_v0(version, actions, exception_class,
-                                    ue_header, context);
-    } else {
-        return _URC_FATAL_PHASE1_ERROR;
-    }
+    return __cilk_personality_internal(__gcc_personality_v0,
+                                       version, actions, exception_class,
+                                       ue_header, context);
 }
-
 
 _Unwind_Reason_Code
 __cilk_personality_cpp_v0(int version, _Unwind_Action actions,
-                      uint64_t exception_class,
-                      struct _Unwind_Exception *ue_header,
-                      struct _Unwind_Context *context) {
+                          uint64_t exception_class,
+                          struct _Unwind_Exception *ue_header,
+                          struct _Unwind_Context *context) {
+    return __cilk_personality_internal(__gxx_personality_v0,
+                                       version, actions, exception_class,
+                                       ue_header, context);
+}
+
+
+CHEETAH_INTERNAL
+_Unwind_Reason_Code
+__cilk_personality_internal(_Unwind_Reason_Code(*std_lib_personality)(
+                                      int version, _Unwind_Action actions,
+                                      uint64_t exception_class,
+                                      struct _Unwind_Exception *ue_header,
+                                      struct _Unwind_Context *context),
+                            int version, _Unwind_Action actions,
+                            uint64_t exception_class,
+                            struct _Unwind_Exception *ue_header,
+                            struct _Unwind_Context *context) {
 
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     __cilkrts_stack_frame *sf = w->current_stack_frame;
 
     if (actions & _UA_SEARCH_PHASE) {
         // don't do anything out of the ordinary during search phase.
-        return __gxx_personality_v0(version, actions, exception_class,
+        return std_lib_personality(version, actions, exception_class,
                                     ue_header, context);
     } else if (actions & _UA_CLEANUP_PHASE) {
         cilkrts_alert(ALERT_EXCEPT, sf->worker,
@@ -150,7 +169,7 @@ __cilk_personality_cpp_v0(int version, _Unwind_Action actions,
 
         // run gxx_personality_v0 in cleanup phase on the reduced exception
         // object
-        _Unwind_Reason_Code cleanup_res = __gxx_personality_v0(
+        _Unwind_Reason_Code cleanup_res = std_lib_personality(
             version, actions, exception_class, ue_header, context);
 
         // if we need to continue unwinding the stack, pop_frame + leave_frame
