@@ -48,12 +48,9 @@ __gcc_personality_v0(int version, _Unwind_Action actions,
 
 CHEETAH_INTERNAL
 _Unwind_Reason_Code
-__cilk_personality_internal(_Unwind_Reason_Code(*std_lib_personality)(
-                                      int version, _Unwind_Action actions,
-                                      uint64_t exception_class,
-                                      struct _Unwind_Exception *ue_header,
-                                      struct _Unwind_Context *context),
-                            int version, _Unwind_Action actions,
+__cilk_personality_internal(__personality_routine std_lib_personality,
+                            int version,
+                            _Unwind_Action actions,
                             uint64_t exception_class,
                             struct _Unwind_Exception *ue_header,
                             struct _Unwind_Context *context);
@@ -81,12 +78,9 @@ __cilk_personality_cpp_v0(int version, _Unwind_Action actions,
 
 CHEETAH_INTERNAL
 _Unwind_Reason_Code
-__cilk_personality_internal(_Unwind_Reason_Code(*std_lib_personality)(
-                                      int version, _Unwind_Action actions,
-                                      uint64_t exception_class,
-                                      struct _Unwind_Exception *ue_header,
-                                      struct _Unwind_Context *context),
-                            int version, _Unwind_Action actions,
+__cilk_personality_internal(__personality_routine std_lib_personality,
+                            int version,
+                            _Unwind_Action actions,
                             uint64_t exception_class,
                             struct _Unwind_Exception *ue_header,
                             struct _Unwind_Context *context) {
