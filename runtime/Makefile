@@ -13,8 +13,8 @@ INCLUDES =
 DEFINES = $(REDUCER_DEF) $(ABI_DEF) $(ALERT_DEF)
 OPTIONS = $(OPT) $(DBG) $(ARCH) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
-PERSON_C = libopencilk-personality-cpp
-PERSON_CPP = libopencilk-personality-c
+PERSON_C = libopencilk-personality-c
+PERSON_CPP = libopencilk-personality-cpp
 PERSON_C_SRC = personality-c
 PERSON_CPP_SRC = personality-cpp
 
