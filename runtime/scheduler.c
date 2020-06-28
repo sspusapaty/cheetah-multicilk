@@ -380,14 +380,17 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
             active = left_exn;
             if (child->user_exn.exn) {
                 // can safely delete this exception.
-              _Unwind_DeleteException((_Unwind_Exception *)child->user_exn.exn);
+                _Unwind_DeleteException(
+                        (struct _Unwind_Exception *)child->user_exn.exn);
             }
             if (right_exn.exn) {
-                _Unwind_DeleteException((_Unwind_Exception *)right_exn.exn);
+                _Unwind_DeleteException(
+                        (struct _Unwind_Exception *)right_exn.exn);
             }
         } else if (child->user_exn.exn) {
             if (right_exn.exn) {
-                _Unwind_DeleteException((_Unwind_Exception *)right_exn.exn);
+                _Unwind_DeleteException(
+                        (struct _Unwind_Exception *)right_exn.exn);
             }
         } else {
             active = right_exn;
@@ -487,7 +490,8 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
             parent->user_exn = active_exn;
         } else {
             if (active_exn.exn) {
-                _Unwind_DeleteException((_Unwind_Exception *)active_exn.exn);
+                _Unwind_DeleteException(
+                        (struct _Unwind_Exception *)active_exn.exn);
             }
             parent->user_exn = child_exn;
             parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
@@ -1162,7 +1166,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         struct closure_exception child_exn = t->child_exn;
         if (child_exn.exn) {
             if (t->user_exn.exn) {
-                _Unwind_DeleteException((_Unwind_Exception *)t->user_exn.exn);
+                _Unwind_DeleteException(
+                        (struct _Unwind_Exception *)t->user_exn.exn);
             }
             t->user_exn = child_exn;
             clear_closure_exception(&(t->child_exn));

@@ -10,6 +10,12 @@
 #include "readydeque.h"
 #include "cilk-internal.h"
 
+typedef _Unwind_Reason_Code (*__personality_routine)
+      (int version, _Unwind_Action actions,
+       uint64_t exception_class,
+       struct _Unwind_Exception *exception_object,
+       struct _Unwind_Context *context);
+
 static char *get_cfa(struct _Unwind_Context* context)
 {
   /* _Unwind_GetCFA is originally a gcc extension.  FreeBSD has its
