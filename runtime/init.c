@@ -196,14 +196,19 @@ static void *scheduler_thread_proc(void *arg) {
     return 0;
 }
 
+#ifdef CPU_SETSIZE
 static void move_bit(int cpu, cpu_set_t *to, cpu_set_t *from) {
     if (CPU_ISSET(cpu, from)) {
         CPU_CLR(cpu, from);
         CPU_SET(cpu, to);
     }
 }
+#endif
 
 static void threads_init(global_state *g) {
+    /* TODO: Mac OS has a better interface allowing the application
+       to request that two threads run as far apart as possible by
+       giving them distinct "affinity tags". */
 #ifdef CPU_SETSIZE
     // Affinity setting, from cilkplus-rts
     cpu_set_t process_mask;
@@ -213,7 +218,7 @@ static void threads_init(global_state *g) {
                                     &process_mask)) {
         available_cores = CPU_COUNT(&process_mask);
     }
-#endif
+
     /* pin_strategy controls how threads are spread over cpu numbers.
        Based on very limited testing FreeBSD groups hyperthreads of a
        core together (consecutive IDs) and Linux separates them.
@@ -240,13 +245,14 @@ static void threads_init(global_state *g) {
         available_cores = 0;
         break;
     }
-
+#endif
     int n_threads = g->options.nproc;
 
     /* TODO: Apple supports thread affinity using a different interface. */
 
     cilkrts_alert(ALERT_BOOT, NULL, "(threads_init) Setting up threads");
 
+#ifdef CPU_SETSIZE
     /* Three cases: core count at least twice worker count, allocate
        groups of floor(worker count / core count) CPUs.
        Core count greater than worker count, do not bind workers to CPUs.
@@ -268,6 +274,7 @@ static void threads_init(global_state *g) {
             step_in = group_size;
         }
     }
+#endif
 
     for (int w = 0; w < n_threads; w++) {
         int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,

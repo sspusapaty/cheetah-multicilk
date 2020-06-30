@@ -1313,7 +1313,7 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
             } else if (fails > 10000) {
                 usleep(1);
             } else if (fails > 1000) {
-#ifdef __linux__
+#if defined __APPLE__ || defined __linux__
                 sched_yield();
 #else
                 pthread_yield();
