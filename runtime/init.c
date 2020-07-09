@@ -49,8 +49,8 @@ static long env_get_int(char const *var) {
 static global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL,
                   "(global_state_init) Initializing global state");
-    global_state *g = (global_state *)aligned_alloc(__alignof(global_state),
-                                                    sizeof(global_state));
+    global_state *g = (global_state *)cilk_aligned_alloc(__alignof(global_state),
+                                                         sizeof(global_state));
 
 #ifdef DEBUG
     setlinebuf(stderr);
@@ -102,8 +102,8 @@ static global_state *global_state_init(int argc, char *argv[]) {
 
     g->workers =
         (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
-    g->deques = (ReadyDeque *)aligned_alloc(__alignof__(ReadyDeque),
-                                            active_size * sizeof(ReadyDeque));
+    g->deques = (ReadyDeque *)cilk_aligned_alloc(__alignof__(ReadyDeque),
+                                                 active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *)calloc(active_size, sizeof(pthread_t));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
@@ -147,7 +147,7 @@ static void workers_init(global_state *g) {
     for (unsigned int i = 0; i < g->options.nproc; i++) {
         cilkrts_alert(ALERT_BOOT, NULL, "(workers_init) Initializing worker %u",
                       i);
-        __cilkrts_worker *w = (__cilkrts_worker *)aligned_alloc(
+        __cilkrts_worker *w = (__cilkrts_worker *)cilk_aligned_alloc(
             __alignof__(__cilkrts_worker), sizeof(__cilkrts_worker));
         w->self = i;
         w->g = g;

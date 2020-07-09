@@ -73,6 +73,7 @@ endif()
 # Target options --------------------------------------------------------------
 set(CHEETAH_SYSROOT "" CACHE STRING "Use alternate sysroot.")
 set(CHEETAH_GCC_TOOLCHAIN "" CACHE STRING "Use alternate GCC toolchain.")
+set(CHEETAH_MIN_OSX_VERSION 10.9)
 
 #===============================================================================
 # Configure System
@@ -114,6 +115,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CHEETAH_LIBRARY_DIR})
 set(CHEETAH_C_FLAGS "")
 set(CHEETAH_CXX_FLAGS "")
 set(CHEETAH_COMPILE_FLAGS "")
+if (APPLE)
+  list(APPEND CHEETAH_COMPILE_FLAGS -mmacosx-version-min=${CHEETAH_MIN_OSX_VERSION})
+endif()
 set(CHEETAH_COMPILE_DEFS "")
 set(CHEETAH_LINK_FLAGS "")
 set(CHEETAH_LIBRARIES "")

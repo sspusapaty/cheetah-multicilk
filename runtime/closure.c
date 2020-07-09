@@ -147,7 +147,7 @@ Closure *Closure_create(__cilkrts_worker *const w) {
  */
 Closure *Closure_create_main() {
     Closure *new_closure =
-        (Closure *)aligned_alloc(CILK_CACHE_LINE, sizeof(*new_closure));
+        (Closure *)cilk_aligned_alloc(CILK_CACHE_LINE, sizeof(*new_closure));
     CILK_ASSERT_G(new_closure != NULL);
     Closure_init(new_closure);
 
