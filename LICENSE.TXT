@@ -1,5 +1,5 @@
 ==============================================================================
-Cheetah is licensed under the MIT License:
+The OpenCilk runtime is licensed under the MIT License:
 ==============================================================================
 Copyright (c) 2020 Massachusetts Institute of Technology and
 Washington University in St. Louis
