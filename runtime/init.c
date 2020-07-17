@@ -49,8 +49,8 @@ static long env_get_int(char const *var) {
 static global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL,
                   "(global_state_init) Initializing global state");
-    global_state *g = (global_state *)cilk_aligned_alloc(__alignof(global_state),
-                                                         sizeof(global_state));
+    global_state *g = (global_state *)cilk_aligned_alloc(
+        __alignof(global_state), sizeof(global_state));
 
 #ifdef DEBUG
     setlinebuf(stderr);
@@ -102,8 +102,8 @@ static global_state *global_state_init(int argc, char *argv[]) {
 
     g->workers =
         (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
-    g->deques = (ReadyDeque *)cilk_aligned_alloc(__alignof__(ReadyDeque),
-                                                 active_size * sizeof(ReadyDeque));
+    g->deques = (ReadyDeque *)cilk_aligned_alloc(
+        __alignof__(ReadyDeque), active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *)calloc(active_size, sizeof(pthread_t));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
@@ -115,24 +115,24 @@ static global_state *global_state_init(int argc, char *argv[]) {
     /* This must match the compiler */
     uint32_t hash = __CILKRTS_ABI_VERSION;
 
-    hash *= 11;
-    hash += offsetof(struct _cilkrts_stack_frame, worker);
-    hash *= 11;
-    hash += offsetof(struct _cilkrts_stack_frame, ctx);
-    hash *= 11;
-    hash += offsetof(struct _cilkrts_stack_frame, magic);
-    hash *= 11;
+    hash *= 13;
+    hash += offsetof(struct __cilkrts_stack_frame, worker);
+    hash *= 13;
+    hash += offsetof(struct __cilkrts_stack_frame, ctx);
+    hash *= 13;
+    hash += offsetof(struct __cilkrts_stack_frame, magic);
+    hash *= 13;
+    hash += offsetof(struct __cilkrts_stack_frame, flags);
+    hash *= 13;
+    hash += offsetof(struct __cilkrts_stack_frame, call_parent);
 #if defined __i386__ || defined __x86_64__
+    hash *= 13;
 #ifdef __SSE__
-    hash += offsetof(struct _cilkrts_stack_frame, mxcsr);
+    hash += offsetof(struct __cilkrts_stack_frame, mxcsr);
 #else
-    hash += offsetof(struct _cilkrts_stack_frame, reserved1);
+    hash += offsetof(struct __cilkrts_stack_frame, reserved1);
 #endif
-    hash *= 11;
 #endif
-    hash += offsetof(struct _cilkrts_stack_frame, flags);
-    hash *= 11;
-    hash += offsetof(struct _cilkrts_stack_frame, parent);
 
     g->frame_magic = hash;
 

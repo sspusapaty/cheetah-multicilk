@@ -65,7 +65,8 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame %p", sf);
 
-    sf->flags = CILK_FRAME_VERSION;
+    sf->flags = 0;
+    sf->magic = w->g->frame_magic;
     sf->call_parent = w->current_stack_frame;
     sf->worker = w;
     w->current_stack_frame = sf;
@@ -77,11 +78,11 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
 
-    sf->flags = CILK_FRAME_VERSION;
+    sf->flags = 0;
+    sf->magic = w->g->frame_magic;
     sf->call_parent = w->current_stack_frame;
     sf->worker = w;
     w->current_stack_frame = sf;
-    // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
 }
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
@@ -89,7 +90,7 @@ void __cilkrts_detach(__cilkrts_stack_frame *sf) {
     struct __cilkrts_worker *w = sf->worker;
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_detach %p", sf);
 
-    CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
+    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
     CILK_ASSERT(w, w->current_stack_frame == sf);
 
@@ -190,7 +191,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
     cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync syncing frame %p", sf);
 
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
-    CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
+    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf == w->current_stack_frame);
 
     if (Cilk_sync(w, sf) == SYNC_READY) {
@@ -210,7 +211,7 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = sf->worker;
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_pop_frame %p", sf);
 
-    CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
+    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
     /* The inlined version in the Tapir compiler uses release
        semantics for the store to call_parent, but relaxed
@@ -226,7 +227,7 @@ void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
     __cilkrts_worker *w = sf->worker;
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_pause_frame %p", sf);
 
-    CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
+    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
 
     CILK_ASSERT(w, sf->flags & CILK_FRAME_DETACHED);
@@ -255,7 +256,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = sf->worker;
     cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_leave_frame %p", sf);
 
-    CILK_ASSERT(w, GET_CILK_FRAME_VERSION(sf->flags) == __CILKRTS_ABI_VERSION);
+    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
     // WHEN_CILK_DEBUG(sf->magic = ~CILK_STACKFRAME_MAGIC);
 
@@ -290,9 +291,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
             // leaving a full frame; need to get the full frame of its call
             // parent back onto the deque
             Cilk_set_return(w);
-            CILK_ASSERT(w,
-                        GET_CILK_FRAME_VERSION(w->current_stack_frame->flags) ==
-                            __CILKRTS_ABI_VERSION);
+            CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
         }
     }
 }

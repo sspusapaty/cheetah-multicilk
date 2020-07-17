@@ -6,8 +6,9 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
-#include <pthread.h>
 #include <stdint.h>
+
+#include <pthread.h>
 
 #include <stdatomic.h> /* must follow stdbool.h */
 
@@ -116,8 +117,8 @@ struct __cilkrts_stack_frame {
 //       function.
 #define CILK_FRAME_SYNC_READY 0x200
 
-#define GET_CILK_FRAME_VERSION(F) (((F) >> 24) & 255)
-#define CILK_FRAME_VERSION (__CILKRTS_ABI_VERSION << 24)
+#define GET_CILK_FRAME_MAGIC(F) ((F)->magic)
+#define CHECK_CILK_FRAME_MAGIC(G, F) ((G)->frame_magic == (F)->magic)
 
 //===========================================================
 // Helper functions for the flags field in cilkrts_stack_frame

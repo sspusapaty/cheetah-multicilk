@@ -60,11 +60,11 @@ struct cilk_im_desc {
 /* Custom implementation of aligned_alloc. */
 static inline void *cilk_aligned_alloc(size_t alignment, size_t size) {
 #if defined(_ISOC11_SOURCE)
-  return aligned_alloc(alignment, size);
+    return aligned_alloc(alignment, size);
 #else
-  void *ptr;
-  posix_memalign(&ptr, alignment, size);
-  return ptr;
+    void *ptr;
+    posix_memalign(&ptr, alignment, size);
+    return ptr;
 #endif
 }
 

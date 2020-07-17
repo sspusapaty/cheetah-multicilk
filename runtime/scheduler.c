@@ -381,16 +381,16 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
             if (child->user_exn.exn) {
                 // can safely delete this exception.
                 _Unwind_DeleteException(
-                        (struct _Unwind_Exception *)child->user_exn.exn);
+                    (struct _Unwind_Exception *)child->user_exn.exn);
             }
             if (right_exn.exn) {
                 _Unwind_DeleteException(
-                        (struct _Unwind_Exception *)right_exn.exn);
+                    (struct _Unwind_Exception *)right_exn.exn);
             }
         } else if (child->user_exn.exn) {
             if (right_exn.exn) {
                 _Unwind_DeleteException(
-                        (struct _Unwind_Exception *)right_exn.exn);
+                    (struct _Unwind_Exception *)right_exn.exn);
             }
         } else {
             active = right_exn;
@@ -491,7 +491,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         } else {
             if (active_exn.exn) {
                 _Unwind_DeleteException(
-                        (struct _Unwind_Exception *)active_exn.exn);
+                    (struct _Unwind_Exception *)active_exn.exn);
             }
             parent->user_exn = child_exn;
             parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
@@ -607,11 +607,11 @@ void Cilk_exception_handler(char *exn) {
 // ==============================================
 
 static inline bool trivial_stacklet(const __cilkrts_stack_frame *head) {
-  assert(head);
+    assert(head);
 
-  bool is_trivial = (head->flags & CILK_FRAME_DETACHED);
+    bool is_trivial = (head->flags & CILK_FRAME_DETACHED);
 
-  return is_trivial;
+    return is_trivial;
 }
 
 /*
@@ -788,9 +788,9 @@ static Closure *promote_child(__cilkrts_worker *const w,
     CILK_ASSERT(w, head <= victim_w->tail);
     CILK_ASSERT(w, frame_to_steal != NULL);
 
-    // ANGE: if cl's frame is set AND equal to the frame at *HEAD, cl must be 
+    // ANGE: if cl's frame is set AND equal to the frame at *HEAD, cl must be
     // either the root frame (invoke_main) or have been stolen before.
-    // On the other hand, if cl's frame is not set, the top stacklet may contain 
+    // On the other hand, if cl's frame is not set, the top stacklet may contain
     // one frame (the detached spawn helper resulted from spawning an
     // expression) or more than one frame, where the right-most (oldest) frame
     // is a spawn helper that called a Cilk function (regular cilk_spawn of
@@ -800,8 +800,8 @@ static Closure *promote_child(__cilkrts_worker *const w,
         spawn_parent = cl;
     } else if (trivial_stacklet(frame_to_steal)) { // spawning expression
         CILK_ASSERT(w, __cilkrts_not_stolen(frame_to_steal));
-        CILK_ASSERT(w, frame_to_steal->call_parent && 
-                       __cilkrts_stolen(frame_to_steal->call_parent));
+        CILK_ASSERT(w, frame_to_steal->call_parent &&
+                           __cilkrts_stolen(frame_to_steal->call_parent));
         CILK_ASSERT(w, (frame_to_steal->flags & CILK_FRAME_LAST) == 0);
         CILK_ASSERT(w, cl->frame == NULL);
         cl->frame = frame_to_steal;
@@ -963,7 +963,7 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
                 /* detach the parent */
                 if (res == (Closure *)NULL) {
                     // ANGE: in this case, the spawning parent to steal /
-                    // resume is simply cl (i.e., there is only one frame in 
+                    // resume is simply cl (i.e., there is only one frame in
                     // the stacklet), so we didn't set res in promote_child.
                     res = deque_xtract_top(w, victim);
                     CILK_ASSERT(w, cl == res);
@@ -1167,7 +1167,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         if (child_exn.exn) {
             if (t->user_exn.exn) {
                 _Unwind_DeleteException(
-                        (struct _Unwind_Exception *)t->user_exn.exn);
+                    (struct _Unwind_Exception *)t->user_exn.exn);
             }
             t->user_exn = child_exn;
             clear_closure_exception(&(t->child_exn));

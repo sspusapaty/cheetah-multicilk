@@ -95,7 +95,7 @@ static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
     asm volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
 #else
     /* Disabled because LLVM's implementation is bad. */
-    __builtin_ia32_ldmxcsr(sf->mxcsr);    /* aka _mm_getcsr */
+    __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
 #endif
 #endif
 
