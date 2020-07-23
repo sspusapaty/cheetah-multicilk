@@ -132,15 +132,19 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
     // the runtime before doing the provably good steal.
     CILK_ASSERT(w, w->l->fiber_to_free == NULL);
     CILK_ASSERT(w, t->fiber != t->fiber_child);
-
-    // ANGE: note that in case a) this fiber won't get freed for awhile, since
-    // we will longjmp back to the original function's fiber and never go back
-    // to the runtime; we will only free it either once when we get back to the
-    // runtime or when we encounter a case where we need to.
-    w->l->fiber_to_free = t->fiber;
-    t->fiber = t->fiber_child;
     CILK_ASSERT(w, t->fiber);
-    t->fiber_child = NULL;
+
+    if(t->simulated_stolen == false) {
+        // ANGE: note that in case a) this fiber won't get freed for awhile,
+        // since we will longjmp back to the original function's fiber and
+        // never go back to the runtime; we will only free it either once
+        // when we get back to the runtime or when we encounter a case
+        // where we need to.
+        w->l->fiber_to_free = t->fiber;
+        t->fiber = t->fiber_child;
+        CILK_ASSERT(w, t->fiber);
+        t->fiber_child = NULL;
+    }
     // __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, w,
     //         "(setup_for_sync) set t %p and t->fiber %p", t, t->fiber);
     __cilkrts_set_synced(t->frame);
@@ -217,6 +221,7 @@ void Cilk_set_return(__cilkrts_worker *const w) {
     if (t->call_parent != NULL) {
         CILK_ASSERT(w, t->spawn_parent == NULL);
         CILK_ASSERT(w, (t->frame->flags & CILK_FRAME_DETACHED) == 0);
+        CILK_ASSERT(w, t->simulated_stolen == false);
 
         Closure *call_parent = t->call_parent;
         Closure *t1 = deque_xtract_bottom(w, w->self);
@@ -245,6 +250,31 @@ void Cilk_set_return(__cilkrts_worker *const w) {
     }
     deque_unlock_self(w);
 }
+
+/***
+ * ANGE: this function doesn't do much ... just some assertion
+ * checks, marks the parent as ready and returns that.
+ ***/
+static Closure *unconditional_steal(__cilkrts_worker *const w,
+                                    Closure *parent) {
+
+    Closure_assert_ownership(w, parent);
+    CILK_ASSERT(w, parent->simulated_stolen);
+    CILK_ASSERT(w, !w->l->provably_good_steal);
+    CILK_ASSERT(w, !Closure_has_children(parent));
+    CILK_ASSERT(w, parent->status == CLOSURE_SUSPENDED);
+
+    CILK_ASSERT(w, parent->frame != NULL);
+    CILK_ASSERT(w, parent->frame->worker == (__cilkrts_worker *)0xbfbfbfbfbf);
+    CILK_ASSERT(w, parent->owner_ready_deque == NO_WORKER);
+    CILK_ASSERT(w, (parent->fiber == NULL) && parent->fiber_child);
+    parent->fiber = parent->fiber_child;
+    parent->fiber_child = NULL;
+    Closure_make_ready(parent);
+
+    return parent;
+}
+
 
 static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
                                           Closure *parent) {
@@ -472,7 +502,13 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
 
     --parent->join_counter;
 
-    res = provably_good_steal_maybe(w, parent);
+    if(parent->simulated_stolen) {
+        // parent stolen via simulated steal on worker's own deque
+        res = unconditional_steal(w, parent); // must succeed
+        CILK_ASSERT(w, parent->fiber && (parent->fiber_child == NULL));
+    } else {
+        res = provably_good_steal_maybe(w, parent);
+    }
 
     if (res) {
         struct closure_exception child_exn = parent->child_exn;
@@ -498,6 +534,13 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         atomic_store_explicit(&parent->child_rmap, NULL, memory_order_relaxed);
         parent->user_rmap = NULL;
         w->reducer_map = merge_two_rmaps(w, child, active);
+
+        if(parent->simulated_stolen) {
+            atomic_store_explicit(&parent->child_rmap, w->reducer_map,
+                                  memory_order_relaxed);
+            // force the continuation to create new views
+            w->reducer_map = NULL;
+        }
     }
 
     Closure_unlock(w, parent);
@@ -522,7 +565,6 @@ static Closure *return_value(__cilkrts_worker *const w, Closure *t) {
 
     if (t->call_parent == NULL) {
         res = Closure_return(w, t);
-
     } /* else {
      // ANGE: the ONLY way a closure with call parent can reach here
      // is when the user program calls Cilk_exit, leading to global abort
@@ -653,6 +695,14 @@ static Closure *setup_call_parent_closure_helper(
     return curr_cl;
 }
 
+/***
+ * ANGE: youngest_cl is the spawning parent that the thief is trying to
+ * extract and resume.  Temporarily its call_parent is pointing to the
+ * oldest closure on top of victim's deque when the steal occurs.
+ * There may be more frames between them (i.e., stacklet contains more
+ * than two frames) that require promotion.  This function promotes
+ * and suspends them.
+ ***/
 static void setup_closures_in_stacklet(__cilkrts_worker *const w,
                                        __cilkrts_worker *const victim_w,
                                        Closure *youngest_cl) {
@@ -683,10 +733,8 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
 
     call_parent = setup_call_parent_closure_helper(
         w, victim_w, youngest->call_parent, oldest_cl);
-    // ANGE: right now they are not the same, but when the youngest returns they
-    // should be.
-    CILK_ASSERT(w, youngest_cl->fiber != oldest_cl->fiber);
 
+    CILK_ASSERT(w, youngest_cl->fiber != oldest_cl->fiber);
     CILK_ASSERT(w, youngest->worker == victim_w);
     Closure_add_callee(w, call_parent, youngest_cl);
 }
@@ -867,12 +915,11 @@ static Closure *promote_child(__cilkrts_worker *const w,
  ***/
 static void finish_promote(__cilkrts_worker *const w,
                            __cilkrts_worker *const victim_w, Closure *parent,
-                           Closure *child, bool has_frames_to_promote) {
+                           bool has_frames_to_promote) {
 
     CILK_ASSERT(w, parent->frame->worker == victim_w);
 
     Closure_assert_ownership(w, parent);
-    Closure_assert_alienation(w, child);
     CILK_ASSERT(w, parent->has_cilk_callee == 0);
     CILK_ASSERT(w, __cilkrts_stolen(parent->frame));
 
@@ -893,20 +940,74 @@ static void finish_promote(__cilkrts_worker *const w,
     return;
 }
 
+/***
+ * ANGE: This function promotes all frames in the top-most stacklet into
+ * its own closures and also creates a new child closure to leave it with
+ * the victim.  Normally this is invoked by Closure_steal, but a worker
+ * may also invoke Closure steal on itself (for the purpose of race detecting
+ * Cilk code with reducers).  Thus, this function is written to check for
+ * that --- if w == victim_w, we don't actually create a new fiber for
+ * the stolen parent.
+ *
+ * NOTE: this function assumes that w holds the lock on victim_w's deque
+ * and Closure cl and releases them before returning.
+ ***/
+static Closure *extract_top_spawning_closure(__cilkrts_worker *const w,
+                                             __cilkrts_worker *const victim_w,
+                                             Closure *cl) {
+
+    Closure *res = NULL, *child;
+    struct cilk_fiber *parent_fiber = cl->fiber;
+
+    deque_assert_ownership(w, victim_w->self);
+    Closure_assert_ownership(w, cl);
+    CILK_ASSERT(w, parent_fiber);
+
+    /*
+     * if dekker passes, promote the child to a full closure,
+     * and steal the parent
+     */
+    child = promote_child(w, victim_w, cl, &res);
+    cilkrts_alert(ALERT_STEAL, w,
+            "(Closure_steal) promote gave "
+            "cl/res/child = %p/%p/%p",
+            cl, res, child);
+
+    /* detach the parent */
+    if (res == (Closure *)NULL) {
+        // ANGE: in this case, the spawning parent to steal / resume
+        // is simply cl (i.e., there is only one frame in the stacklet),
+        // so we didn't set res in promote_child.
+        res = deque_xtract_top(w, victim_w->self);
+        CILK_ASSERT(w, cl == res);
+    }
+
+    // ANGE: if worker w is stealing from itself, this is a simulated steal
+    // only create a new fiber if it's a real steal
+    if (w == victim_w) {
+        res->fiber = NULL;
+    } else {
+        res->fiber = cilk_fiber_allocate_from_pool(w);
+    }
+
+    // make sure we are not hold lock on child
+    Closure_assert_alienation(w, child);
+    child->fiber = parent_fiber;
+
+    return res;
+}
+
 /*
  * stealing protocol.  Tries to steal from the victim; returns a
  * stolen closure, or NULL if none.
  */
 static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
+    Closure *cl;
     Closure *res = (Closure *)NULL;
-    Closure *cl, *child;
     __cilkrts_worker *victim_w;
-    struct cilk_fiber *fiber = NULL;
-    struct cilk_fiber *parent_fiber = NULL;
 
     //----- EVENT_STEAL_ATTEMPT
-
     if (deque_trylock(w, victim) == 0) {
         return NULL;
     }
@@ -924,73 +1025,38 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
         victim_w = w->g->workers[victim];
 
         switch (cl->status) {
-        case CLOSURE_READY:
-            cilkrts_bug(victim_w, "Bug: ready closure in ready deque");
-            break;
-
         case CLOSURE_RUNNING:
+
             /* send the exception to the worker */
             if (do_dekker_on(w, victim_w, cl)) {
                 cilkrts_alert(ALERT_STEAL, w,
-                              "(Closure_steal) can steal from W%d; cl=%p",
-                              victim, cl);
-                fiber = cilk_fiber_allocate_from_pool(w);
-                parent_fiber = cl->fiber;
-                CILK_ASSERT(w, parent_fiber);
-                CILK_ASSERT(w, fiber);
+                        "(Closure_steal) can steal from W%d; cl=%p",
+                        victim, cl);
+                res = extract_top_spawning_closure(w, victim_w, cl);
 
-                /*
-                 * if dekker passes, promote the child to a full closure,
-                 * and steal the parent
-                 */
-                child = promote_child(w, victim_w, cl, &res);
-                cilkrts_alert(ALERT_STEAL, w,
-                              "(Closure_steal) promote gave "
-                              "cl/res/child = %p/%p/%p",
-                              cl, res, child);
+                // at this point, more steals can happen from the victim.
+                deque_unlock(w, victim_w->self);
 
-                // ANGE: this flag indicates whether there are more frames in
-                // the stacklet that needs to be promoted to closures
-                bool has_frames_to_promote = true;
-                /* detach the parent */
-                if (res == (Closure *)NULL) {
-                    // ANGE: in this case, the spawning parent to steal /
-                    // resume is simply cl (i.e., there is only one frame in
-                    // the stacklet), so we didn't set res in promote_child.
-                    res = deque_xtract_top(w, victim);
-                    CILK_ASSERT(w, cl == res);
-                    has_frames_to_promote = false;
-                }
-                res->fiber = fiber;
-                child->fiber = parent_fiber;
-                deque_unlock(w, victim); // at this point, more steals can
-                                         // happen from the victim.
-
+                CILK_ASSERT(w, res->fiber);
                 CILK_ASSERT(w, res->frame->worker == victim_w);
                 Closure_assert_ownership(w, res);
+
+                // ANGE: if cl is not the spawning parent, then
+                // there is more frames in the stacklet to promote
+                bool has_frames_to_promote = (cl != res);
                 // ANGE: finish the promotion process in finish_promote
-                finish_promote(w, victim_w, res, child, has_frames_to_promote);
+                finish_promote(w, victim_w, res, has_frames_to_promote);
 
                 cilkrts_alert(ALERT_STEAL, w,
-                              "(Closure_steal) success; res %p has "
-                              "fiber %p; cl %p has fiber %p",
-                              res, res->fiber, child, child->fiber);
-                CILK_ASSERT(w, res->fiber);
-                // CILK_ASSERT(w, child->fiber);
-
-                CILK_ASSERT(w, res->right_most_child == child);
+                        "(Closure_steal) success; res %p has "
+                        "fiber %p; child %p has fiber %p",
+                        res, res->fiber, res->right_most_child, 
+                        res->right_most_child->fiber);
                 CILK_ASSERT(w, res->frame->worker == victim_w);
                 Closure_unlock(w, res);
-
-                //----- EVENT_STEAL
-
             } else {
                 goto give_up;
             }
-            break;
-
-        case CLOSURE_SUSPENDED:
-            cilkrts_bug(victim_w, "Bug: suspended closure in ready deque");
             break;
 
         case CLOSURE_RETURNING:
@@ -1005,7 +1071,8 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
             break;
 
         default:
-            cilkrts_bug(victim_w, "Bug: unknown closure status");
+            cilkrts_bug(victim_w, "Bug: %s closure in ready deque",
+                        Closure_status_to_str(cl->status));
         }
     } else {
         deque_unlock(w, victim);
@@ -1013,6 +1080,65 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
     }
 
     return res;
+}
+
+/***
+ * Protocol for promoting a worker's own deque.
+ *
+ * This is used by *sequential* cilksan race detector when detecting races for
+ * code that uses reducers, invoked from compiled code to simulate that a
+ * continuation of a spawn statement has been stolen.  Specifically this
+ * function should be invoked in the spawn helper after detach.  Upon
+ * invocation, the worker will promote its own deque but do not allocate a new
+ * fiber for the parent Closure (i.e., the "stolen" continuation), as the
+ * parent will not be resumed until the worker returns from the spawned child.
+ ***/
+void promote_own_deque(__cilkrts_worker *w) {
+
+fprintf(stderr, "Promote own deque!\n");
+
+    if(deque_trylock(w, w->self) == 0) {
+        cilkrts_bug(w,
+            "Bug: failed to acquire deque lock when promoting own deque");
+        return;
+    }
+
+    bool done = false;
+    while(!done) {
+        Closure *cl = deque_peek_top(w, w->self);
+        CILK_ASSERT(w, cl);
+        CILK_ASSERT(w, cl->status== CLOSURE_RUNNING);
+
+        if(Closure_trylock(w, cl) == 0) {
+            deque_unlock(w, w->self);
+            cilkrts_bug(w,
+                "Bug: failed to acquire deque lock when promoting own deque");
+            return;
+        }
+        if(do_dekker_on(w, w, cl)) {
+            // unfortunately this function releases both locks
+            Closure *res = extract_top_spawning_closure(w, w, cl);
+            CILK_ASSERT(w, res);
+            CILK_ASSERT(w, res->fiber == NULL);
+            CILK_ASSERT(w, res->frame->worker == w);
+
+            // ANGE: if cl is not the spawning parent, then
+            // there is more frames in the stacklet to promote
+            bool has_frames_to_promote = (cl != res);
+            // ANGE: finish the promotion process in finish_promote
+            finish_promote(w, w, res, has_frames_to_promote);
+
+            Closure_set_status(w, res, CLOSURE_SUSPENDED);
+            res->frame->worker = (__cilkrts_worker *)0xbfbfbfbfbf;
+            res->simulated_stolen = true;
+            Closure_unlock(w, res);
+
+        } else {
+            Closure_unlock(w, cl);
+            deque_unlock(w, w->self);
+            done = true; // we can break out; no more frames to promote 
+        }
+    }
 }
 
 // ==============================================
@@ -1026,7 +1152,7 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
     __cilkrts_stack_frame *sf = t->frame;
     struct cilk_fiber *fiber = t->fiber;
 
-    CILK_ASSERT(w, sf && fiber);
+    CILK_ASSERT(w, sf && fiber || (t->simulated_stolen && fiber == NULL));
 
     if (w->l->provably_good_steal) {
         // in this case, we simply longjmp back into the original fiber
@@ -1054,7 +1180,7 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         if (t == w->g->invoke_main && *initialized == 0) {
             *initialized = true;
             init_fiber_run(w, fiber, sf);
-        } else {
+        } else if(!t->simulated_stolen) {
             void *new_rsp = sysdep_reset_stack_for_resume(fiber, sf);
             USE_UNUSED(new_rsp);
             CILK_ASSERT(w, SP(sf) == new_rsp);
@@ -1094,6 +1220,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     Closure_lock(w, t);
     /* assert we are really at the top of the stack */
     CILK_ASSERT(w, Closure_at_top_of_stack(w));
+    CILK_ASSERT(w, !(t->simulated_stolen) || !Closure_has_children(t));
 
     // reset_closure_frame(w, t);
     CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
@@ -1164,6 +1291,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             /* reducer_map may be accessed without lock */
             w->reducer_map = merge_two_rmaps(w, child_rmap, w->reducer_map);
         }
+        if(t->simulated_stolen) t->simulated_stolen = false;
     }
 
     return res;

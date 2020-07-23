@@ -99,6 +99,7 @@ static inline void Closure_init(Closure *t) {
     t->lock_wait = false;
     t->has_cilk_callee = false;
     t->join_counter = 0;
+    t->simulated_stolen = false;
 
     t->frame = NULL;
     t->fiber = NULL;

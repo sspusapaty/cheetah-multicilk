@@ -33,6 +33,7 @@ struct Closure;
 struct rts_options {
     size_t stacksize;
     unsigned int nproc;
+    unsigned int check_reducer_race;
     unsigned int reducer_cap;
     unsigned int deqdepth;
     unsigned int fiber_pool_cap;

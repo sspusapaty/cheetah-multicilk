@@ -45,6 +45,7 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     parse_environment();
 
+    int proc_override = env_get_int("CILK_NWORKERS");
     if (g->options.nproc == 0) {
         // use the number of cores online right now
         int available_cores = 0;
@@ -58,7 +59,6 @@ global_state *global_state_init(int argc, char *argv[]) {
             available_cores = CPU_COUNT(&process_mask);
         }
 #endif
-        int proc_override = env_get_int("CILK_NWORKERS");
         if (proc_override > 0)
             g->options.nproc = proc_override;
         else if (available_cores > 0)
@@ -74,6 +74,24 @@ global_state *global_state_init(int argc, char *argv[]) {
     } else {
         CILK_ASSERT_G(g->options.nproc < 10000);
     }
+
+    // an environment variable indicating whether we are running a bench
+    // with cilksan and should check for reducer race.
+    g->options.check_reducer_race = env_get_int("CILKSAN_CHECK_REDUCER_RACE");
+    if(g->options.check_reducer_race != 0) {
+        if(proc_override != 1) {
+            printf("CILKSAN_CHECK_REDUCER_RACE is set to non-zero\n"
+                   "but CILK_NWORKERS is not set to 1.  Running normally.\n");
+            g->options.check_reducer_race = 0;
+        } else {
+            printf("Assuming running with cilksan and checking races "
+                   "for reducer.\n");
+            // may need to set explicitly if the user had used --cheetah-nproc
+            g->options.nproc = 1;
+        }
+        fflush(stdout);
+    }
+
     unsigned active_size = g->options.nproc;
     CILK_ASSERT_G(active_size > 0);
     cilkg_nproc = active_size;

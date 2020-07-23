@@ -22,6 +22,18 @@ enum ClosureStatus {
     CLOSURE_POST_INVALID /* after destruction */
 };
 
+static inline const char *Closure_status_to_str(enum ClosureStatus status) {
+    switch(status) {
+        case CLOSURE_RUNNING:      return "running";
+        case CLOSURE_SUSPENDED:    return "suspended";
+        case CLOSURE_RETURNING:    return "returning";
+        case CLOSURE_READY:        return "ready";
+        case CLOSURE_PRE_INVALID:  return "pre-invalid";
+        case CLOSURE_POST_INVALID: return "post-invalid";
+        default: return "unknown";
+    }
+}
+
 #if CILK_DEBUG
 #define Closure_assert_ownership(w, t) Closure_assert_ownership(w, t)
 #define Closure_assert_alienation(w, t) Closure_assert_alienation(w, t)
@@ -60,6 +72,9 @@ struct Closure {
     bool lock_wait;
     bool has_cilk_callee;
     unsigned int join_counter; /* number of outstanding spawned children */
+    bool simulated_stolen; /* ANGE XXX: Sorry, I probably messed
+                              up the alignment; should we update join_counter
+                              to be a short instead? */
 
     char *orig_rsp; /* the rsp one should use when sync successfully */
 

@@ -3,8 +3,10 @@
 #include "global.h"
 #include "init.h"
 #include "mutex.h"
+#include "scheduler.h"
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <limits.h>
@@ -318,6 +320,11 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
 
     /* TODO: If this is the first reference to a reducer created at
        global scope, install the leftmost view. */
+
+    if(w->g->options.check_reducer_race) {
+        CILK_ASSERT(w, w->g->options.nproc == 1);
+        promote_own_deque(w);
+    }
 
     cilkred_map *h = w->reducer_map;
 

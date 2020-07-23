@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <sched.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <pthread.h>
 #ifdef DEBUG

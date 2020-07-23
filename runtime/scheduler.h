@@ -24,4 +24,6 @@ CHEETAH_INTERNAL void Cilk_exception_handler(char *exn);
 CHEETAH_INTERNAL_NORETURN void longjmp_to_runtime(__cilkrts_worker *w);
 CHEETAH_INTERNAL void worker_scheduler(__cilkrts_worker *ws, Closure *t);
 
+CHEETAH_INTERNAL void promote_own_deque(__cilkrts_worker *w);
+
 #endif
