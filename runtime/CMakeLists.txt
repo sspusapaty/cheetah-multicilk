@@ -48,7 +48,7 @@ if (CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
 endif()
 
 # Add definitions for cheetah build
-list(APPEND CHEETAH_COMPILE_DEFS OPENCILK_ABI)
+list(APPEND CHEETAH_COMPILE_DEFS OPENCILK_LIBRARY)
 list(APPEND CHEETAH_COMPILE_DEFS REDUCER_MODULE)
 
 # Set optimization levels for Debug and Release builds

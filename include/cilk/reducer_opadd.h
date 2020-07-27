@@ -563,6 +563,8 @@ struct legacy_reducer_downcast<reducer<op_add<Type, Align> > >
 
 } // namespace cilk
 
+extern "C" {
+
 #endif // __cplusplus
 
 
@@ -578,8 +580,6 @@ struct legacy_reducer_downcast<reducer<op_add<Type, Align> > >
  *  @see @ref page_reducers_in_c
  */
  ///@{
-
-__CILKRTS_BEGIN_EXTERN_C
 
 /** Declares opadd reducer type name.
  *
@@ -692,7 +692,9 @@ CILK_C_REDUCER_OPADD_INSTANCE(long double,          longdouble)
 
 //@endcond
 
-__CILKRTS_END_EXTERN_C
+#ifdef __cplusplus
+} /* end extern "C" */
+#endif
 
 ///@}
 

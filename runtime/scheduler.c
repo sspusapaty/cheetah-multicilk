@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <pthread.h>
 #ifdef __linux__
 #include <sched.h>

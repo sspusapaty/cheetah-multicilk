@@ -331,7 +331,9 @@ struct op_mul : public monoid_with_view< op_mul_view<Type> > {};
  */
  ///@{
 
-__CILKRTS_BEGIN_EXTERN_C
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Declares `opmul` reducer type name.
  *
@@ -444,7 +446,9 @@ CILK_C_REDUCER_OPMUL_INSTANCE(long double,          longdouble)
 
 //@endcond
 
-__CILKRTS_END_EXTERN_C
+#ifdef __cplusplus
+} /* end extern "C" */
+#endif
 
 ///@}
 

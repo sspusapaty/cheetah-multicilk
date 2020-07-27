@@ -12,6 +12,8 @@ extern "C" {
 
 #include <stdatomic.h> /* must follow stdbool.h */
 
+#include <cilk/cilk_api.h>
+
 #include "debug.h"
 #include "fiber.h"
 #include "internal-malloc.h"

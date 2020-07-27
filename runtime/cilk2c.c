@@ -49,9 +49,16 @@ int __cilkrts_atexit(void (*callback)(void)) {
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.
 //
 // TODO: Figure out how we want to support worker-local storage.
-int __cilkrts_internal_worker_id(void) {
+int __cilkrts_get_worker_number(void) {
     return __cilkrts_get_tls_worker()->self;
 }
+
+#ifdef __linux__ /* This feature requires the GNU linker */
+CHEETAH_INTERNAL
+const char get_workerwarn_msg[]
+    __attribute__((section(".gnu.warning.__cilkrts_get_worker_number"))) =
+        "__cilkrts_get_worker_number is deprecated";
+#endif
 
 // ================================================================
 // This file contains the compiler ABI, which corresponds to

@@ -1,3 +1,4 @@
+#include <assert.h>
 #ifdef REDUCER_MODULE
 #include "reducer_impl.h"
 #endif
@@ -179,10 +180,11 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 
     ViewInfo *vinfo = &h->vinfo[id];
     vinfo->key = key;
-    vinfo->val = (char *)key + key->__view_offset; // init with left most view
+    // init with left most view
+    vinfo->val = (char *)key + (ptrdiff_t)key->__view_offset;
     cilkred_map_log_id(w, h, id);
 
-    static_assert(sizeof(__cilkrts_hyperobject_base) <= __CILKRTS_CACHE_LINE__,
+    static_assert(sizeof(__cilkrts_hyperobject_base) <= 64,
                   "hyperobject base is too large");
 }
 

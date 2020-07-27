@@ -489,7 +489,9 @@ struct legacy_reducer_downcast<reducer<op_xor<Type, Align> > >
  */
  ///@{
 
-__CILKRTS_BEGIN_EXTERN_C
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Declares OPXOR reducer type name.
  *
@@ -599,7 +601,9 @@ CILK_C_REDUCER_OPXOR_INSTANCE(unsigned long long,   ulonglong)
 
 //@endcond
 
-__CILKRTS_END_EXTERN_C
+#ifdef __cplusplus
+} /* end extern "C" */
+#endif
 
 ///@}
 

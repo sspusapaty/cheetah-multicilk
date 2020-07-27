@@ -1,10 +1,6 @@
 #ifndef _CILKRED_MAP_H
 #define _CILKRED_MAP_H
 
-#ifdef OPENCILK_ABI
-#define __cilk 300
-#endif
-
 #include "cilk-internal.h"
 #include "debug.h"
 #include <cilk/hyperobject_base.h>
@@ -12,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef uint32_t hyper_id_t;
+typedef uint32_t hyper_id_t; /* must match cilk/hyperobject_base.h */
 #define HYPER_ID_VALID 0x80000000
 
 enum merge_kind {
