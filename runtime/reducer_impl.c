@@ -52,8 +52,11 @@ static void free_reducer_id_manager(global_state *const g) {
 static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
     reducer_id_manager_lock(ws);
     hyper_id_t id = id_manager.curr_id++;
+    cilkrts_alert(ALERT_REDUCE_ID, ws, "allocate reducer ID %u",
+                  (unsigned long)id);
     if (id >= id_manager.spa_cap) {
-        cilkrts_bug(ws, "SPA resize not supported yet!");
+        cilkrts_bug(ws, "SPA resize not supported yet! (id %lu >= cap %lu)",
+                    (unsigned long)id, (unsigned long)id_manager.spa_cap);
     }
     reducer_id_manager_unlock(ws);
     return id;
@@ -61,6 +64,8 @@ static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
 
 static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
     reducer_id_manager_lock(ws);
+    cilkrts_alert(ALERT_REDUCE_ID, ws, "free reducer ID %lu of %lu",
+                  (unsigned long)id, id_manager.curr_id - 1UL);
     /* Return the ID to the system to be reallocated.
        TODO: This only works if reducer lifetimes are nested. */
     if (id == id_manager.curr_id - 1) {

@@ -27,6 +27,7 @@ struct __cilkrts_worker;
 #define ALERT_CFRAME 0x80
 #define ALERT_REDUCE 0x100
 #define ALERT_START 0x200
+#define ALERT_REDUCE_ID 0x400
 
 extern CHEETAH_INTERNAL unsigned int alert_level;
 

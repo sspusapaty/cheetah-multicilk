@@ -38,7 +38,8 @@ void cilkred_map_log_id(__cilkrts_worker *const w, cilkred_map *this_map,
     CILK_ASSERT(w, this_map->num_of_vinfo <= this_map->spa_cap);
 
     if (this_map->num_of_vinfo == this_map->spa_cap) {
-        cilkrts_bug(w, "SPA resize not supported yet!");
+        cilkrts_bug(w, "SPA resize not supported yet! (vinfo = spa_cap = %lu)",
+                    (unsigned long)this_map->spa_cap);
     }
 
     if (this_map->num_of_logs < (this_map->spa_cap / 2)) {
