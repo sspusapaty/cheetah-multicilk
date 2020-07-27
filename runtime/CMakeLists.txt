@@ -2,6 +2,7 @@ set(CHEETAH_LIB_CMAKEFILES_DIR "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTO
 
 # Get sources
 set(CHEETAH_SOURCES
+  c_reducers.c
   cilk2c.c
   cilkred_map.c
   closure.c
