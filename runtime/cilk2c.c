@@ -196,20 +196,16 @@ void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync syncing frame %p", sf);
 
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf == w->current_stack_frame);
 
     if (Cilk_sync(w, sf) == SYNC_READY) {
-        cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync synced frame %p!", sf);
         // The Cilk_sync restores the original rsp stored in sf->ctx
         // if this frame is ready to sync.
         sysdep_longjmp_to_sf(sf);
     } else {
-        cilkrts_alert(ALERT_SYNC, w, "__cilkrts_sync waiting to sync frame %p!",
-                      sf);
         longjmp_to_runtime(w);
     }
 }

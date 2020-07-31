@@ -13,7 +13,7 @@ struct __cilkrts_worker;
     ((cond) ? (void)0 : cilk_die_internal(g, complain))
 
 #ifndef ALERT_LVL
-#define ALERT_LVL 0x730
+#define ALERT_LVL 0
 #endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x1

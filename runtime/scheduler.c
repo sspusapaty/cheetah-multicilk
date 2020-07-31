@@ -132,7 +132,6 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
     // the runtime before doing the provably good steal.
     CILK_ASSERT(w, w->l->fiber_to_free == NULL);
     CILK_ASSERT(w, t->fiber != t->fiber_child);
-    CILK_ASSERT(w, t->fiber);
 
     if(t->simulated_stolen == false) {
         // ANGE: note that in case a) this fiber won't get freed for awhile,
@@ -142,9 +141,10 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
         // where we need to.
         w->l->fiber_to_free = t->fiber;
         t->fiber = t->fiber_child;
-        CILK_ASSERT(w, t->fiber);
         t->fiber_child = NULL;
     }
+
+    CILK_ASSERT(w, t->fiber);
     // __cilkrts_alert(ALERT_STEAL | ALERT_FIBER, w,
     //         "(setup_for_sync) set t %p and t->fiber %p", t, t->fiber);
     __cilkrts_set_synced(t->frame);
@@ -258,6 +258,9 @@ void Cilk_set_return(__cilkrts_worker *const w) {
 static Closure *unconditional_steal(__cilkrts_worker *const w,
                                     Closure *parent) {
 
+    cilkrts_alert(ALERT_STEAL, w,
+            "(unconditional_steal) promoted closure %p", parent);
+
     Closure_assert_ownership(w, parent);
     CILK_ASSERT(w, parent->simulated_stolen);
     CILK_ASSERT(w, !w->l->provably_good_steal);
@@ -286,7 +289,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
 
     if (!Closure_has_children(parent) && parent->status == CLOSURE_SUSPENDED) {
         // cilkrts_alert(ALERT_STEAL | ALERT_SYNC, w,
-        //     "(provably_good_steal_maybe) completing a sync");
+        //      "(provably_good_steal_maybe) completing a sync");
 
         CILK_ASSERT(w, parent->frame != NULL);
         CILK_ASSERT(w, (intptr_t)parent->frame->worker & 1);
@@ -298,8 +301,8 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
         CILK_ASSERT(w, parent->owner_ready_deque == NO_WORKER);
         Closure_make_ready(parent);
 
-        // cilkrts_alert(ALERT_STEAL, w,
-        //         "(provably_good_steal_maybe) returned %p", parent);
+        cilkrts_alert(ALERT_STEAL | ALERT_SYNC, w,
+                 "(provably_good_steal_maybe) returned %p", parent);
 
         return parent;
     }
@@ -969,8 +972,7 @@ static Closure *extract_top_spawning_closure(__cilkrts_worker *const w,
      */
     child = promote_child(w, victim_w, cl, &res);
     cilkrts_alert(ALERT_STEAL, w,
-            "(Closure_steal) promote gave "
-            "cl/res/child = %p/%p/%p",
+            "(Closure_steal) promote gave cl/res/child = %p/%p/%p",
             cl, res, child);
 
     /* detach the parent */
@@ -1059,10 +1061,7 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
             }
             break;
 
-        case CLOSURE_RETURNING:
-            /* ok, let it leave alone */
-            cilkrts_alert(ALERT_STEAL, w, "Steal failed: returning closure");
-
+        case CLOSURE_RETURNING: /* ok, let it leave alone */
         give_up:
             // MUST unlock the closure before the queue;
             // see rule D in the file PROTOCOLS
@@ -1208,7 +1207,7 @@ __attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker *w) {
    SYNC_NOT_READY to suspend the frame. */
 int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
 
-    cilkrts_alert(ALERT_SYNC, w, "(Cilk_sync) frame %p", frame);
+    // cilkrts_alert(ALERT_SYNC, w, "(Cilk_sync) frame %p", frame);
 
     Closure *t;
     int res = SYNC_READY;
@@ -1249,7 +1248,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     }
 
     if (Closure_has_children(t)) {
-        cilkrts_alert(ALERT_SYNC, w, "(Cilk_sync) outstanding children", frame);
+        cilkrts_alert(ALERT_SYNC, w,
+                 "(Cilk_sync) Closure %p has outstanding children", t);
 
         // if we are syncing from the personality function (i.e. if an
         // exception in the continuation was thrown), we still need this
@@ -1267,6 +1267,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         t->user_rmap = reducers; /* set this after state change to suspended */
         res = SYNC_NOT_READY;
     } else {
+        cilkrts_alert(ALERT_SYNC, w,
+                 "(Cilk_sync) closure %p sync successfully", t);
         setup_for_sync(w, t);
     }
 

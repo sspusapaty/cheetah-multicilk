@@ -8,10 +8,9 @@ HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
 TESTS   = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-#SAN=-fsanitize=cilk
 OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W # -fno-omit-frame-pointer
 # dynamic linking
-RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)  
+RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)
 LD_FLAGS = $(RTS_OPT) $(RTS_DLIBS) $(SAN)
 # static linking
 # RTS_SLIBS = $(RTS_DIR)/$(RTS_LIB).a
@@ -23,11 +22,17 @@ all: $(TESTS)
 $(TESTS): %: %.o getoptions.o ktiming.o
 	$(LINK_CC) $^ -o $@ $(LD_FLAGS) -lrt -lpthread -lm -ldl
 
+# Add these flag to use the runtime-defined ABI functions
+# -mllvm -use-external-abi-functions
 %.o: %.c
 	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
 
+# for generating easy-to-read LLVM IR code
+%.ll: %.c
+	$(CC) -c $(OPTIONS) -S -emit-llvm -ftapir=none -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
+
 clean:
-	rm -f *.o *~ $(TESTS) core.*
+	rm -f *.o *~ $(TESTS) core.* *.ll
 
 .PHONY: test
 

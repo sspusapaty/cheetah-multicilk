@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "getoptions.h"
 #include "ktiming.h"
@@ -315,7 +316,15 @@ int main(int argc, char *argv[]) {
     int n = 2048; // default n value
     POWER = 5;    // default k value
 
-    if (argc == 3) {
+    if(strncmp(argv[1], "-h", 3) == 0) {
+        fprintf(stderr, "Usage: %s [<cilk-options>] <n> <power>\n", argv[0]);
+        fprintf(stderr, "\tfor input size n and basecase 2^<power>\n");
+        exit(0);
+    }
+
+    if (argc == 2) {
+        n = atoi(argv[1]);
+    } else if (argc == 3) {
         n = atoi(argv[1]);
         POWER = atoi(argv[2]);
     }

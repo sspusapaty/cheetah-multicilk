@@ -77,12 +77,12 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     // an environment variable indicating whether we are running a bench
     // with cilksan and should check for reducer race.
-    g->options.check_reducer_race = env_get_int("CILKSAN_CHECK_REDUCER_RACE");
-    if(g->options.check_reducer_race != 0) {
+    g->options.force_reduce = env_get_int("CILK_FORCE_REDUCE");
+    if(g->options.force_reduce != 0) {
         if(proc_override != 1) {
-            printf("CILKSAN_CHECK_REDUCER_RACE is set to non-zero\n"
+            printf("CILK_FORCE_REDUCE is set to non-zero\n"
                    "but CILK_NWORKERS is not set to 1.  Running normally.\n");
-            g->options.check_reducer_race = 0;
+            g->options.force_reduce = 0;
         } else {
             printf("Assuming running with cilksan and checking races "
                    "for reducer.\n");

@@ -41,7 +41,10 @@ long env_get_int(char const *var) {
     return 0;
 }
 
-void parse_environment() { alert_level = env_get_int("CILK_ALERT"); }
+void parse_environment() {
+    // ANGE: I don't think we should expose this ...
+    // alert_level = env_get_int("CILK_ALERT");
+}
 
 static local_state *worker_local_init(global_state *g) {
     local_state *l = (local_state *)malloc(sizeof(local_state));

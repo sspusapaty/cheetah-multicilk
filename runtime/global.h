@@ -27,16 +27,17 @@ struct Closure;
         DEFAULT_REDUCER_LIMIT,  /* num of simultaneous reducers */ \
         DEFAULT_DEQ_DEPTH,      /* num of entries in deque */      \
         DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */             \
+        DEFAULT_FORCE_REDUCE,   /* whether to force self steal and reduce */\
     }
 // clang-format on
 
 struct rts_options {
     size_t stacksize;
     unsigned int nproc;
-    unsigned int check_reducer_race;
     unsigned int reducer_cap;
     unsigned int deqdepth;
     unsigned int fiber_pool_cap;
+    unsigned int force_reduce;
 };
 
 struct global_state {
