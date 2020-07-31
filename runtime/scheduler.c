@@ -1094,8 +1094,6 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
  ***/
 void promote_own_deque(__cilkrts_worker *w) {
 
-fprintf(stderr, "Promote own deque!\n");
-
     if(deque_trylock(w, w->self) == 0) {
         cilkrts_bug(w,
             "Bug: failed to acquire deque lock when promoting own deque");

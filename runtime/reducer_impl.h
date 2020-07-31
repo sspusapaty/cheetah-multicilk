@@ -9,7 +9,9 @@ CHEETAH_INTERNAL void reducers_import(global_state *, __cilkrts_worker *);
 CHEETAH_INTERNAL void reducers_deinit(global_state *);
 
 // used by the scheduler
-CHEETAH_INTERNAL
+// We give this method global visibility, so that tools, notably Cilksan, can
+// dynamically interpose the method.
+/* CHEETAH_INTERNAL */
 cilkred_map *merge_two_rmaps(__cilkrts_worker *, cilkred_map *left,
                              cilkred_map *right);
 
