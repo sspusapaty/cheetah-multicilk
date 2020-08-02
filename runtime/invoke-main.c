@@ -9,11 +9,6 @@
 
 extern unsigned long ZERO;
 
-extern void (*init_callback[MAX_CALLBACKS])(void);
-extern int last_init_callback;
-extern void (*exit_callback[MAX_CALLBACKS])(void);
-extern int last_exit_callback;
-
 CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
 
     Closure *t;
@@ -87,6 +82,9 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
 
     for (int i = 0; i < last_init_callback; ++i)
         init_callback[i]();
+
+    /* Any attempt to register more initializers should fail. */
+    last_init_callback = MAX_CALLBACKS;
 
     char *rsp;
     char *nsp;

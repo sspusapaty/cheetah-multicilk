@@ -324,11 +324,10 @@
  *
  *  Class          | Modifier            | Assignment
  *  ---------------|---------------------|-----------
- *  `op_min`       | `r->calc_min(x)`    | `*r = min_of(*r, x)` or `*r =
- * min_of(x, *r)` `op_max`       | `r->calc_max(x)`    | `*r = max_of(*r, x)` or
- * `*r = max_of(x, *r)` `op_min_index` | `r->calc_min(i, x)` | `*r = min_of(*r,
- * i, x)` or `*r = min_of(i, x, *r)` `op_max_index` | `r->calc_max(i, x)` | `*r
- * = max_of(*r, i, x)` or `*r = max_of(i, x, *r)`
+ *  `op_min`       | `r->calc_min(x)`    | `*r = min_of(*r, x)` or `*r = min_of(x, *r)`
+ *  `op_max`       | `r->calc_max(x)`    | `*r = max_of(*r, x)` or `*r = max_of(x, *r)`
+ *  `op_min_index` | `r->calc_min(i, x)` | `*r = min_of(*r, i, x)` or `*r = min_of(i, x, *r)`
+ *  `op_max_index` | `r->calc_max(i, x)` | `*r = max_of(*r, i, x)` or `*r = max_of(i, x, *r)`
  *
  *  Wherever an "`i`, `x`" argument pair is shown in the table above, a single
  *  pair argument may be passed instead. For example:
@@ -413,14 +412,10 @@
  *
  *  Declaration                  | Type                              | Operation
  *  -----------------------------|-----------------------------------|----------
- * @ref CILK_C_REDUCER_MIN       |@ref CILK_C_REDUCER_MIN_TYPE       |@ref
- * CILK_C_REDUCER_MIN_CALC
- * @ref CILK_C_REDUCER_MAX       |@ref CILK_C_REDUCER_MAX_TYPE       |@ref
- * CILK_C_REDUCER_MAX_CALC
- * @ref CILK_C_REDUCER_MIN_INDEX |@ref CILK_C_REDUCER_MIN_INDEX_TYPE |@ref
- * CILK_C_REDUCER_MIN_INDEX_CALC
- * @ref CILK_C_REDUCER_MAX_INDEX |@ref CILK_C_REDUCER_MAX_INDEX_TYPE |@ref
- * CILK_C_REDUCER_MAX_INDEX_CALC
+ * @ref CILK_C_REDUCER_MIN       |@ref CILK_C_REDUCER_MIN_TYPE       |@ref CILK_C_REDUCER_MIN_CALC
+ * @ref CILK_C_REDUCER_MAX       |@ref CILK_C_REDUCER_MAX_TYPE       |@ref CILK_C_REDUCER_MAX_CALC
+ * @ref CILK_C_REDUCER_MIN_INDEX |@ref CILK_C_REDUCER_MIN_INDEX_TYPE |@ref CILK_C_REDUCER_MIN_INDEX_CALC
+ * @ref CILK_C_REDUCER_MAX_INDEX |@ref CILK_C_REDUCER_MAX_INDEX_TYPE |@ref CILK_C_REDUCER_MAX_INDEX_CALC
  *
  *  For example:
  *
@@ -784,19 +779,15 @@ class comparator_base
  *
  *  Definition                          | Meaning
  *  ------------------------------------|--------
- *  `C::value_type`                     | A typedef for `Type` of the view. (A
- * `std::pair<Index, Type>` for min_index and max_index views).
- *  `C::comp_value_type`                | A typedef for the type of value
- * compared by the view's `compare()` function. `C()` | Constructs the content
- * with the identity value. `C(const value_type&)`              | Constructs the
- * content with a specified value. `c.is_set()`                        | Returns
- * true if the content has a known value. `c.value()`                         |
- * Returns the content's value. `c.set_value(const value_type&)`    | Sets the
- * content's value. (The value becomes known.) `c.comp_value()` | Returns a
- * const reference to the value or component of the value that is to be compared
- * by the view's comparator. `C::comp_value(const value_type&)`  | Returns a
- * const reference to a value or component of a value that is to be compared by
- * the view's comparator.
+ *  `C::value_type`                     | A typedef for `Type` of the view. (A `std::pair<Index, Type>` for min_index and max_index views).
+ *  `C::comp_value_type`                | A typedef for the type of value compared by the view's `compare()` function.
+ *  `C()`                               | Constructs the content with the identity value.
+ *  `C(const value_type&)`              | Constructs the content with a specified value.
+ *  `c.is_set()`                        | Returns true if the content has a known value.
+ *  `c.value()`                         | Returns the content's value.
+ *  `c.set_value(const value_type&)`    | Sets the content's value. (The value becomes known.)
+ *  `c.comp_value()`                    | Returns a const reference to the value or component of the value that is to be compared by the view's comparator.
+ *  `C::comp_value(const value_type&)`  | Returns a const reference to a value or component of a value that is to be compared by the view's comparator.
  *
  *  @see view_base
  */
@@ -3177,7 +3168,7 @@ static const unsigned int __huge_vall[] = {0, 0, 0x00007f80, 0};
     obj = CILK_C_INIT_REDUCER(                                                 \
         _Typeof(obj.value), __CILKRTS_MKIDENT(cilk_c_reducer_max_reduce_, tn), \
         __CILKRTS_MKIDENT(cilk_c_reducer_max_identity_, tn),                   \
-        __cilkrts_hyperobject_noop_destroy, v)
+        0, v)
 
 /** Maximizes with a value.
  *
@@ -3314,7 +3305,7 @@ CILK_C_REDUCER_MAX_INSTANCE(long double, longdouble, -HUGE_VALL)
         _Typeof(obj.value),                                                    \
         __CILKRTS_MKIDENT(cilk_c_reducer_max_index_reduce_, tn),               \
         __CILKRTS_MKIDENT(cilk_c_reducer_max_index_identity_, tn),             \
-        __cilkrts_hyperobject_noop_destroy, {0, v})
+        0, {0, v})
 
 /** Maximizes with a value.
  *
@@ -3478,7 +3469,7 @@ CILK_C_REDUCER_MAX_INDEX_INSTANCE(long double, longdouble, -HUGE_VALL)
     obj = CILK_C_INIT_REDUCER(                                                 \
         _Typeof(obj.value), __CILKRTS_MKIDENT(cilk_c_reducer_min_reduce_, tn), \
         __CILKRTS_MKIDENT(cilk_c_reducer_min_identity_, tn),                   \
-        __cilkrts_hyperobject_noop_destroy, v)
+        0, v)
 
 /** Minimizes with a value.
  *
@@ -3615,7 +3606,7 @@ CILK_C_REDUCER_MIN_INSTANCE(long double, longdouble, HUGE_VALL)
         _Typeof(obj.value),                                                    \
         __CILKRTS_MKIDENT(cilk_c_reducer_min_index_reduce_, tn),               \
         __CILKRTS_MKIDENT(cilk_c_reducer_min_index_identity_, tn),             \
-        __cilkrts_hyperobject_noop_destroy, {0, v})
+        0, {0, v})
 
 /** Minimizes with a value.
  *

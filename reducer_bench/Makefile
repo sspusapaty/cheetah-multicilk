@@ -14,7 +14,7 @@ TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
 WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
 OPTIONS  = $(OPT) $(ARCH) $(DBG) $(RTS_OPT) $(WARN) # -fno-omit-frame-pointer
 
-RTS_LIBS = ../runtime/$(RTS_LIB).a $(patsubst %,../runtime/%/module.a,$(MODS))
+RTS_LIBS = 
 
 TIMING_COUNT := 1
 
@@ -23,10 +23,10 @@ TIMING_COUNT := 1
 all: $(TESTS)
 
 $(CTESTS): %: %.o ktiming.o getoptions.o
-	$(CC) $^ -o $@ $(RTS_LIBS) -lrt -lpthread -lm
+	$(CC) $^ -o $@ $(RTS_OPT) $(RTS_LIBS) -lrt -lpthread -lm
 
 $(CXXTESTS): %: %.o ktiming.o getoptions.o
-	$(CXX) $^ -o $@ $(RTS_LIBS) -lrt -lpthread -lm
+	$(CXX) $^ -o $@ $(RTS_OPT) $(RTS_LIBS) -lrt -lpthread -lm
 
 $(DIRTESTS):
 	$(MAKE) -C $@ $(TOPASS)

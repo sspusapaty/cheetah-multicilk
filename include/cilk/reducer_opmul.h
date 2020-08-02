@@ -370,7 +370,7 @@ extern "C" {
         CILK_C_INIT_REDUCER(_Typeof(obj.value),                               \
                         __CILKRTS_MKIDENT(cilk_c_reducer_opmul_reduce_,tn),   \
                         __CILKRTS_MKIDENT(cilk_c_reducer_opmul_identity_,tn), \
-                        __cilkrts_hyperobject_noop_destroy, v)
+                        0, v)
 
 /// @cond internal
 

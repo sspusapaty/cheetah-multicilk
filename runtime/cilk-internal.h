@@ -283,6 +283,11 @@ struct __cilkrts_worker {
     cilkred_map *reducer_map;
 };
 
+extern CHEETAH_INTERNAL void (*init_callback[MAX_CALLBACKS])(void);
+extern CHEETAH_INTERNAL int last_init_callback;
+extern CHEETAH_INTERNAL void (*exit_callback[MAX_CALLBACKS])(void);
+extern CHEETAH_INTERNAL int last_exit_callback;
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,9 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+/* Functions defined in the library and visible outside the library. */
+#define CHEETAH_API __attribute((visibility("protected")))
+/* Functions defined in the library and not visible outside the library. */
 #define CHEETAH_INTERNAL __attribute((visibility("hidden")))
 #define CHEETAH_INTERNAL_NORETURN __attribute((noreturn, visibility("hidden")))
 

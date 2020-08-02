@@ -169,6 +169,7 @@ void __cilkrts_check_exception_resume(__cilkrts_stack_frame *sf) {
     return;
 }
 
+/* Called by generated exception handling code. */
 void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
 
     if (sel == 0)

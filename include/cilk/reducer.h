@@ -60,8 +60,16 @@
 #ifndef REDUCER_H_INCLUDED
 #define REDUCER_H_INCLUDED
 
+#include <assert.h>
 #include "cilk/hyperobject_base.h"
 #include "cilk/metaprogramming.h"
+
+#ifdef OPENCILK_LIBRARY
+#define VISIBILITY visibility("protected")
+#else
+#define VISIBILITY visibility("default")
+#endif
+#define __CILKRTS_STRAND_STALE(fn) fn
 
 #ifdef __cplusplus
 
@@ -426,12 +434,15 @@ template <typename Value, typename View = Value> class monoid_base {
  *  Definition                       | Meaning
  *  ---------------------------------|--------
  *  `value_type`                     | a typedef of the value type for the
- * reduction `View()`                         | a default constructor which
- * constructs the identity value for the reduction
+ *                                   | reduction
+ *  `View()`                         | a default constructor which constructs
+ *                                   | the identity value for the reduction
  *  `void reduce(const View* other)` | a member function which applies the
- * reduction operation to the values of `this` view and the `other` view,
- * leaving the result as the value of `this` view, and leaving the value of the
- * `other` view undefined (but valid)
+ *                                   | reduction operation to the values of
+ *                                   | `this` view and the `other` view,
+ *                                   | leaving the result as the value of
+ *                                   | `this` view, and leaving the value of
+ *                                   | the `other` view undefined (but valid)
  *
  *  @tparam View    The view class for the monoid.
  *  @tparam Align   If true, reducers instantiated on this monoid will be
@@ -812,11 +823,11 @@ template <typename Monoid> class reducer_base {
      */
     reducer_base(char* leftmost)
       : m_base{{
-            (cilk_c_reducer_reduce_fn_t)     &reduce_wrapper,
-            (cilk_c_reducer_identity_fn_t)   &identity_wrapper,
-            (cilk_c_reducer_destroy_fn_t)    &destroy_wrapper,
-            (cilk_c_reducer_allocate_fn_t)   &allocate_wrapper,
-            (cilk_c_reducer_deallocate_fn_t) &deallocate_wrapper
+            (cilk_reduce_fn_t)     &reduce_wrapper,
+            (cilk_identity_fn_t)   &identity_wrapper,
+            (cilk_destroy_fn_t)    &destroy_wrapper,
+            (cilk_allocate_fn_t)   &allocate_wrapper,
+            (cilk_deallocate_fn_t) &deallocate_wrapper
           },
           0, /* Cilk Plus flags or OpenCilk ID */
           (char*)leftmost - (char*)this, /* __view_offset */
@@ -831,11 +842,7 @@ template <typename Monoid> class reducer_base {
      */
     __CILKRTS_STRAND_STALE(~reducer_base()) {
         // Make sure we haven't been memcopy'd or corrupted
-        __CILKRTS_ASSERT(
-            this == m_initialThis ||
-            // Allow for a layout bug that may put the initialThis field one
-            // word later in 1.0 reducers than in 0.9  and 1.1 reducers.
-            this == *(&m_initialThis + 1));
+        assert(this == m_initialThis);
         __cilkrts_hyper_destroy(&m_base);
     }
 
@@ -979,7 +986,7 @@ class reducer_content<Monoid, false> : public reducer_base<Monoid> {
     //   area will contain a cache-aligned block of the required cache lines,
     //   no matter where the reserved area starts.
     //
-    char m_leftmost[(((sizeof(view_type) + 63UL) & ~63UL) + 63U];
+    char m_leftmost[((sizeof(view_type) + 63UL) & ~63UL) + 63U];
         // View size rounded up to multiple cache lines
 
 
@@ -1472,8 +1479,8 @@ using stub::reducer;
  *  It must release any resources belonging to the value pointed to by `p`, to
  *  avoid a resource leak when the memory containing the value is deallocated.
  *
- *  The runtime function `__cilkrts_hyperobject_noop_destroy` can be used for
- *  the destructor function if the reducer's values do not need any cleanup.
+ *  A null pointer can be used for the destructor function if the reducer's
+ *  values do not need any cleanup.
  *
  *  @subsection reducers_c_register Tell the Intel Cilk Plus Runtime About the
  *  Reducer
@@ -1567,7 +1574,7 @@ using stub::reducer;
  *          CILK_C_INIT_REDUCER(IntList,
  *                              reduce_int_list,
  *                              identity_int_list,
- *                              __cilkrts_hyperobject_noop_destroy);
+ *                              0);
  *                              // Initial value omitted //
  *      ListInt_init(&REDUCER_VIEW(my_int_list_reducer));
  *
@@ -1712,8 +1719,8 @@ using stub::reducer;
  *  @param tn   The type name.
  */
 #define __CILKRTS_DECLARE_REDUCER_IDENTITY(name, tn)                           \
-    __attribute__((visibility("protected"))) void __CILKRTS_MKIDENT3(          \
-        name, _identity_, tn)(void *key, void *v)
+    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _identity_, tn)( \
+        void *key, void *v)
 
 /** Create a reduction function header.
  *
@@ -1724,8 +1731,8 @@ using stub::reducer;
  *              parameter.
  */
 #define __CILKRTS_DECLARE_REDUCER_REDUCE(name, tn, l, r)                       \
-    __attribute__((visibility("protected"))) void __CILKRTS_MKIDENT3(          \
-        name, _reduce_, tn)(void *key, void *l, void *r)
+    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _reduce_, tn)(   \
+        void *key, void *l, void *r)
 
 /** Create a destructor function header.
  *
@@ -1734,8 +1741,8 @@ using stub::reducer;
  *  @param p    The name to use for the function's value pointer parameter.
  */
 #define __CILKRTS_DECLARE_REDUCER_DESTROY(name, tn, p)                         \
-    __attribute__((visibility("protected"))) void __CILKRTS_MKIDENT3(          \
-        name, _destroy_, tn)(void *key, void *p)
+    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _destroy_, tn)(  \
+        void *key, void *p)
 
 //@}
 
@@ -1773,7 +1780,7 @@ using stub::reducer;
  *          CILK_C_INIT_REDUCER(int,
  *                              add_int_reduce,
  *                              add_int_identity,
- *                              __cilkrts_hyperobject_noop_destroy,
+ *                              0,
  *                              0);
  *
  *  @param Type     The type of the value contained in the reducer object. Must
@@ -1795,8 +1802,8 @@ using stub::reducer;
 
 #define CILK_C_INIT_REDUCER(Type, Reduce, Identity, Destroy, ...)              \
     {                                                                          \
-        {{Reduce, Identity, Destroy, __cilkrts_hyperobject_alloc,              \
-          __cilkrts_hyperobject_dealloc},                                      \
+        {{Reduce, Identity, Destroy, __cilkrts_hyper_alloc,                    \
+          __cilkrts_hyper_dealloc},                                            \
          0,                                                                    \
          64, /* TODO: Assert that this really is 64. */                        \
          sizeof(Type)},                                                        \
@@ -1862,5 +1869,7 @@ using stub::reducer;
         &(Expr).__cilkrts_hyperbase))
 
 //@} C language reducer macros
+
+#undef __CILKRTS_STRAND_STALE
 
 #endif // CILK_REDUCER_H_INCLUDED

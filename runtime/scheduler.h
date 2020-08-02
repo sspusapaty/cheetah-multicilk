@@ -10,7 +10,7 @@
 #define EXCEPTION_INFINITY (__cilkrts_stack_frame **)(-1LL)
 
 /* This is part of the ABI */
-__cilkrts_worker *__cilkrts_get_tls_worker();
+CHEETAH_API __cilkrts_worker *__cilkrts_get_tls_worker();
 
 CHEETAH_INTERNAL void __cilkrts_init_tls_variables();
 CHEETAH_INTERNAL void __cilkrts_set_tls_worker(__cilkrts_worker *w);

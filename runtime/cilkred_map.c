@@ -21,7 +21,10 @@ static inline void clear_view(ViewInfo *view) {
     __cilkrts_hyperobject_base *key = view->key;
 
     if (key != NULL) {
-        key->__c_monoid.destroy_fn(key, view->val);    // calls destructor
+        cilk_destroy_fn_t destroy = key->__c_monoid.destroy_fn;
+        if (destroy) {
+            key->__c_monoid.destroy_fn(key, view->val);    // calls destructor
+        }
         key->__c_monoid.deallocate_fn(key, view->val); // free the memory
     }
     view->key = NULL;

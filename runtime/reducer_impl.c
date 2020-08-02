@@ -225,14 +225,11 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     return vinfo->val;
 }
 
-void *__cilkrts_hyperobject_alloc(void *ignore, size_t bytes) {
+void *__cilkrts_hyper_alloc(void *ignore, size_t bytes) {
     return malloc(bytes);
 }
 
-void __cilkrts_hyperobject_dealloc(void *ignore, void *view) { free(view); }
-
-/* No-op destroy function */
-void __cilkrts_hyperobject_noop_destroy(void *ignore, void *ignore2) {}
+void __cilkrts_hyper_dealloc(void *ignore, void *view) { free(view); }
 
 // =================================================================
 // Helper function for the scheduler
