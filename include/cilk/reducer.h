@@ -60,15 +60,10 @@
 #ifndef REDUCER_H_INCLUDED
 #define REDUCER_H_INCLUDED
 
-#include <assert.h>
 #include "cilk/hyperobject_base.h"
 #include "cilk/metaprogramming.h"
+#include <assert.h>
 
-#ifdef OPENCILK_LIBRARY
-#define VISIBILITY visibility("protected")
-#else
-#define VISIBILITY visibility("default")
-#endif
 #define __CILKRTS_STRAND_STALE(fn) fn
 
 #ifdef __cplusplus
@@ -987,8 +982,7 @@ class reducer_content<Monoid, false> : public reducer_base<Monoid> {
     //   no matter where the reserved area starts.
     //
     char m_leftmost[((sizeof(view_type) + 63UL) & ~63UL) + 63U];
-        // View size rounded up to multiple cache lines
-
+    // View size rounded up to multiple cache lines
 
   protected:
     /** Constructor. Find the first cache-aligned position in the reserved
@@ -1719,8 +1713,7 @@ using stub::reducer;
  *  @param tn   The type name.
  */
 #define __CILKRTS_DECLARE_REDUCER_IDENTITY(name, tn)                           \
-    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _identity_, tn)( \
-        void *key, void *v)
+    void __CILKRTS_MKIDENT3(name, _identity_, tn)(void *key, void *v)
 
 /** Create a reduction function header.
  *
@@ -1731,8 +1724,7 @@ using stub::reducer;
  *              parameter.
  */
 #define __CILKRTS_DECLARE_REDUCER_REDUCE(name, tn, l, r)                       \
-    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _reduce_, tn)(   \
-        void *key, void *l, void *r)
+    void __CILKRTS_MKIDENT3(name, _reduce_, tn)(void *key, void *l, void *r)
 
 /** Create a destructor function header.
  *
@@ -1741,8 +1733,7 @@ using stub::reducer;
  *  @param p    The name to use for the function's value pointer parameter.
  */
 #define __CILKRTS_DECLARE_REDUCER_DESTROY(name, tn, p)                         \
-    __attribute__((VISIBILITY)) void __CILKRTS_MKIDENT3(name, _destroy_, tn)(  \
-        void *key, void *p)
+    void __CILKRTS_MKIDENT3(name, _destroy_, tn)(void *key, void *p)
 
 //@}
 

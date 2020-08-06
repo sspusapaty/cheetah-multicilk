@@ -5,9 +5,7 @@
 #include "debug.h"
 
 #include "cilk-internal.h"
-#ifdef REDUCER_MODULE
 #include "cilkred_map.h"
-#endif
 #include "fiber.h"
 #include "mutex.h"
 
@@ -107,7 +105,6 @@ struct Closure {
     char *reraise_cfa;
     char *parent_rsp;
 
-#ifdef REDUCER_MODULE
     // cilkred_map *children_reducer_map;
     // cilkred_map *right_reducer_map;
 
@@ -120,7 +117,6 @@ struct Closure {
     _Atomic(cilkred_map *) volatile child_rmap;
     /* Reducer map for this closure when suspended at sync */
     cilkred_map *user_rmap;
-#endif
 
 } __attribute__((aligned(CILK_CACHE_LINE)));
 

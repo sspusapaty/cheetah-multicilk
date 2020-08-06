@@ -23,9 +23,7 @@
 #include "sched_stats.h"
 #include "scheduler.h"
 
-#ifdef REDUCER_MODULE
 #include "reducer_impl.h"
-#endif
 
 CHEETAH_INTERNAL
 extern void cleanup_invoke_main(Closure *invoke_main);
@@ -184,9 +182,7 @@ static void workers_init(global_state *g) {
         atomic_store_explicit(&w->head, init, memory_order_relaxed);
         atomic_store_explicit(&w->exc, init, memory_order_relaxed);
         w->current_stack_frame = NULL;
-#ifdef REDUCER_MODULE
         w->reducer_map = NULL;
-#endif
         // initialize internal malloc first
         cilk_internal_malloc_per_worker_init(w);
         cilk_fiber_pool_per_worker_init(w);
@@ -343,9 +339,7 @@ static void threads_init(global_state *g) {
 global_state *__cilkrts_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL, "(__cilkrts_init)");
     global_state *g = global_state_init(argc, argv);
-#ifdef REDUCER_MODULE
     reducers_init(g);
-#endif
     __cilkrts_init_tls_variables();
     workers_init(g);
     deques_init(g);
@@ -400,14 +394,12 @@ static void workers_deinit(global_state *g) {
         g->workers[i] = NULL;
         CILK_ASSERT(w, w->l->fiber_to_free == NULL);
 
-#ifdef REDUCER_MODULE
         cilkred_map *rm = w->reducer_map;
         w->reducer_map = NULL;
         // Workers can have NULL reducer maps now.
         if (rm) {
             cilkred_map_destroy_map(w, rm);
         }
-#endif
 
         cilk_fiber_pool_per_worker_destroy(w);
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
@@ -421,9 +413,7 @@ static void workers_deinit(global_state *g) {
 
 CHEETAH_INTERNAL
 void __cilkrts_cleanup(global_state *g) {
-#ifdef REDUCER_MODULE
     reducers_deinit(g);
-#endif
     workers_terminate(g);
     // global_state_terminate collects and prints out stats, and thus
     // should occur *BEFORE* worker_deinit, because worker_deinit

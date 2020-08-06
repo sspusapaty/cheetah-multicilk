@@ -36,22 +36,11 @@ typedef struct __cilkrts_hyperobject_base {
 
 /* Library interface.
    TODO: Add optimization hints like "strand pure" as in Cilk Plus. */
-#ifdef OPENCILK_LIBRARY
-#define _VISIBILITY visibility("protected")
-#else
-#define _VISIBILITY visibility("default")
-#endif
-void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key)
-    __attribute__((_VISIBILITY));
-void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key)
-    __attribute__((_VISIBILITY));
-void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key)
-    __attribute__((_VISIBILITY));
-void *__cilkrts_hyper_alloc(void *ignore, size_t bytes)
-    __attribute__((_VISIBILITY));
-void __cilkrts_hyper_dealloc(void *ignore, void *view)
-    __attribute__((_VISIBILITY));
-#undef _VISIBILITY
+void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key);
+void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key);
+void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key);
+void *__cilkrts_hyper_alloc(void *ignore, size_t bytes);
+void __cilkrts_hyper_dealloc(void *ignore, void *view);
 
 #ifdef __cplusplus
 } /* end extern "C" */

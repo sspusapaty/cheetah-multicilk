@@ -1,11 +1,12 @@
 #include <assert.h>
-#ifdef REDUCER_MODULE
 #include "reducer_impl.h"
-#endif
 #include "cilk/hyperobject_base.h"
 #include "mutex.h"
 
-#ifdef REDUCER_MODULE
+#include <limits.h>
+
+#define REDUCER_LIMIT 1024U
+
 // =================================================================
 // ID managers for reducers
 // =================================================================
@@ -16,11 +17,12 @@ typedef struct reducer_id_manager {
     pthread_mutex_t mutex; // enfore mutual exclusion on access to this desc
     worker_id mutex_owner; // worker id who holds the mutex
     hyper_id_t spa_cap;
-    hyper_id_t curr_id;
+    hyper_id_t next; // a hint
+    unsigned long *used;
 } reducer_id_manager;
 
-static reducer_id_manager id_manager = {PTHREAD_MUTEX_INITIALIZER, NOBODY, 1000,
-                                        0};
+static reducer_id_manager id_manager = {PTHREAD_MUTEX_INITIALIZER, NOBODY, 0, 0,
+                                        NULL};
 
 static void reducer_id_manager_assert_ownership(__cilkrts_worker *const ws) {
     CILK_ASSERT(ws, !ws || id_manager.mutex_owner == ws->self);
@@ -41,23 +43,47 @@ static void reducer_id_manager_unlock(__cilkrts_worker *const ws) {
     pthread_mutex_unlock(&id_manager.mutex);
 }
 
-static void init_reducer_id_manager(global_state *const g) {
-    /* Currently nothing to do */
+static void init_reducer_id_manager(global_state *const g, hyper_id_t cap) {
+    cap = (cap + LONG_BIT - 1) / LONG_BIT * LONG_BIT;
+    id_manager.spa_cap = cap;
+    id_manager.used = calloc(cap, sizeof(unsigned long));
+    id_manager.next = 0;
 }
 
 static void free_reducer_id_manager(global_state *const g) {
-    id_manager.spa_cap = 1000;
-    id_manager.curr_id = 0;
+    id_manager.spa_cap = 0;
+    unsigned long *old = id_manager.used;
+    id_manager.used = NULL;
+    free(old);
+    id_manager.next = 0;
 }
 
 static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
     reducer_id_manager_lock(ws);
-    hyper_id_t id = id_manager.curr_id++;
-    cilkrts_alert(ALERT_REDUCE_ID, ws, "allocate reducer ID %u",
+    hyper_id_t id = id_manager.next;
+    unsigned long mask = 1UL << (id % LONG_BIT);
+    unsigned long *used = id_manager.used;
+    if ((used[id / LONG_BIT] & mask) == 0) {
+        used[id / LONG_BIT] |= mask;
+    } else {
+        id = ~(hyper_id_t)0;
+        hyper_id_t cap = id_manager.spa_cap;
+        for (unsigned i = 0; i < cap / LONG_BIT; ++i) {
+            if (~used[i]) {
+                int index = __builtin_ctzl(~used[i]);
+                CILK_ASSERT(ws, !(used[i] & (1UL << index)));
+                used[i] |= 1UL << index;
+                id = i * LONG_BIT + index;
+                break;
+            }
+        }
+    }
+    id_manager.next = id + 1 == id_manager.spa_cap ? 0 : id + 1;
+    cilkrts_alert(ALERT_REDUCE_ID, ws, "allocate reducer ID %lu",
                   (unsigned long)id);
     if (id >= id_manager.spa_cap) {
-        cilkrts_bug(ws, "SPA resize not supported yet! (id %lu >= cap %lu)",
-                    (unsigned long)id, (unsigned long)id_manager.spa_cap);
+        cilkrts_bug(ws, "SPA resize not supported yet! (cap %lu)",
+                    (unsigned long)id_manager.spa_cap);
     }
     reducer_id_manager_unlock(ws);
     return id;
@@ -66,12 +92,11 @@ static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
 static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
     reducer_id_manager_lock(ws);
     cilkrts_alert(ALERT_REDUCE_ID, ws, "free reducer ID %lu of %lu",
-                  (unsigned long)id, id_manager.curr_id - 1UL);
-    /* Return the ID to the system to be reallocated.
-       TODO: This only works if reducer lifetimes are nested. */
-    if (id == id_manager.curr_id - 1) {
-        id_manager.curr_id = id;
-    }
+                  (unsigned long)id, id_manager.spa_cap);
+    CILK_ASSERT(ws, id < id_manager.spa_cap);
+    CILK_ASSERT(ws, id_manager.used[id / LONG_BIT] & (1UL <<id % LONG_BIT));
+    id_manager.used[id / LONG_BIT] &= ~(1UL << id % LONG_BIT);
+    id_manager.next = id;
     reducer_id_manager_unlock(ws);
 }
 
@@ -81,7 +106,7 @@ static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
 
 void reducers_init(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(reducers_init) Initializing reducers");
-    init_reducer_id_manager(g);
+    init_reducer_id_manager(g, REDUCER_LIMIT);
 }
 
 void reducers_deinit(global_state *g) {
@@ -254,4 +279,3 @@ cilkred_map *merge_two_rmaps(__cilkrts_worker *const ws, cilkred_map *left,
         return right;
     }
 }
-#endif

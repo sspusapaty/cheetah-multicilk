@@ -14,9 +14,7 @@
 #include "readydeque.h"
 #include "scheduler.h"
 
-#ifdef REDUCER_MODULE
 #include "reducer_impl.h"
-#endif
 
 __thread __cilkrts_worker *tls_worker = NULL;
 
@@ -211,11 +209,9 @@ void Cilk_set_return(__cilkrts_worker *const w) {
     CILK_ASSERT(w, t->status == CLOSURE_RUNNING);
     CILK_ASSERT(w, Closure_has_children(t) == 0);
 
-#ifdef REDUCER_MODULE
     // all rmaps from child or right sibling must have been reduced
     CILK_ASSERT(w, t->child_rmap == (cilkred_map *)NULL &&
                        t->right_rmap == (cilkred_map *)NULL);
-#endif
 
     if (t->call_parent != NULL) {
         CILK_ASSERT(w, t->spawn_parent == NULL);
@@ -327,12 +323,10 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
     cilkrts_alert(ALERT_RETURN, w, "(Closure_return) child %p, parent %p",
                   child, parent);
 
-#ifdef REDUCER_MODULE
     /* The frame should have passed a sync successfully meaning it
        has not accumulated any maps from its children and the
        active map is in the worker rather than the closure. */
     CILK_ASSERT(w, !child->child_rmap && !child->user_rmap);
-#endif
 
     /* If in the future the worker's map is not created lazily,
        assert it is not null here. */
@@ -402,7 +396,6 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         Closure_lock(w, child);
     }
 
-#ifdef REDUCER_MODULE
     while (1) {
         // invariant: a closure cannot unlink itself w/out lock on parent
         // so what this points to cannot change while we have lock on parent
@@ -440,7 +433,6 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         Closure_lock(w, parent);
         Closure_lock(w, child);
     }
-#endif
 
     /* The returning closure and its parent are locked. */
 
@@ -498,7 +490,6 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
             parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
         }
 
-#ifdef REDUCER_MODULE
         CILK_ASSERT(w, !w->reducer_map);
         cilkred_map *child =
             atomic_load_explicit(&parent->child_rmap, memory_order_acquire);
@@ -506,7 +497,6 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         atomic_store_explicit(&parent->child_rmap, NULL, memory_order_relaxed);
         parent->user_rmap = NULL;
         w->reducer_map = merge_two_rmaps(w, child, active);
-#endif
     }
 
     Closure_unlock(w, parent);
@@ -1116,11 +1106,9 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     CILK_ASSERT(w, t->has_cilk_callee == 0);
     // CILK_ASSERT(w, w, t->frame->magic == CILK_STACKFRAME_MAGIC);
 
-#ifdef REDUCER_MODULE
     // each sync is executed only once; since we occupy user_rmap only
     // when sync fails, the user_rmap should remain NULL at this point.
     CILK_ASSERT(w, t->user_rmap == (cilkred_map *)NULL);
-#endif
 
     // ANGE: we might have passed a sync successfully before and never
     // gotten back to runtime but returning to another ancestor that needs
@@ -1144,17 +1132,13 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             w->l->fiber_to_free = t->fiber;
         }
         t->fiber = NULL; /* JFC: is this a leak? */
-#ifdef REDUCER_MODULE
         // place holder for reducer map; the view in tlmm (if any) are
         // updated by the last strand in Closure t before sync; need to
         // reduce these when successful provably good steal occurs
         cilkred_map *reducers = w->reducer_map;
         w->reducer_map = NULL;
-#endif
         Closure_suspend(w, t);
-#ifdef REDUCER_MODULE
         t->user_rmap = reducers; /* set this after state change to suspended */
-#endif
         res = SYNC_NOT_READY;
     } else {
         setup_for_sync(w, t);
@@ -1174,7 +1158,6 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             clear_closure_exception(&(t->child_exn));
             frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
         }
-#ifdef REDUCER_MODULE
         cilkred_map *child_rmap =
             atomic_load_explicit(&t->child_rmap, memory_order_acquire);
         if (child_rmap) {
@@ -1182,7 +1165,6 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             /* reducer_map may be accessed without lock */
             w->reducer_map = merge_two_rmaps(w, child_rmap, w->reducer_map);
         }
-#endif
     }
 
     return res;
@@ -1275,13 +1257,11 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
             deque_lock_self(w);
             t = deque_xtract_bottom(w, w->self);
             deque_unlock_self(w);
-#ifdef REDUCER_MODULE
             /* A worker entering the steal loop must have saved its
                reducer map into the frame to which it belongs. */
             if (!t) {
                 CILK_ASSERT(w, !w->reducer_map);
             }
-#endif
         }
         CILK_STOP_TIMING(w, INTERVAL_SCHED);
 

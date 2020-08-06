@@ -1,4 +1,3 @@
-#ifdef REDUCER_MODULE
 #include "cilkred_map.h"
 
 // =================================================================
@@ -231,4 +230,3 @@ size_t cilkred_map_num_views(cilkred_map *this_map) {
 
 /** @brief Is the cilkred_map leftmost */
 bool cilkred_map_is_leftmost(cilkred_map *this_map) { return false; }
-#endif

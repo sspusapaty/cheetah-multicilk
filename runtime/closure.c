@@ -123,11 +123,9 @@ static inline void Closure_init(Closure *t) {
     t->reraise_cfa = NULL;
     t->parent_rsp = NULL;
 
-#ifdef REDUCER_MODULE
     atomic_store_explicit(&t->child_rmap, NULL, memory_order_relaxed);
     atomic_store_explicit(&t->right_rmap, NULL, memory_order_relaxed);
     t->user_rmap = NULL;
-#endif
 }
 
 Closure *Closure_create(__cilkrts_worker *const w) {
@@ -242,9 +240,7 @@ void Closure_remove_child(__cilkrts_worker *const w, Closure *parent,
         parent->right_most_child = child->left_sib;
     }
 
-#ifdef REDUCER_MODULE
     CILK_ASSERT(w, child->right_rmap == (cilkred_map *)NULL);
-#endif
 
     unlink_child(w, child);
 }
@@ -301,9 +297,7 @@ void Closure_suspend_victim(__cilkrts_worker *thief, __cilkrts_worker *victim,
 
     Closure *cl1;
 
-#ifdef REDUCER_MODULE
     CILK_ASSERT(thief, !cl->user_rmap);
-#endif
 
     Closure_checkmagic(thief, cl);
     Closure_assert_ownership(thief, cl);
@@ -323,9 +317,7 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 
     Closure *cl1;
 
-#ifdef REDUCER_MODULE
     CILK_ASSERT(w, !cl->user_rmap);
-#endif
 
     cilkrts_alert(ALERT_SCHED, w, "Closure_suspend %p", cl);
 
@@ -358,20 +350,16 @@ static inline void Closure_clean(__cilkrts_worker *const w, Closure *t) {
         CILK_ASSERT(w, t->left_sib == (Closure *)NULL);
         CILK_ASSERT(w, t->right_sib == (Closure *)NULL);
         CILK_ASSERT(w, t->right_most_child == (Closure *)NULL);
-#ifdef REDUCER_MODULE
         CILK_ASSERT(w, t->user_rmap == (cilkred_map *)NULL);
         CILK_ASSERT(w, t->child_rmap == (cilkred_map *)NULL);
         CILK_ASSERT(w, t->right_rmap == (cilkred_map *)NULL);
-#endif
     } else {
         CILK_ASSERT_G(t->left_sib == (Closure *)NULL);
         CILK_ASSERT_G(t->right_sib == (Closure *)NULL);
         CILK_ASSERT_G(t->right_most_child == (Closure *)NULL);
-#ifdef REDUCER_MODULE
         CILK_ASSERT_G(t->user_rmap == (cilkred_map *)NULL);
         CILK_ASSERT_G(t->child_rmap == (cilkred_map *)NULL);
         CILK_ASSERT_G(t->right_rmap == (cilkred_map *)NULL);
-#endif
     }
 
     cilk_mutex_destroy(&t->mutex);
