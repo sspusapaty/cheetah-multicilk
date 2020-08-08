@@ -4,18 +4,10 @@
 extern "C" {
 #endif
 
-#ifdef OPENCILK_LIBRARY
-#define VISIBILITY visibility("protected")
-#else
-#define VISIBILITY visibility("default")
-#endif
-
-extern int __cilkrts_atinit(void (*callback)(void)) __attribute__((VISIBILITY));
-extern int __cilkrts_atexit(void (*callback)(void)) __attribute__((VISIBILITY));
-extern int __cilkrts_get_worker_number(void)
-    __attribute__((VISIBILITY, deprecated));
-struct __cilkrts_worker *__cilkrts_get_tls_worker(void)
-    __attribute__((VISIBILITY));
+extern int __cilkrts_atinit(void (*callback)(void));
+extern int __cilkrts_atexit(void (*callback)(void));
+extern int __cilkrts_get_worker_number(void) __attribute__((deprecated));
+struct __cilkrts_worker *__cilkrts_get_tls_worker(void);
 
 #undef VISIBILITY
 

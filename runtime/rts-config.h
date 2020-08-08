@@ -2,7 +2,11 @@
 #define _CONFIG_H
 
 /* Functions defined in the library and visible outside the library. */
+#if defined __BSD__ || defined __linux__ /* really, if using ELF */
 #define CHEETAH_API __attribute((visibility("protected")))
+#else
+#define CHEETAH_API
+#endif
 /* Functions defined in the library and not visible outside the library. */
 #define CHEETAH_INTERNAL __attribute((visibility("hidden")))
 #define CHEETAH_INTERNAL_NORETURN __attribute((noreturn, visibility("hidden")))
