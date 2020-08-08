@@ -1,7 +1,9 @@
-#include <assert.h>
 #include "reducer_impl.h"
 #include "cilk/hyperobject_base.h"
+#include "init.h"
 #include "mutex.h"
+#include <assert.h>
+#include <stdbool.h>
 
 #include <limits.h>
 
@@ -16,13 +18,14 @@
 typedef struct reducer_id_manager {
     pthread_mutex_t mutex; // enfore mutual exclusion on access to this desc
     worker_id mutex_owner; // worker id who holds the mutex
+    bool persistent;
     hyper_id_t spa_cap;
     hyper_id_t next; // a hint
     unsigned long *used;
 } reducer_id_manager;
 
-static reducer_id_manager id_manager = {PTHREAD_MUTEX_INITIALIZER, NOBODY, 0, 0,
-                                        NULL};
+static reducer_id_manager id_manager = {
+    PTHREAD_MUTEX_INITIALIZER, NOBODY, false, 0, 0, NULL};
 
 static void reducer_id_manager_assert_ownership(__cilkrts_worker *const ws) {
     CILK_ASSERT(ws, !ws || id_manager.mutex_owner == ws->self);
@@ -43,8 +46,14 @@ static void reducer_id_manager_unlock(__cilkrts_worker *const ws) {
     pthread_mutex_unlock(&id_manager.mutex);
 }
 
-static void init_reducer_id_manager(global_state *const g, hyper_id_t cap) {
+static void init_reducer_id_manager(global_state *const g, hyper_id_t cap,
+                                    bool persistent) {
+    if (id_manager.spa_cap != 0) {
+        CILK_ASSERT_G(id_manager.persistent);
+        return;
+    }
     cap = (cap + LONG_BIT - 1) / LONG_BIT * LONG_BIT;
+    id_manager.persistent = persistent;
     id_manager.spa_cap = cap;
     id_manager.used = calloc(cap, sizeof(unsigned long));
     id_manager.next = 0;
@@ -78,7 +87,7 @@ static hyper_id_t reducer_id_get(__cilkrts_worker *ws) {
             }
         }
     }
-    id_manager.next = id + 1 == id_manager.spa_cap ? 0 : id + 1;
+    id_manager.next = id + 1 >= id_manager.spa_cap ? 0 : id + 1;
     cilkrts_alert(ALERT_REDUCE_ID, ws, "allocate reducer ID %lu",
                   (unsigned long)id);
     if (id >= id_manager.spa_cap) {
@@ -94,7 +103,7 @@ static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
     cilkrts_alert(ALERT_REDUCE_ID, ws, "free reducer ID %lu of %lu",
                   (unsigned long)id, id_manager.spa_cap);
     CILK_ASSERT(ws, id < id_manager.spa_cap);
-    CILK_ASSERT(ws, id_manager.used[id / LONG_BIT] & (1UL <<id % LONG_BIT));
+    CILK_ASSERT(ws, id_manager.used[id / LONG_BIT] & (1UL << id % LONG_BIT));
     id_manager.used[id / LONG_BIT] &= ~(1UL << id % LONG_BIT);
     id_manager.next = id;
     reducer_id_manager_unlock(ws);
@@ -106,12 +115,15 @@ static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
 
 void reducers_init(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(reducers_init) Initializing reducers");
-    init_reducer_id_manager(g, REDUCER_LIMIT);
+    init_reducer_id_manager(g, REDUCER_LIMIT, false);
 }
 
 void reducers_deinit(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(reducers_deinit) Cleaning up reducers");
-    free_reducer_id_manager(g);
+    if (!id_manager.persistent) {
+        cilkrts_alert(ALERT_BOOT, NULL,
+                      "(reducers_deinit) Cleaning up reducers");
+        free_reducer_id_manager(g);
+    }
 }
 
 // =================================================================
@@ -183,6 +195,14 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     // leftmost view of the reducer.
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
 
+    if (id_manager.spa_cap == 0) {
+        /* Cilk has not started.  Use default settings. */
+        parse_environment();
+        cilkrts_alert(ALERT_BOOT, NULL,
+                      "(reducers_init) Initializing reducers");
+        init_reducer_id_manager(NULL, REDUCER_LIMIT, true);
+    }
+
     hyper_id_t id = reducer_id_get(w);
     key->__id_num = id | HYPER_ID_VALID;
 
@@ -214,15 +234,17 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
 }
 
 void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
-    // MAK: Requires runtime started
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-
     hyper_id_t id = key->__id_num;
 
     if (!__builtin_expect(id & HYPER_ID_VALID, HYPER_ID_VALID)) {
         cilkrts_bug(w, "User error: reference to unregistered hyperobject");
     }
     id &= ~HYPER_ID_VALID;
+
+    if (__builtin_expect(!w, 0)) {
+        return (char *)key + key->__view_offset;
+    }
 
     cilkred_map *h = w->reducer_map;
 

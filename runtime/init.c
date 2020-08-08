@@ -44,6 +44,10 @@ static long env_get_int(char const *var) {
     return 0;
 }
 
+void parse_environment() {
+    alert_level = env_get_int("CILK_ALERT");
+}
+
 static global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL,
                   "(global_state_init) Initializing global state");
@@ -60,7 +64,7 @@ static global_state *global_state_init(int argc, char *argv[]) {
         exit(0);
     }
 
-    alert_level = env_get_int("CILK_ALERT");
+    parse_environment();
 
     if (g->options.nproc == 0) {
         // use the number of cores online right now

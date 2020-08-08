@@ -10,11 +10,10 @@ struct global_state;
 struct __cilkrts_worker;
 
 #define CILK_CHECK(g, cond, complain)                                          \
-    if (!cond)                                                                 \
-    cilk_die_internal(g, complain)
+    ((cond) ? (void) 0 : cilk_die_internal(g, complain))
 
 #ifndef ALERT_LVL
-#define ALERT_LVL 0x33e
+#define ALERT_LVL 0x730
 #endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x1

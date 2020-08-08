@@ -7,5 +7,6 @@ int cilk_main(int argc, char *argv[]);
 CHEETAH_INTERNAL global_state *__cilkrts_init(int argc, char *argv[]);
 CHEETAH_INTERNAL void __cilkrts_cleanup(global_state *);
 CHEETAH_INTERNAL_NORETURN void invoke_main();
+CHEETAH_INTERNAL void parse_environment();
 
 #endif /* _CILK_INIT_H */
