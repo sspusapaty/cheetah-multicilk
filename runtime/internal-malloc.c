@@ -7,6 +7,7 @@
 
 #include "cilk-internal.h"
 #include "debug.h"
+#include "global.h"
 
 CHEETAH_INTERNAL int cheetah_page_shift = 0;
 

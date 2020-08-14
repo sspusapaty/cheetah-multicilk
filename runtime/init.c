@@ -18,6 +18,7 @@
 
 #include "debug.h"
 #include "fiber.h"
+#include "global.h"
 #include "init.h"
 #include "readydeque.h"
 #include "sched_stats.h"
@@ -27,119 +28,19 @@
 
 CHEETAH_INTERNAL
 extern void cleanup_invoke_main(Closure *invoke_main);
-CHEETAH_INTERNAL
-extern int parse_command_line(struct rts_options *options, int *argc,
-                              char *argv[]);
-
-CHEETAH_INTERNAL extern int cilkg_nproc;
 
 #ifdef __FreeBSD__
 typedef cpuset_t cpu_set_t;
 #endif
 
-static long env_get_int(char const *var) {
+long env_get_int(char const *var) {
     const char *envstr = getenv(var);
     if (envstr)
         return strtol(envstr, NULL, 0);
     return 0;
 }
 
-void parse_environment() {
-    alert_level = env_get_int("CILK_ALERT");
-}
-
-static global_state *global_state_init(int argc, char *argv[]) {
-    cilkrts_alert(ALERT_BOOT, NULL,
-                  "(global_state_init) Initializing global state");
-    global_state *g = (global_state *)cilk_aligned_alloc(
-        __alignof(global_state), sizeof(global_state));
-
-#ifdef DEBUG
-    setlinebuf(stderr);
-#endif
-
-    if (parse_command_line(&g->options, &argc, argv)) {
-        // user invoked --help; quit
-        free(g);
-        exit(0);
-    }
-
-    parse_environment();
-
-    if (g->options.nproc == 0) {
-        // use the number of cores online right now
-        int available_cores = 0;
-#ifdef CPU_SETSIZE
-        cpu_set_t process_mask;
-        // get the mask from the parent thread (master thread)
-        int err = pthread_getaffinity_np(pthread_self(), sizeof(process_mask),
-                                         &process_mask);
-        if (0 == err) {
-            // Get the number of available cores (copied from os-unix.c)
-            available_cores = CPU_COUNT(&process_mask);
-        }
-#endif
-        int proc_override = env_get_int("CILK_NWORKERS");
-        if (proc_override > 0)
-            g->options.nproc = proc_override;
-        else if (available_cores > 0)
-            g->options.nproc = available_cores;
-#ifdef _SC_NPROCESSORS_ONLN
-        else if (available_cores == 0) {
-            long nproc = sysconf(_SC_NPROCESSORS_ONLN);
-            if (nproc > 0) {
-                g->options.nproc = nproc;
-            }
-        }
-#endif
-    }
-    int active_size = g->options.nproc;
-    CILK_ASSERT_G(active_size > 0);
-    cilkg_nproc = active_size;
-
-    g->invoke_main_initialized = false;
-    atomic_store_explicit(&g->start, 0, memory_order_relaxed);
-    atomic_store_explicit(&g->done, 0, memory_order_relaxed);
-    cilk_mutex_init(&(g->print_lock));
-
-    g->workers =
-        (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
-    g->deques = (ReadyDeque *)cilk_aligned_alloc(
-        __alignof__(ReadyDeque), active_size * sizeof(ReadyDeque));
-    g->threads = (pthread_t *)calloc(active_size, sizeof(pthread_t));
-    cilk_internal_malloc_global_init(g); // initialize internal malloc first
-    cilk_fiber_pool_global_init(g);
-    cilk_global_sched_stats_init(&(g->stats));
-
-    g->cilk_main_argc = argc;
-    g->cilk_main_args = argv;
-
-    /* This must match the compiler */
-    uint32_t hash = __CILKRTS_ABI_VERSION;
-
-    hash *= 13;
-    hash += offsetof(struct __cilkrts_stack_frame, worker);
-    hash *= 13;
-    hash += offsetof(struct __cilkrts_stack_frame, ctx);
-    hash *= 13;
-    hash += offsetof(struct __cilkrts_stack_frame, magic);
-    hash *= 13;
-    hash += offsetof(struct __cilkrts_stack_frame, flags);
-    hash *= 13;
-    hash += offsetof(struct __cilkrts_stack_frame, call_parent);
-#if defined __i386__ || defined __x86_64__
-    hash *= 13;
-#ifdef __SSE__
-    hash += offsetof(struct __cilkrts_stack_frame, mxcsr);
-#else
-    hash += offsetof(struct __cilkrts_stack_frame, reserved1);
-#endif
-#endif
-
-    g->frame_magic = hash;
-
-    return g;
-}
+void parse_environment() { alert_level = env_get_int("CILK_ALERT"); }
 
 static local_state *worker_local_init(global_state *g) {
     local_state *l = (local_state *)malloc(sizeof(local_state));
@@ -163,7 +64,7 @@ static void deques_init(global_state *g) {
     for (unsigned int i = 0; i < g->options.nproc; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
-        g->deques[i].mutex_owner = NOBODY;
+        g->deques[i].mutex_owner = NO_WORKER;
         cilk_mutex_init(&(g->deques[i].mutex));
     }
 }
@@ -198,11 +99,12 @@ static void *scheduler_thread_proc(void *arg) {
     cilkrts_alert(ALERT_BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
-    /* TODO: Use a condition variable or similar mechanism instead
-       of busy wait.  Starting Cilk wakes up just worker 0.  Worker 0
-       wakes up some more threads.  */
+    worker_id self = w->self;
 
-    int delay = 1;
+    /* This is a simple way to give the first thread a head start
+       so other threads don't spin waiting for it.  */
+
+    int delay = 1 + self;
 
     while (!atomic_load_explicit(&w->g->start, memory_order_acquire)) {
         usleep(delay);
@@ -211,7 +113,10 @@ static void *scheduler_thread_proc(void *arg) {
         }
     }
 
-    if (w->self == 0) {
+    /* TODO: Maybe import reducers here?  They must be imported
+       before user code runs. */
+
+    if (self == 0) {
         worker_scheduler(w, w->g->invoke_main);
     } else {
         worker_scheduler(w, NULL);
@@ -342,11 +247,13 @@ static void threads_init(global_state *g) {
 
 global_state *__cilkrts_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL, "(__cilkrts_init)");
-    global_state *g = global_state_init(argc, argv);
+    global_state *g = global_state_allocate();
     reducers_init(g);
+    global_state_init(g, argc, argv);
     __cilkrts_init_tls_variables();
     workers_init(g);
     deques_init(g);
+    reducers_import(g, g->workers[0]);
     threads_init(g);
 
     return g;
@@ -372,13 +279,15 @@ static void global_state_deinit(global_state *g) {
     g->deques = NULL;
     free(g->threads);
     g->threads = NULL;
+    free(g->id_manager); /* XXX Should export this back to global */
+    g->id_manager = NULL;
     free(g);
 }
 
 static void deques_deinit(global_state *g) {
     cilkrts_alert(ALERT_BOOT, NULL, "(deques_deinit) Clean up deques");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
-        CILK_ASSERT_G(g->deques[i].mutex_owner == NOBODY);
+        CILK_ASSERT_G(g->deques[i].mutex_owner == NO_WORKER);
         cilk_mutex_destroy(&(g->deques[i].mutex));
     }
 }
@@ -413,6 +322,7 @@ static void workers_deinit(global_state *g) {
         w->l = NULL;
         free(w);
     }
+    /* TODO: Export initial reducer map */
 }
 
 CHEETAH_INTERNAL

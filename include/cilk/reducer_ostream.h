@@ -1,3 +1,4 @@
+#include <unistd.h>
 /*  reducer_ostream.h                  -*- C++ -*-
  *
  *  Copyright (C) 2009-2018, Intel Corporation
@@ -270,6 +271,7 @@ public:
      */
     void reduce(op_basic_ostream_view* other)
     {
+fprintf(stdout, "op_basic_ostream_view reduce %p <- %p\n", this, other);
         // Writing an empty buffer results in failure. Testing `sgetc()` is the
         // easiest way of checking for an empty buffer.
         if (other->m_buffer.sgetc() != Traits::eof()) {
@@ -287,6 +289,7 @@ public:
      */
     op_basic_ostream_view(const ostream_type& os) : base(0)
     {
+fprintf(stdout, "op_basic_ostream_view %p\n", this);
         base::rdbuf(os.rdbuf());       // Copy stream buffer
         base::flags(os.flags());       // Copy formatting flags
         base::setstate(os.rdstate());  // Copy error state
@@ -488,27 +491,6 @@ public:
 
     reducer_ostream*       operator->()       { return this; }
     reducer_ostream const* operator->() const { return this; }
-    //@}
-
-    /** @name Upcast
-     *  @details In Intel Cilk Plus library 0.9, reducers were always cache-aligned.
-     *  In library  1.0, reducer cache alignment is optional. By default,
-     *  reducers are unaligned (i.e., just naturally aligned), but legacy
-     *  wrappers inherit from cache-aligned reducers for binary compatibility.
-     *
-     *  This means that a wrapper will automatically be upcast to its aligned
-     *  reducer base class. The following conversion operators provide
-     *  pseudo-upcasts to the corresponding unaligned reducer class.
-     */
-    //@{
-    operator reducer<op_ostream>& ()
-    {
-        return *reinterpret_cast< reducer<op_ostream>* >(this);
-    }
-    operator const reducer<op_ostream>& () const
-    {
-        return *reinterpret_cast< const reducer<op_ostream>* >(this);
-    }
     //@}
 };
 

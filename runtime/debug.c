@@ -1,5 +1,6 @@
 #include "debug.h"
 #include "cilk-internal.h"
+#include "global.h"
 
 #include <assert.h>
 #include <stdarg.h>

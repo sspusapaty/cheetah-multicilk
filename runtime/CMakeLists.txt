@@ -10,6 +10,7 @@ set(CHEETAH_SOURCES
   debug.c
   fiber.c
   fiber-pool.c
+  global.c
   init.c
   internal-malloc.c
   invoke-main.c

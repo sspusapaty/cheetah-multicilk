@@ -1,6 +1,7 @@
 #include "closure.h"
 #include "cilk-internal.h"
 #include "cilk2c.h"
+#include "global.h"
 #include "internal-malloc.h"
 #include "readydeque.h"
 
@@ -61,7 +62,7 @@ void Closure_lock(__cilkrts_worker *const w, Closure *t) {
 void Closure_unlock(__cilkrts_worker *const w, Closure *t) {
     Closure_checkmagic(w, t);
     Closure_assert_ownership(w, t);
-    t->mutex_owner = NOBODY;
+    t->mutex_owner = NO_WORKER;
     cilk_mutex_unlock(&(t->mutex));
 }
 
@@ -92,8 +93,8 @@ int Closure_has_children(Closure *cl) {
 static inline void Closure_init(Closure *t) {
     cilk_mutex_init(&t->mutex);
 
-    t->mutex_owner = NOBODY;
-    t->owner_ready_deque = NOBODY;
+    t->mutex_owner = NO_WORKER;
+    t->owner_ready_deque = NO_WORKER;
     t->status = CLOSURE_PRE_INVALID;
     t->lock_wait = false;
     t->has_cilk_callee = false;
@@ -332,7 +333,7 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
     CILK_ASSERT(w, cl->frame->worker->self == w->self);
 
     Closure_change_status(w, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
-    cl->frame->worker = (__cilkrts_worker *)NOBODY;
+    cl->frame->worker = (struct __cilkrts_worker *)0xbfbfbfbfbf;
 
     cl1 = deque_xtract_bottom(w, w->self);
 

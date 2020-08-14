@@ -18,9 +18,6 @@ enum merge_kind {
 };
 typedef enum merge_kind merge_kind;
 
-// for each reducer, such ViewInfo is allocated in TLMM region, where the
-// key is a pointer to the hyperobject_base, and the val stores the pointer
-// to correpsonding view; hyperobjet_base->__tlmm_addr stores its addr
 typedef struct view_info {
     void *val; // pointer to the actual view for the reducer
     // pointer to the hyperbase object for a given reducer

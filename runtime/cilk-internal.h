@@ -8,28 +8,19 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <pthread.h>
-
-#include <stdatomic.h> /* must follow stdbool.h */
-
 #include <cilk/cilk_api.h>
 
 #include "debug.h"
 #include "fiber.h"
 #include "internal-malloc.h"
 #include "jmpbuf.h"
-#include "mutex.h"
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "types.h"
 
-#define NOBODY 0xffffffffu /* type worker_id */
-
-#if CILK_STATS
-#define WHEN_CILK_STATS(ex) ex
-#else
-#define WHEN_CILK_STATS(ex)
-#endif
+struct global_state;
+typedef struct global_state global_state;
+typedef struct local_state local_state;
 
 //===============================================
 // Cilk stack frame related defs
@@ -167,19 +158,6 @@ static inline int __cilkrts_not_stolen(__cilkrts_stack_frame *sf) {
 // Worker related definition
 //===============================================
 
-// Forward declaration
-typedef struct global_state global_state;
-typedef struct local_state local_state;
-typedef struct __cilkrts_stack_frame **CilkShadowStack;
-
-// Actual declaration
-struct rts_options {
-    unsigned int nproc;
-    int deqdepth;
-    int64_t stacksize;
-    int fiber_pool_cap;
-};
-
 // clang-format off
 #define DEFAULT_OPTIONS                                            \
     {                                                              \
@@ -189,44 +167,6 @@ struct rts_options {
         DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */             \
     }
 // clang-format on
-
-// Actual declaration
-struct global_state {
-    /* globally-visible options (read-only after init) */
-    struct rts_options options;
-
-    uint32_t frame_magic;
-
-    /*
-     * this string is printed when an assertion fails.  If we just inline
-     * it, apparently gcc generates many copies of the string.
-     */
-    const char *assertion_failed_msg;
-    const char *stack_overflow_msg;
-
-    /* dynamically-allocated array of deques, one per processor */
-    struct ReadyDeque *deques;
-    struct __cilkrts_worker **workers;
-    pthread_t *threads;
-    struct Closure *invoke_main;
-
-    struct cilk_fiber_pool fiber_pool __attribute__((aligned(CILK_CACHE_LINE)));
-    struct global_im_pool im_pool __attribute__((aligned(CILK_CACHE_LINE)));
-    struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
-    cilk_mutex im_lock; // lock for accessing global im_desc
-
-    volatile bool invoke_main_initialized;
-    volatile atomic_bool start;
-    volatile atomic_bool done;
-    volatile atomic_int cilk_main_return;
-
-    cilk_mutex print_lock; // global lock for printing messages
-
-    int cilk_main_argc;
-    char **cilk_main_args;
-
-    WHEN_SCHED_STATS(struct global_sched_stats stats;)
-};
 
 // Actual declaration
 
@@ -249,7 +189,7 @@ struct local_state {
     struct cilk_fiber_pool fiber_pool;
     struct cilk_im_desc im_desc;
     struct cilk_fiber *fiber_to_free;
-    WHEN_SCHED_STATS(struct sched_stats stats;)
+    struct sched_stats stats;
 };
 
 /**
@@ -283,10 +223,15 @@ struct __cilkrts_worker {
     cilkred_map *reducer_map;
 };
 
-extern CHEETAH_INTERNAL void (*init_callback[MAX_CALLBACKS])(void);
-extern CHEETAH_INTERNAL int last_init_callback;
-extern CHEETAH_INTERNAL void (*exit_callback[MAX_CALLBACKS])(void);
-extern CHEETAH_INTERNAL int last_exit_callback;
+struct cilkrts_callbacks {
+    unsigned last_init;
+    unsigned last_exit;
+    bool after_init;
+    void (*init[MAX_CALLBACKS])(void);
+    void (*exit[MAX_CALLBACKS])(void);
+};
+
+extern CHEETAH_INTERNAL struct cilkrts_callbacks cilkrts_callbacks;
 
 #ifdef __cplusplus
 }

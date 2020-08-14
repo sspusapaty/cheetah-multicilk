@@ -10,6 +10,7 @@
 #include "cilk-internal.h"
 #include "closure.h"
 #include "fiber.h"
+#include "global.h"
 #include "jmpbuf.h"
 #include "readydeque.h"
 #include "scheduler.h"
@@ -81,9 +82,9 @@ static void decrement_exception_pointer(__cilkrts_worker *const w,
 
 static void reset_exception_pointer(__cilkrts_worker *const w, Closure *cl) {
     Closure_assert_ownership(w, cl);
-    CILK_ASSERT(w, (cl->frame == NULL) || (cl->frame->worker == w) ||
-                       (cl == w->g->invoke_main &&
-                        cl->frame->worker == (__cilkrts_worker *)NOBODY));
+    CILK_ASSERT(
+        w, (cl->frame == NULL) || (cl->frame->worker == w) ||
+               (cl == w->g->invoke_main && ((intptr_t)cl->frame->worker & 1)));
     atomic_store_explicit(&w->exc,
                           atomic_load_explicit(&w->head, memory_order_relaxed),
                           memory_order_release);
@@ -184,7 +185,7 @@ static Closure *setup_call_parent_resumption(__cilkrts_worker *const w,
     CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
     CILK_ASSERT(w, __cilkrts_stolen(t->frame) != 0);
     CILK_ASSERT(w, t->frame != NULL);
-    CILK_ASSERT(w, t->frame->worker == (__cilkrts_worker *)NOBODY);
+    CILK_ASSERT(w, ((intptr_t)t->frame->worker) & 1);
     CILK_ASSERT(w, w->head == w->tail);
     CILK_ASSERT(w, w->current_stack_frame == t->frame);
 
@@ -258,13 +259,13 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
         //     "(provably_good_steal_maybe) completing a sync");
 
         CILK_ASSERT(w, parent->frame != NULL);
-        CILK_ASSERT(w, parent->frame->worker == (__cilkrts_worker *)NOBODY);
+        CILK_ASSERT(w, (intptr_t)parent->frame->worker & 1);
 
         /* do a provably-good steal; this is *really* simple */
         w->l->provably_good_steal = true;
 
         setup_for_sync(w, parent);
-        CILK_ASSERT(w, parent->owner_ready_deque == NOBODY);
+        CILK_ASSERT(w, parent->owner_ready_deque == NO_WORKER);
         Closure_make_ready(parent);
 
         // cilkrts_alert(ALERT_STEAL, w,
@@ -313,7 +314,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
     CILK_ASSERT(w, child);
     CILK_ASSERT(w, child->join_counter == 0);
     CILK_ASSERT(w, child->status == CLOSURE_RETURNING);
-    CILK_ASSERT(w, child->owner_ready_deque == NOBODY);
+    CILK_ASSERT(w, child->owner_ready_deque == NO_WORKER);
     Closure_assert_alienation(w, child);
 
     CILK_ASSERT(w, child->has_cilk_callee == 0);
@@ -644,7 +645,7 @@ static Closure *setup_call_parent_closure_helper(
     CILK_ASSERT(w, call_parent->fiber);
 
     Closure_set_status(w, curr_cl, CLOSURE_SUSPENDED);
-    curr_cl->frame->worker = (__cilkrts_worker *)NOBODY;
+    curr_cl->frame->worker = (__cilkrts_worker *)0xbfbfbfbfbf;
     curr_cl->fiber = call_parent->fiber;
 
     Closure_add_callee(w, call_parent, curr_cl);
@@ -678,7 +679,7 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
         oldest_cl->frame = oldest;
     }
     CILK_ASSERT(w, oldest->worker == victim_w);
-    oldest_cl->frame->worker = (__cilkrts_worker *)NOBODY;
+    oldest_cl->frame->worker = (__cilkrts_worker *)0xbfbfbfbf;
 
     call_parent = setup_call_parent_closure_helper(
         w, victim_w, youngest->call_parent, oldest_cl);
@@ -1017,8 +1018,6 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 // ==============================================
 // Scheduling functions
 // ==============================================
-
-#include <stdio.h>
 
 CHEETAH_INTERNAL_NORETURN
 void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {

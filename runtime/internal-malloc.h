@@ -4,9 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "cilk-internal.h"
 #include "debug.h"
-#include "mutex.h"
 #include "rts-config.h"
 
 CHEETAH_INTERNAL extern int cheetah_page_shift;
@@ -15,7 +13,6 @@ CHEETAH_INTERNAL extern int cheetah_page_shift;
 
 #define INTERNAL_MALLOC_STATS CILK_STATS
 
-#if INTERNAL_MALLOC_STATS
 struct global_im_pool_stats {
     int64_t allocated; // bytes allocated into the pool
     int64_t wasted;    // bytes at the end of a chunk that could not be used
@@ -26,6 +23,7 @@ struct im_bucket_stats {
     int allocated;     // number of batch allocated and not freed
     int max_allocated; // high watermark of batch_allocated
 };
+#if INTERNAL_MALLOC_STATS
 #define WHEN_IM_STATS(ex) ex
 #else
 #define WHEN_IM_STATS(ex)

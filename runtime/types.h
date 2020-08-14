@@ -9,4 +9,6 @@ typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
 typedef struct global_state global_state;
 typedef struct cilkred_map cilkred_map;
 
+#define NO_WORKER 0xffffffffu /* type worker_id */
+
 #endif /* _CILK_TYPES_H */

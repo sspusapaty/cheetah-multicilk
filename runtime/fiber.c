@@ -8,6 +8,7 @@
 
 #include "cilk-internal.h"
 #include "fiber.h"
+#include "init.h"
 
 #ifndef MAP_GROWSDOWN
 /* MAP_GROWSDOWN is implied on BSD */
@@ -24,8 +25,6 @@
 // in fiber-pool.c, which calls the public functions implemented
 // in this file.
 //===============================================================
-
-extern __attribute__((noreturn)) void invoke_main();
 
 //===============================================================
 // Private helper functions
@@ -141,8 +140,8 @@ char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
     return sp;
 }
 
-__attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
-
+CHEETAH_INTERNAL_NORETURN
+void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     cilkrts_alert(ALERT_FIBER, sf->worker, "longjmp to sf, BP/SP/PC: %p/%p/%p",
                   FP(sf), SP(sf), PC(sf));
 
@@ -154,9 +153,9 @@ __attribute__((noreturn)) void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     __builtin_longjmp(sf->ctx, 1);
 }
 
-__attribute__((noreturn)) void init_fiber_run(__cilkrts_worker *w,
-                                              struct cilk_fiber *fiber,
-                                              __cilkrts_stack_frame *sf) {
+CHEETAH_INTERNAL_NORETURN
+void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
+                    __cilkrts_stack_frame *sf) {
     // owner of fiber not set at the moment
     cilkrts_alert(ALERT_FIBER, w, "(cilk_fiber_run) starting fiber %p", fiber);
 

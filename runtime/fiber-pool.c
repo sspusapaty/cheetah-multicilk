@@ -4,6 +4,7 @@
 #include "cilk-internal.h"
 #include "debug.h"
 #include "fiber.h"
+#include "global.h"
 #include "mutex.h"
 
 // Whent the pool becomes full (empty), free (allocate) this fraction
@@ -94,7 +95,7 @@ static void fiber_pool_init(struct cilk_fiber_pool *pool, int64_t stacksize,
     if (is_shared) {
         pool->lock = malloc(sizeof(*pool->lock));
         cilk_mutex_init(pool->lock);
-        pool->mutex_owner = NOBODY;
+        pool->mutex_owner = NO_WORKER;
     } else {
         pool->lock = NULL;
     }
@@ -109,7 +110,7 @@ static void fiber_pool_init(struct cilk_fiber_pool *pool, int64_t stacksize,
 static void fiber_pool_destroy(struct cilk_fiber_pool *pool) {
 
     if (pool->lock) {
-        CILK_ASSERT_G(pool->mutex_owner == NOBODY);
+        CILK_ASSERT_G(pool->mutex_owner == NO_WORKER);
         cilk_mutex_destroy(pool->lock);
         free(pool->lock);
         pool->lock = NULL;
@@ -142,7 +143,7 @@ static inline void fiber_pool_unlock(__cilkrts_worker *w,
                                      struct cilk_fiber_pool *pool) {
     if (pool->lock) {
         fiber_pool_assert_ownership(w, pool);
-        pool->mutex_owner = NOBODY;
+        pool->mutex_owner = NO_WORKER;
         cilk_mutex_unlock(pool->lock);
     }
 }

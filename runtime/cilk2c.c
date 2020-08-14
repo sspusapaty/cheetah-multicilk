@@ -7,18 +7,17 @@
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "fiber.h"
+#include "global.h"
 #include "readydeque.h"
 #include "scheduler.h"
 
 extern void _Unwind_Resume(struct _Unwind_Exception *);
 extern _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *);
 
-CHEETAH_INTERNAL int cilkg_nproc = 0;
+CHEETAH_INTERNAL unsigned cilkg_nproc = 0;
 
-CHEETAH_INTERNAL void (*init_callback[MAX_CALLBACKS])(void) = {NULL};
-CHEETAH_INTERNAL int last_init_callback = 0;
-CHEETAH_INTERNAL void (*exit_callback[MAX_CALLBACKS])(void) = {NULL};
-CHEETAH_INTERNAL int last_exit_callback = 0;
+CHEETAH_INTERNAL struct cilkrts_callbacks cilkrts_callbacks = {
+    0, 0, false, {NULL}, {NULL}};
 
 // These callback-registration methods can run before the runtime system has
 // started.
@@ -29,27 +28,28 @@ CHEETAH_INTERNAL int last_exit_callback = 0;
 // Register a callback to run at Cilk-runtime initialization.  Returns 0 on
 // successful registration, nonzero otherwise.
 int __cilkrts_atinit(void (*callback)(void)) {
-    if (last_init_callback == MAX_CALLBACKS)
+    if (cilkrts_callbacks.last_init >= MAX_CALLBACKS ||
+        cilkrts_callbacks.after_init)
         return -1;
 
-    init_callback[last_init_callback++] = callback;
+    cilkrts_callbacks.init[cilkrts_callbacks.last_init++] = callback;
     return 0;
 }
 
 // Register a callback to run at Cilk-runtime exit.  Returns 0 on successful
 // registration, nonzero otherwise.
 int __cilkrts_atexit(void (*callback)(void)) {
-    if (last_exit_callback == MAX_CALLBACKS)
+    if (cilkrts_callbacks.last_exit >= MAX_CALLBACKS)
         return -1;
 
-    exit_callback[last_exit_callback++] = callback;
+    cilkrts_callbacks.exit[cilkrts_callbacks.last_exit++] = callback;
     return 0;
 }
 
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.
 //
 // TODO: Figure out how we want to support worker-local storage.
-int __cilkrts_get_worker_number(void) {
+unsigned __cilkrts_get_worker_number(void) {
     return __cilkrts_get_tls_worker()->self;
 }
 
@@ -304,4 +304,4 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
     }
 }
 
-int __cilkrts_get_nworkers(void) { return cilkg_nproc; }
+unsigned __cilkrts_get_nworkers(void) { return cilkg_nproc; }

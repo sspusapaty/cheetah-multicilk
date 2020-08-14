@@ -5,6 +5,7 @@
 #include "cilkred_map.h"
 
 CHEETAH_INTERNAL void reducers_init(global_state *g);
+CHEETAH_INTERNAL void reducers_import(global_state *g, __cilkrts_worker *w);
 CHEETAH_INTERNAL void reducers_deinit(global_state *g);
 
 // used by the scheduler
