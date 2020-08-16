@@ -458,10 +458,10 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         Closure_unlock(w, child);
         Closure_unlock(w, parent);
         if (left) {
-            active = merge_two_rmaps(w, left, active);
+            active = __cilkrts_internal_merge_two_rmaps(w, left, active);
         }
         if (right) {
-            active = merge_two_rmaps(w, active, right);
+            active = __cilkrts_internal_merge_two_rmaps(w, active, right);
         }
         w->reducer_map = active;
         Closure_lock(w, parent);
@@ -536,7 +536,7 @@ Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
         cilkred_map *active = parent->user_rmap;
         atomic_store_explicit(&parent->child_rmap, NULL, memory_order_relaxed);
         parent->user_rmap = NULL;
-        w->reducer_map = merge_two_rmaps(w, child, active);
+        w->reducer_map = __cilkrts_internal_merge_two_rmaps(w, child, active);
 
         if(parent->simulated_stolen) {
             atomic_store_explicit(&parent->child_rmap, w->reducer_map,
@@ -1289,7 +1289,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         if (child_rmap) {
             atomic_store_explicit(&t->child_rmap, NULL, memory_order_relaxed);
             /* reducer_map may be accessed without lock */
-            w->reducer_map = merge_two_rmaps(w, child_rmap, w->reducer_map);
+            w->reducer_map = __cilkrts_internal_merge_two_rmaps(w, child_rmap,
+                                                                w->reducer_map);
         }
         if(t->simulated_stolen) t->simulated_stolen = false;
     }

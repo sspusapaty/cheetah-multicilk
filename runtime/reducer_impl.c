@@ -362,8 +362,9 @@ void __cilkrts_hyper_dealloc(void *ignore, void *view) { free(view); }
 // Helper function for the scheduler
 // =================================================================
 
-cilkred_map *merge_two_rmaps(__cilkrts_worker *const ws, cilkred_map *left,
-                             cilkred_map *right) {
+cilkred_map *__cilkrts_internal_merge_two_rmaps(__cilkrts_worker *const ws,
+                                                cilkred_map *left,
+                                                cilkred_map *right) {
     CILK_ASSERT(ws, ws == __cilkrts_get_tls_worker());
     if (!left)
         return right;
