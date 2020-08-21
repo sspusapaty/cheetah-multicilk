@@ -23,7 +23,7 @@ typedef struct reducer_id_manager {
     worker_id mutex_owner; // worker id who holds the mutex
     hyper_id_t spa_cap;
     hyper_id_t next; // a hint
-    hyper_id_t hwm;  // largest ID ever used
+    hyper_id_t hwm;  // one greater than largest ID ever used
     unsigned long *used;
     /* When Cilk is not running, global holds all the registered
        hyperobjects so they can be imported into the first worker.
@@ -65,6 +65,7 @@ static reducer_id_manager *init_reducer_id_manager(hyper_id_t cap) {
     memset(m, 0, sizeof *m);
     cilkrts_alert(ALERT_BOOT, NULL, "(reducers_init) Initializing reducers");
     cap = (cap + LONG_BIT - 1) / LONG_BIT * LONG_BIT; /* round up */
+    CILK_ASSERT_G(cap > 0 && cap < 9999999);
     pthread_mutex_init(&m->mutex, NULL);
     m->spa_cap = cap;
     m->next = 0;
@@ -114,8 +115,8 @@ static hyper_id_t reducer_id_get(reducer_id_manager *m, __cilkrts_worker *w) {
     cilkrts_alert(ALERT_REDUCE_ID, w, "allocate reducer ID %lu",
                   (unsigned long)id);
     m->next = id + 1 >= m->spa_cap ? 0 : id + 1;
-    if (id > m->hwm)
-        m->hwm = id;
+    if (id >= m->hwm)
+        m->hwm = id + 1;
     if (id >= m->spa_cap) {
         cilkrts_bug(w, "SPA resize not supported yet! (cap %lu)",
                     (unsigned long)m->spa_cap);
@@ -151,6 +152,8 @@ static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
 // =================================================================
 
 void reducers_init(global_state *g) {
+    /* TODO: It is safe to grow capacity now while the system
+       is single threaded. */
     if (g->id_manager) {
         return;
     } else if (id_manager) {
@@ -174,11 +177,11 @@ void reducers_deinit(global_state *g) {
 
 CHEETAH_INTERNAL void reducers_import(global_state *g, __cilkrts_worker *w) {
     reducer_id_manager *m = g->id_manager;
-    if (!m)
+    CILK_ASSERT(w, m);
+    if (m->hwm == 0)
         return;
     /* TODO: There may need to be a marker saying that the ID manager
        should be exported when Cilk exits. */
-    g->id_manager = NULL;
     cilkred_map *map = cilkred_map_make_map(w, m->spa_cap);
     for (hyper_id_t i = 0; i < m->hwm; ++i) {
         __cilkrts_hyperobject_base *h = m->global[i];
@@ -186,10 +189,11 @@ CHEETAH_INTERNAL void reducers_import(global_state *g, __cilkrts_worker *w) {
             map->vinfo[i].key = h;
             map->vinfo[i].val = (char *)h + (ptrdiff_t)h->__view_offset;
         }
-	hyper_id_t id = h->__id_num;
-	CILK_ASSERT(w, id & HYPER_ID_VALID);
-        cilkred_map_log_id(w, h, id & ~HYPER_ID_VALID);
+        hyper_id_t id = h->__id_num;
+        CILK_ASSERT(w, id & HYPER_ID_VALID);
+        cilkred_map_log_id(w, map, id & ~HYPER_ID_VALID);
     }
+    w->reducer_map = map;
 }
 
 // =================================================================
@@ -198,7 +202,7 @@ CHEETAH_INTERNAL void reducers_import(global_state *g, __cilkrts_worker *w) {
 // =================================================================
 
 static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
-    global_state *g = w ? w->g : cilkrts_global_state;
+    global_state *g = w->g;
     reducer_id_manager *m = g->id_manager;
     cilkred_map *h;
     // MAK: w.out worker mem pools, need to reexamine

@@ -77,6 +77,16 @@ static struct options *parse_option(char *s) {
     return p;
 }
 
+static unsigned long parse_unsigned(const char *s, unsigned long min,
+                                    unsigned long max) {
+    unsigned long val = strtoul(s, 0, 0);
+    if (val < min)
+        return min;
+    if (val > max)
+        return max;
+    return val;
+}
+
 #define CHECK(cond, complaint)                                                 \
     if (!(cond)) {                                                             \
         fprintf(stderr, "Bad option argument for -%s: %s\n", p->string,        \
@@ -105,21 +115,20 @@ CHEETAH_INTERNAL int parse_command_line(struct rts_options *options, int *argc,
             case NPROC:
                 ++i;
                 CHECK(i < *argc, "argument missing");
-                options->nproc = atoi(argv[i]);
+                options->nproc = parse_unsigned(argv[i], 0, 9999);
                 break;
 
             case DEQ_DEPTH:
                 ++i;
                 CHECK(i < *argc, "argument missing");
-                options->deqdepth = atoi(argv[i]);
-                CHECK(options->deqdepth > 0, "non-positive deque depth");
+                options->deqdepth = parse_unsigned(argv[i], 1, 99999);
                 break;
 
             case STACK_SIZE:
                 ++i;
                 CHECK(i < *argc, "argument missing");
-                options->stacksize = atol(argv[i]);
-                CHECK(options->stacksize > 0, "non-positive stack size");
+                options->stacksize =
+                    parse_unsigned(argv[i], 16384, 100 * 1024 * 1024);
                 break;
 
             case VERSION:
@@ -135,9 +144,7 @@ CHEETAH_INTERNAL int parse_command_line(struct rts_options *options, int *argc,
             case FIBER_POOL_CAP:
                 ++i;
                 CHECK(i < *argc, "argument missing");
-                options->fiber_pool_cap = atoi(argv[i]);
-                if (options->fiber_pool_cap < 8) // keep minimum at 8
-                    options->fiber_pool_cap = 8;
+                options->fiber_pool_cap = parse_unsigned(argv[i], 8, 999999);
                 break;
 
             default:

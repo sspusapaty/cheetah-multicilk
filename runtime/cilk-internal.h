@@ -158,16 +158,6 @@ static inline int __cilkrts_not_stolen(__cilkrts_stack_frame *sf) {
 // Worker related definition
 //===============================================
 
-// clang-format off
-#define DEFAULT_OPTIONS                                            \
-    {                                                              \
-        DEFAULT_NPROC,          /* num of workers to create */     \
-        DEFAULT_DEQ_DEPTH,      /* num of entries in deque */      \
-        DEFAULT_STACK_SIZE,     /* stack size to use for fiber */  \
-        DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */             \
-    }
-// clang-format on
-
 // Actual declaration
 
 enum __cilkrts_worker_state {

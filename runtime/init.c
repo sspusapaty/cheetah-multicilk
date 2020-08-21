@@ -247,9 +247,8 @@ static void threads_init(global_state *g) {
 
 global_state *__cilkrts_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL, "(__cilkrts_init)");
-    global_state *g = global_state_allocate();
+    global_state *g = global_state_init(argc, argv);
     reducers_init(g);
-    global_state_init(g, argc, argv);
     __cilkrts_init_tls_variables();
     workers_init(g);
     deques_init(g);

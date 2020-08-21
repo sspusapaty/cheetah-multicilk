@@ -13,7 +13,7 @@
 #include "readydeque.h"
 #include "reducer_impl.h"
 
-global_state *global_state_allocate() {
+static global_state *global_state_allocate() {
     parse_environment(); /* sets alert level */
     cilkrts_alert(ALERT_BOOT, NULL,
                   "(global_state_init) Allocating global state");
@@ -27,13 +27,15 @@ global_state *global_state_allocate() {
     return g;
 }
 
-void global_state_init(global_state *g, int argc, char *argv[]) {
+global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(ALERT_BOOT, NULL,
                   "(global_state_init) Initializing global state");
 
 #ifdef DEBUG
     setlinebuf(stderr);
 #endif
+
+    global_state *g = global_state_allocate();
 
     if (parse_command_line(&g->options, &argc, argv)) {
         // user invoked --help; quit
@@ -69,6 +71,8 @@ void global_state_init(global_state *g, int argc, char *argv[]) {
             }
         }
 #endif
+    } else {
+        CILK_ASSERT_G(g->options.nproc < 10000);
     }
     unsigned active_size = g->options.nproc;
     CILK_ASSERT_G(active_size > 0);
@@ -115,4 +119,6 @@ void global_state_init(global_state *g, int argc, char *argv[]) {
 #endif
 
     g->frame_magic = hash;
+
+    return g;
 }

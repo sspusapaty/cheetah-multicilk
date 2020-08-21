@@ -19,11 +19,23 @@ struct __cilkrts_worker;
 struct reducer_id_manager;
 struct Closure;
 
+// clang-format off
+#define DEFAULT_OPTIONS                                            \
+    {                                                              \
+        DEFAULT_STACK_SIZE,     /* stack size to use for fiber */  \
+        DEFAULT_NPROC,          /* num of workers to create */     \
+        DEFAULT_REDUCER_LIMIT,  /* num of simultaneous reducers */ \
+        DEFAULT_DEQ_DEPTH,      /* num of entries in deque */      \
+        DEFAULT_FIBER_POOL_CAP, /* alloc_batch_size */             \
+    }
+// clang-format on
+
 struct rts_options {
-    int64_t stacksize;
+    size_t stacksize;
     unsigned int nproc;
-    int deqdepth;
-    int fiber_pool_cap;
+    unsigned int reducer_cap;
+    unsigned int deqdepth;
+    unsigned int fiber_pool_cap;
 };
 
 struct global_state {
@@ -58,12 +70,6 @@ struct global_state {
     struct global_sched_stats stats;
 };
 
-/* TODO: Make this thread local, so "global" state is really the
-   state of one of possibly several instantiations of Cilk. */
-CHEETAH_INTERNAL struct global_state *cilkrts_global_state;
-
-/* Allocate state and initialized embedded locks. */
-CHEETAH_INTERNAL global_state *global_state_allocate();
-CHEETAH_INTERNAL void global_state_init(global_state *, int argc, char *argv[]);
+CHEETAH_INTERNAL global_state *global_state_init(int argc, char *argv[]);
 
 #endif /* _CILK_GLOBAL_H */
