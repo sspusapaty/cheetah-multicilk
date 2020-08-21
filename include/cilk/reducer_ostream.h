@@ -1,4 +1,3 @@
-#include <unistd.h>
 /*  reducer_ostream.h                  -*- C++ -*-
  *
  *  Copyright (C) 2009-2018, Intel Corporation
@@ -271,7 +270,6 @@ public:
      */
     void reduce(op_basic_ostream_view* other)
     {
-fprintf(stdout, "op_basic_ostream_view reduce %p <- %p\n", this, other);
         // Writing an empty buffer results in failure. Testing `sgetc()` is the
         // easiest way of checking for an empty buffer.
         if (other->m_buffer.sgetc() != Traits::eof()) {
@@ -289,7 +287,6 @@ fprintf(stdout, "op_basic_ostream_view reduce %p <- %p\n", this, other);
      */
     op_basic_ostream_view(const ostream_type& os) : base(0)
     {
-fprintf(stdout, "op_basic_ostream_view %p\n", this);
         base::rdbuf(os.rdbuf());       // Copy stream buffer
         base::flags(os.flags());       // Copy formatting flags
         base::setstate(os.rdstate());  // Copy error state
