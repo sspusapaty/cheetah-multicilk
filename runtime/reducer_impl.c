@@ -353,7 +353,7 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
 }
 
 void *__cilkrts_hyper_alloc(void *ignore, size_t bytes) {
-    return aligned_alloc(16, bytes); /* ??? what is the best alignment? */
+    return cilk_aligned_alloc(16, bytes); /* ??? what is the best alignment? */
 }
 
 void __cilkrts_hyper_dealloc(void *ignore, void *view) { free(view); }
