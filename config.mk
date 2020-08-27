@@ -1,4 +1,4 @@
-COMPILER_BASE=/project/adams/home/angelee/sandbox/OpenCilk/build/bin/
+COMPILER_BASE=
 CC=$(COMPILER_BASE)clang
 CXX=$(COMPILER_BASE)clang++
 LINK_CC=$(CC)
