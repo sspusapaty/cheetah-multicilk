@@ -1,3 +1,5 @@
+// LONG_BIT is defined in limits.h when _GNU_SOURCE is defined.
+#define _GNU_SOURCE
 #include "reducer_impl.h"
 #include "cilk/hyperobject_base.h"
 #include "global.h"
