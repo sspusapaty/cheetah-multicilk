@@ -169,7 +169,10 @@ void __cilkrts_check_exception_resume(__cilkrts_stack_frame *sf) {
     return;
 }
 
-/* Called by generated exception handling code. */
+// Called by generated exception-handling code, specifically, at the beginning
+// of each landingpad in a spawning function.  Ensures that the stack pointer
+// points at the fiber and call-stack frame containing sf before any catch
+// handlers in that frame execute.
 void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
 
     if (sel == 0)
@@ -179,6 +182,14 @@ void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
     __cilkrts_worker *w = sf->worker;
     deque_lock_self(w);
     Closure *t = deque_peek_bottom(w, w->self);
+
+    // If t->parent_rsp is non-null, then the Cilk personality function executed
+    // __cilkrts_sync(sf), which implies that sf is at the top of the deque.
+    // Because we're executing a non-cleanup landingpad, execution is continuing
+    // within this function frame, rather than unwinding further to a parent
+    // frame, which would belong to a distinct closure.  Hence, if we reach this
+    // point, set the stack pointer in sf to t->parent_rsp if t->parent_rsp is
+    // non-null.
 
     if (NULL == t->parent_rsp) {
         deque_unlock_self(w);
