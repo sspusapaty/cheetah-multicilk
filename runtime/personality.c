@@ -18,7 +18,7 @@ typedef _Unwind_Reason_Code (*__personality_routine)(
 static char *get_cfa(struct _Unwind_Context *context) {
     /* _Unwind_GetCFA is originally a gcc extension.  FreeBSD has its
        own library without that extension. */
-#ifdef __linux__
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
     return (char *)_Unwind_GetCFA(context);
 #else
     /* See *RegisterInfo.td in LLVM source */
@@ -103,10 +103,11 @@ _Unwind_Reason_Code __cilk_personality_internal(
             // Remember the CFA from which we raised the new exception.
             t->reraise_cfa = (char *)get_cfa(context);
             // Raise the new exception.
-            // __cilkrts_check_exception_raise(sf);
+            __cilkrts_check_exception_raise(sf);
             // Calling Resume instead of RaiseException also appears to work,
             // and is a bit faster.
-            __cilkrts_check_exception_resume(sf);
+            // NOTE: Calling resume does not seem to work on MacOSX.
+            // __cilkrts_check_exception_resume(sf);
         }
 
         // Record whether this frame is detached, which indicates that
