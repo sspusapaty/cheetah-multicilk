@@ -14,7 +14,10 @@ TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
 WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
 OPTIONS  = $(OPT) $(SAN) $(ARCH) $(DBG) $(RTS_OPT) $(WARN) # -fno-omit-frame-pointer
 
-RTS_LIBS = $(RTS_DIR)/$(RTS_LIB).a $(patsubst %,../runtime/%/module.a,$(MODS))
+$(CTESTS): RTS_PERSONALITY_LIB = $(RTS_DIR)/$(RTS_C_PERSONALITY_LIB).a
+$(CXXTESTS): RTS_PERSONALITY_LIB = $(RTS_DIR)/$(RTS_CXX_PERSONALITY_LIB).a
+
+RTS_LIBS = $(RTS_PERSONALITY_LIB) $(RTS_DIR)/$(RTS_LIB).a $(patsubst %,../runtime/%/module.a,$(MODS))
 
 TIMING_COUNT := 1
 
