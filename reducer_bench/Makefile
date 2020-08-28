@@ -7,7 +7,7 @@ OBJS = $(patsubst %.c,%.o,$(SRCS))
 MANY = 8 # how many cores is a lot?
 ENABLE_X11 = false
 
-CTESTS   = intlist serialsum intsum multispawnsum repeatedintsum cilksan_test
+CTESTS   = intlist serialsum intsum multispawnsum repeatedintsum # cilksan_test
 CXXTESTS = cppsum
 DIRTESTS = nqueens quad_tree
 TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
