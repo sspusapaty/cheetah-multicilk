@@ -142,6 +142,7 @@ void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h) {
                   "(cilkred_map_destroy_map) freed cilkred_map %p\n", h);
 }
 
+/* This function is responsible for freeing other_map. */
 void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
                        cilkred_map *other_map, merge_kind kind) {
     cilkrts_alert(ALERT_REDUCE, w,
@@ -157,8 +158,10 @@ void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
     // CILK_ASSERT(w, !other_map->is_leftmost /* || kind == MERGE_UNORDERED */);
     // bool merge_to_leftmost = (this_map->is_leftmost);
 
-    if (other_map->num_of_vinfo == 0)
+    if (other_map->num_of_vinfo == 0) {
+        cilkred_map_destroy_map(w, other_map);
         return; // A no-op
+    }
 
     if (other_map->num_of_logs <= (other_map->spa_cap / 2)) {
         hyper_id_t i;
