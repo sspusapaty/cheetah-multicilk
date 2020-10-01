@@ -214,7 +214,7 @@ void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
     // this_map->is_leftmost = this_map->is_leftmost || other_map->is_leftmost;
     this_map->merging = false;
     other_map->merging = false;
-    // cilkred_map_destroy_map(w, other_map);
+    cilkred_map_destroy_map(w, other_map);
     return;
 }
 
