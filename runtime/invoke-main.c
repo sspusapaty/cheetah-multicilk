@@ -21,7 +21,7 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
 
     cilkrts_alert(ALERT_BOOT, NULL, "(create_invoke_main) invoke_main = %p", t);
 
-    sf = malloc(sizeof(*sf));
+    sf = calloc(1, sizeof(*sf));
     fiber = cilk_main_fiber_allocate();
 
     // it's important to set the following fields for the root closure,
