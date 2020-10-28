@@ -1,7 +1,8 @@
-COMPILER_BASE=
+COMPILER_BASE=/home/tfk/opencilk/build/bin/
 CC=$(COMPILER_BASE)clang
 CXX=$(COMPILER_BASE)clang++
 LINK_CC=$(CC)
+LLVM_LINK=$(COMPILER_BASE)llvm-link
 #
 ABI_DEF=-DOPENCILK_ABI
 # If use cheetah

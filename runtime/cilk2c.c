@@ -53,6 +53,47 @@ unsigned __cilkrts_get_worker_number(void) {
     return __cilkrts_get_tls_worker()->self;
 }
 
+
+void __cilkrts_pedigree_bump_rank(void) {
+    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    w->current_stack_frame->rank++;
+}
+
+int64_t* __cilkrts_get_pedigree(void) {
+    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+
+    int64_t pedigree_len = 0;
+
+    // get the length of the pedigree ---> can be maintained incrementally if we desire.
+    {
+      __cilkrts_stack_frame *sf = w->current_stack_frame;
+      pedigree_len++; // my frame's rank
+      pedigree_len++; // my frame's parent rank
+      sf = sf->call_parent;
+      while (sf != NULL) {
+        pedigree_len++; // sf's parent rank.
+        sf = sf->call_parent;
+      }
+    }
+
+    CILK_ASSERT(w, pedigree_len > 0);
+
+    int64_t* pedigree = (int64_t*) malloc(sizeof(int64_t) * (pedigree_len+1));
+    int idx = 0;
+    pedigree[idx++] = pedigree_len;
+    {
+      __cilkrts_stack_frame *sf = w->current_stack_frame;
+      pedigree[idx++] = sf->rank;
+      pedigree[idx++] = sf->parent_rank;
+      sf = sf->call_parent;
+      while (sf != NULL) {
+        pedigree[idx++] = sf->parent_rank;
+        sf = sf->call_parent;
+      }
+    }
+    return pedigree;
+}
+
 #ifdef __linux__ /* This feature requires the GNU linker */
 CHEETAH_INTERNAL
 const char get_workerwarn_msg[]
@@ -67,56 +108,7 @@ const char get_workerwarn_msg[]
 // allow one to write and run "hand-compiled" Cilk code.
 // ================================================================
 
-// inlined by the compiler
-void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame %p", sf);
-
-    sf->flags = 0;
-    sf->magic = w->g->frame_magic;
-    sf->call_parent = w->current_stack_frame;
-    sf->worker = w;
-    w->current_stack_frame = sf;
-    // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
-}
-
-// inlined by the compiler; this implementation is only used in invoke-main.c
-void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
-
-    sf->flags = 0;
-    sf->magic = w->g->frame_magic;
-    sf->call_parent = w->current_stack_frame;
-    sf->worker = w;
-    w->current_stack_frame = sf;
-}
-
-// inlined by the compiler; this implementation is only used in invoke-main.c
-void __cilkrts_detach(__cilkrts_stack_frame *sf) {
-    struct __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", sf);
-
-    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
-    CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
-    CILK_ASSERT(w, w->current_stack_frame == sf);
-
-    struct __cilkrts_stack_frame *parent = sf->call_parent;
-    struct __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&w->tail, memory_order_relaxed);
-    CILK_ASSERT(w, (tail + 1) < w->ltq_limit);
-
-    // store parent at *tail, and then increment tail
-    *tail++ = parent;
-    sf->flags |= CILK_FRAME_DETACHED;
-    /* Release ordering ensures the two preceding stores are visible. */
-    atomic_store_explicit(&w->tail, tail, memory_order_release);
-}
-
-// inlined by the compiler; this implementation is only used in invoke-main.c
-void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
-    sysdep_save_fp_ctrl_state(sf);
-}
+#include "./cilk2c_inlined.c"
 
 // Called after a normal cilk_sync (i.e. not the cilk_sync called in the
 // personality function.) Checks if there is an exception that needs to be
@@ -219,22 +211,6 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
     } else {
         longjmp_to_runtime(w);
     }
-}
-
-// inlined by the compiler; this implementation is only used in invoke-main.c
-void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(CFRAME, w, "__cilkrts_pop_frame %p", sf);
-
-    CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
-    CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
-    /* The inlined version in the Tapir compiler uses release
-       semantics for the store to call_parent, but relaxed
-       order may be acceptable for both.  A thief can't see
-       these operations until the Dekker protocol with a
-       memory barrier has run. */
-    w->current_stack_frame = sf->call_parent;
-    sf->call_parent = 0;
 }
 
 void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {

@@ -44,6 +44,10 @@ struct __cilkrts_stack_frame {
     // layout of this structure.
     uint32_t magic;
 
+    // Fields for pedigrees.
+    int64_t rank;
+    int64_t parent_rank;
+
     // call_parent points to the __cilkrts_stack_frame of the closest
     // ancestor spawning function, including spawn helpers, of this frame.
     // It forms a linked list ending at the first stolen frame.
