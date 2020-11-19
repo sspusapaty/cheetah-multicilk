@@ -131,6 +131,7 @@ int run_queens(bool verbose) {
     }
   }
   CILK_C_UNREGISTER_REDUCER(X);
+  delete_nodes(&board_list);
   return num_solutions;
 }
 
