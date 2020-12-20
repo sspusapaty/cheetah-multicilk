@@ -40,6 +40,9 @@ typedef struct __cilkrts_hyperobject_base {
    TODO: Add optimization hints like "strand pure" as in Cilk Plus. */
 void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key);
 void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key);
+#if defined __clang__ && defined __cilk && __cilk >= 300
+__attribute__((strand_pure, strand_malloc))
+#endif
 void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key);
 void *__cilkrts_hyper_alloc(__cilkrts_hyperobject_base *key, size_t bytes);
 void __cilkrts_hyper_dealloc(__cilkrts_hyperobject_base *key, void *view);
