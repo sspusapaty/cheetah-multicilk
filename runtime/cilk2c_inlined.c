@@ -9,14 +9,13 @@
 #include <stdio.h>
 #include <unwind.h>
 
-#include "debug.h"
 #include "cilk-internal.h"
 #include "cilk2c.h"
+#include "debug.h"
 #include "fiber.h"
 #include "global.h"
 #include "readydeque.h"
 #include "scheduler.h"
-
 
 // inlined by the compiler
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
@@ -24,7 +23,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame %p", sf);
 
     sf->flags = 0;
-    sf->magic = w->g->frame_magic;
+    sf->magic = frame_magic;
     sf->call_parent = w->current_stack_frame;
     sf->worker = w;
     w->current_stack_frame = sf;
@@ -45,7 +44,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
 
     sf->flags = 0;
-    sf->magic = w->g->frame_magic;
+    sf->magic = frame_magic;
     sf->call_parent = w->current_stack_frame;
     sf->worker = w;
     w->current_stack_frame = sf;
@@ -69,13 +68,13 @@ void __cilkrts_detach(__cilkrts_stack_frame *sf) {
     CILK_ASSERT(w, w->current_stack_frame == sf);
 
     struct __cilkrts_stack_frame *parent = sf->call_parent;
+    sf->flags |= CILK_FRAME_DETACHED;
     struct __cilkrts_stack_frame **tail =
         atomic_load_explicit(&w->tail, memory_order_relaxed);
     CILK_ASSERT(w, (tail + 1) < w->ltq_limit);
 
     // store parent at *tail, and then increment tail
     *tail++ = parent;
-    sf->flags |= CILK_FRAME_DETACHED;
     /* Release ordering ensures the two preceding stores are visible. */
     atomic_store_explicit(&w->tail, tail, memory_order_release);
 }
@@ -98,6 +97,5 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
        these operations until the Dekker protocol with a
        memory barrier has run. */
     w->current_stack_frame = sf->call_parent;
-    sf->call_parent = 0;
+    sf->call_parent = NULL;
 }
-

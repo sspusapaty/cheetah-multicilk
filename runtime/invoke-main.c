@@ -34,7 +34,7 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
     PC(sf) = (void *)invoke_main;
 
     sf->flags = 0;
-    sf->magic = g->frame_magic;
+    sf->magic = frame_magic;
     __cilkrts_set_stolen(sf);
     // FIXME
     sf->flags |= CILK_FRAME_DETACHED;

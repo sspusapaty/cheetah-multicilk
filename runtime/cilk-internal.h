@@ -114,8 +114,30 @@ struct __cilkrts_stack_frame {
 //       function.
 #define CILK_FRAME_SYNC_READY 0x200
 
-#define GET_CILK_FRAME_MAGIC(F) ((F)->magic)
-#define CHECK_CILK_FRAME_MAGIC(G, F) ((G)->frame_magic == (F)->magic)
+static const uint32_t frame_magic =
+    ((((((((((((__CILKRTS_ABI_VERSION * 13) +
+               offsetof(struct __cilkrts_stack_frame, worker)) *
+              13) +
+             offsetof(struct __cilkrts_stack_frame, ctx)) *
+            13) +
+           offsetof(struct __cilkrts_stack_frame, magic)) *
+          13) +
+         offsetof(struct __cilkrts_stack_frame, flags)) *
+        13) +
+       offsetof(struct __cilkrts_stack_frame, call_parent))
+#if defined __i386__ || defined __x86_64__
+      * 13)
+#ifdef __SSE__
+     + offsetof(struct __cilkrts_stack_frame, mxcsr))
+#else
+     + offsetof(struct __cilkrts_stack_frame, reserved1))
+#endif
+#else
+          ))
+#endif
+    ;
+
+#define CHECK_CILK_FRAME_MAGIC(G, F) (frame_magic == (F)->magic)
 
 //===========================================================
 // Helper functions for the flags field in cilkrts_stack_frame

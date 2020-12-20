@@ -56,8 +56,6 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
-    uint32_t frame_magic;
-
     volatile bool invoke_main_initialized;
     volatile atomic_bool start;
     volatile atomic_bool done;
