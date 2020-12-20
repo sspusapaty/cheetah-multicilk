@@ -101,15 +101,6 @@ const char get_workerwarn_msg[]
         "__cilkrts_get_worker_number is deprecated";
 #endif
 
-// ================================================================
-// This file contains the compiler ABI, which corresponds to
-// conceptually what the compiler generates to implement Cilk code.
-// They are included here in part as documentation, and in part
-// allow one to write and run "hand-compiled" Cilk code.
-// ================================================================
-
-#include "./cilk2c_inlined.c"
-
 // Called after a normal cilk_sync (i.e. not the cilk_sync called in the
 // personality function.) Checks if there is an exception that needs to be
 // propagated. This is called from the frame that will handle whatever exception

@@ -4,6 +4,7 @@ set(CHEETAH_LIB_CMAKEFILES_DIR "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTO
 set(CHEETAH_SOURCES
   c_reducers.c
   cilk2c.c
+  cilk2c_inlined.c
   cilkred_map.c
   closure.c
   cmdline.c
@@ -21,6 +22,12 @@ set(CHEETAH_SOURCES
   sched_stats.c
   scheduler.c
   ZERO.c
+)
+
+# We assume there is just one source file to compile for the cheetah
+# ABI.
+set(CHEETAH_ABI_SOURCE
+  cilk2c_inlined.c
 )
 
 set(CHEETAH_PERSONALITY_C_SOURCES
@@ -60,6 +67,15 @@ set(CHEETAH_RELEASE_OPTIONS -O3)
 split_list(CHEETAH_COMPILE_FLAGS)
 split_list(CHEETAH_LINK_FLAGS)
 
+# Setup flags and defs for cheetah bitcode ABI build
+set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS} -emit-llvm)
+set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
+  "CHEETAH_API="
+  "CHEETAH_INTERNAL="
+  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
+  "CILK_DEBUG=0")
+split_list(CHEETAH_BITCODE_ABI_COMPILE_FLAGS)
+
 # Build the shared library.
 if (CHEETAH_ENABLE_SHARED)
   add_library(cheetah_shared SHARED ${CHEETAH_SOURCES})
@@ -91,6 +107,7 @@ if (CHEETAH_ENABLE_SHARED)
       OUTPUT_NAME   "opencilk-personality-c"
   )
   target_compile_options(cheetah_personality_c_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_personality_c_shared PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_c_shared")
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_c_shared")
@@ -106,6 +123,7 @@ if (CHEETAH_ENABLE_SHARED)
       OUTPUT_NAME   "opencilk-personality-cpp"
   )
   target_compile_options(cheetah_personality_cpp_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_personality_cpp_shared PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_cpp_shared")
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_cpp_shared")
@@ -143,6 +161,7 @@ if (CHEETAH_ENABLE_STATIC)
       OUTPUT_NAME   "opencilk-personality-c"
   )
   target_compile_options(cheetah_personality_c_static PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_personality_c_static PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_c_static")
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_c_static")
@@ -158,9 +177,45 @@ if (CHEETAH_ENABLE_STATIC)
       OUTPUT_NAME   "opencilk-personality-cpp"
   )
   target_compile_options(cheetah_personality_cpp_static PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_personality_cpp_static PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
   list(APPEND CHEETAH_BUILD_TARGETS "cheetah_personality_cpp_static")
   if (CHEETAH_INSTALL_SHARED_LIBRARY)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_cpp_static")
+  endif()
+endif()
+
+# Build the Cheetah ABI as LLVM bitcode
+if (CHEETAH_ENABLE_BITCODE_ABI AND (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
+  set(CHEETAH_ABI_BITCODE_FILE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libopencilk-abi.bc")
+  # Commands to compile the source files for the ABI into bitcode.
+  add_library(cheetah_abi_bc_compile OBJECT ${CHEETAH_ABI_SOURCE})
+  set_target_properties(cheetah_abi_bc_compile
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_BITCODE_ABI_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_BITCODE_ABI_COMPILE_DEFS}"
+    )
+  target_compile_options(cheetah_abi_bc_compile PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_abi_bc_compile PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
+
+  # Custom command to generate the ABI bitcode file.  We assume that
+  # cheetah_abi_bc_compile generates just one output, so there's
+  # nothing to link together.
+  add_custom_command(OUTPUT ${CHEETAH_ABI_BITCODE_FILE}
+    DEPENDS cheetah_abi_bc_compile
+    COMMAND cp $<TARGET_OBJECTS:cheetah_abi_bc_compile> ${CHEETAH_ABI_BITCODE_FILE}
+    COMMENT "Generating ${CHEETAH_ABI_BITCODE_FILE}"
+    VERBATIM
+  )
+
+  # Add a top-level custom target to drive the creation of the ABI
+  # bitcode file.
+  add_custom_target(cheetah_abi_bc ALL DEPENDS ${CHEETAH_ABI_BITCODE_FILE})
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_abi_bc")
+  # Because the ABI bitcode file is a custom target, we cannot use
+  # CMake's install(TARGETS) to install it.  Instead, we use
+  # install(FILES) to install bitcode ABI file.
+  if (CHEETAH_INSTALL_BITCODE_ABI)
+    list(APPEND CHEETAH_INSTALL_FILES ${CHEETAH_ABI_BITCODE_FILE})
   endif()
 endif()
 
@@ -168,6 +223,9 @@ if (CHEETAH_INSTALL_LIBRARY)
   install(TARGETS ${CHEETAH_INSTALL_TARGETS}
     LIBRARY DESTINATION ${CHEETAH_LIBRARY_INSTALL_DIR} COMPONENT cheetah
     ARCHIVE DESTINATION ${CHEETAH_LIBRARY_INSTALL_DIR} COMPONENT cheetah
+    )
+  install(FILES ${CHEETAH_INSTALL_FILES}
+    DESTINATION ${CHEETAH_LIBRARY_INSTALL_DIR} COMPONENT cheetah
     )
 endif()
 

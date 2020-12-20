@@ -6,7 +6,7 @@ REDUCER_DEF = -DREDUCER_MODULE
 #ALERT_DEF = -DALERT_LVL=0x000
 
 MAIN = $(RTS_LIB)
-SRCS = $(filter-out cilk2c_inlined.c, $(filter-out $(PERSON_C_SRC).c, $(filter-out $(PERSON_CPP_SRC).c, $(wildcard *.c))))
+SRCS = $(filter-out $(PERSON_C_SRC).c, $(filter-out $(PERSON_CPP_SRC).c, $(wildcard *.c)))
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
 INCLUDES =
@@ -19,7 +19,7 @@ PERSON_C_SRC = personality-c
 PERSON_CPP_SRC = personality-cpp
 
 .PHONY: all clean build
- 
+
 all: build $(MAIN).a $(MAIN).so $(PERSON_C).a $(PERSON_C).so $(PERSON_CPP).a $(PERSON_CPP).so build/cilk2c_inlined.bc
 
 $(MAIN).a: $(OBJS)
