@@ -20,7 +20,7 @@
 // inlined by the compiler
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame %p", (void *)sf);
 
     sf->flags = 0;
     sf->magic = frame_magic;
@@ -41,7 +41,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame_fast %p", (void *)sf);
 
     sf->flags = 0;
     sf->magic = frame_magic;
@@ -62,7 +62,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
 void __cilkrts_detach(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w =
         atomic_load_explicit(&sf->worker, memory_order_relaxed);
-    cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -89,7 +89,7 @@ void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w =
         atomic_load_explicit(&sf->worker, memory_order_relaxed);
-    cilkrts_alert(CFRAME, w, "__cilkrts_pop_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_pop_frame %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());

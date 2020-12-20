@@ -1,5 +1,7 @@
 // LONG_BIT is defined in limits.h when _GNU_SOURCE is defined.
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "reducer_impl.h"
 #include "cilk/hyperobject_base.h"
 #include "global.h"
@@ -215,7 +217,7 @@ static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     h = cilkred_map_make_map(w, m->spa_cap);
     w->reducer_map = h;
 
-    cilkrts_alert(REDUCE, w, "installed reducer map %p", h);
+    cilkrts_alert(REDUCE, w, "installed reducer map %p", (void *)h);
     return h;
 }
 

@@ -157,7 +157,7 @@ Closure *Closure_create(__cilkrts_worker *const w) {
 
     Closure_init(new_closure);
 
-    cilkrts_alert(CLOSURE, w, "Allocate closure %p", new_closure);
+    cilkrts_alert(CLOSURE, w, "Allocate closure %p", (void *)new_closure);
 
     return new_closure;
 }
@@ -343,7 +343,7 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 
     CILK_ASSERT(w, !cl->user_rmap);
 
-    cilkrts_alert(SCHED, w, "Closure_suspend %p", cl);
+    cilkrts_alert(SCHED, w, "Closure_suspend %p", (void *)cl);
 
     Closure_checkmagic(w, cl);
     Closure_assert_ownership(w, cl);
@@ -402,7 +402,7 @@ void Closure_destroy_main(Closure *t) {
  * pool)
  */
 void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
-    cilkrts_alert(CLOSURE, w, "Deallocate closure %p", t);
+    cilkrts_alert(CLOSURE, w, "Deallocate closure %p", (void *)t);
     Closure_checkmagic(w, t);
     t->status = CLOSURE_POST_INVALID;
     Closure_clean(w, t);

@@ -61,6 +61,7 @@ void cilk_die_internal(struct global_state *const g, const char *fmt, ...);
 #if CILK_DEBUG
 __attribute__((__format__(__printf__, 3, 4))) void
 cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #define cilkrts_alert(CODE, W, FMT, ...)                                       \
     (alert_level & ((ALERT_##CODE) & ALERT_LVL))                               \
         ? cilkrts_alert(ALERT_##CODE, W, FMT, ##__VA_ARGS__)                   \

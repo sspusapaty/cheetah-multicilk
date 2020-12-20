@@ -200,7 +200,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
 
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(CFRAME, w, "__cilkrts_pause_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_pause_frame %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -228,7 +228,7 @@ void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
 
 void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());

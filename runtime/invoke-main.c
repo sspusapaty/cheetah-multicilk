@@ -19,7 +19,8 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
     t = Closure_create_main();
     Closure_make_ready(t);
 
-    cilkrts_alert(BOOT, NULL, "(create_invoke_main) invoke_main = %p", t);
+    cilkrts_alert(BOOT, NULL, "(create_invoke_main) invoke_main = %p",
+                  (void *)t);
 
     sf = calloc(1, sizeof(*sf));
     fiber = cilk_main_fiber_allocate();
@@ -45,7 +46,7 @@ CHEETAH_INTERNAL Closure *create_invoke_main(global_state *const g) {
     // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
 
     cilkrts_alert(BOOT, NULL, "(create_invoke_main) invoke_main->fiber = %p",
-                  fiber);
+                  (void *)fiber);
 
     return t;
 }
@@ -93,7 +94,7 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     char **args = w->g->cilk_main_args;
 
     ASM_GET_SP(rsp);
-    cilkrts_alert(BOOT, w, "invoke_main rsp = %p", rsp);
+    cilkrts_alert(BOOT, w, "invoke_main rsp = %p", (void *)rsp);
 
     /* TODO(jfc): This could be optimized out by link time optimization. */
     alloca(cilkrts_zero);
@@ -112,7 +113,7 @@ CHEETAH_INTERNAL_NORETURN void invoke_main() {
     }
 
     ASM_GET_SP(nsp);
-    cilkrts_alert(BOOT, w, "invoke_main new rsp = %p", nsp);
+    cilkrts_alert(BOOT, w, "invoke_main new rsp = %p", (void *)nsp);
 
     CILK_ASSERT_G(w == __cilkrts_get_tls_worker());
 

@@ -114,7 +114,7 @@ static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
     /* TODO: Find a way to do this only when using floating point. */
 #ifdef CHEETAH_SAVE_MXCSR
 #if 1
-    asm volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
+    __asm__ volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
 #else
     /* Disabled because LLVM's implementation is bad. */
     __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
@@ -136,7 +136,7 @@ static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
 void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 #ifdef CHEETAH_SAVE_MXCSR
 #if 1
-    asm("stmxcsr %0" : "=m"(sf->mxcsr));
+    __asm__("stmxcsr %0" : "=m"(sf->mxcsr));
 #else
     /* Disabled because LLVM's implementation is bad. */
     sf->mxcsr = __builtin_ia32_stmxcsr(); /* aka _mm_setcsr */
@@ -180,7 +180,8 @@ CHEETAH_INTERNAL_NORETURN
 void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
                     __cilkrts_stack_frame *sf) {
     // owner of fiber not set at the moment
-    cilkrts_alert(FIBER, w, "(cilk_fiber_run) starting fiber %p", fiber);
+    cilkrts_alert(FIBER, w, "(cilk_fiber_run) starting fiber %p",
+                  (void *)fiber);
 
     /* The if-else block is a longwinded way of changing the stack pointer
        onto the fiber.  A single assembly instruction would be sufficient
@@ -223,14 +224,14 @@ struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
         cilk_internal_malloc(w, sizeof(*fiber), IM_FIBER);
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    cilkrts_alert(FIBER, w, "Allocate fiber %p [%p--%p]", fiber,
-                  fiber->stack_low, fiber->stack_high);
+    cilkrts_alert(FIBER, w, "Allocate fiber %p [%p--%p]", (void *)fiber,
+                  (void *)fiber->stack_low, (void *)fiber->stack_high);
     return fiber;
 }
 
 void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber) {
-    cilkrts_alert(FIBER, w, "Deallocate fiber %p [%p--%p]", fiber,
-                  fiber->stack_low, fiber->stack_high);
+    cilkrts_alert(FIBER, w, "Deallocate fiber %p [%p--%p]", (void *)fiber,
+                  (void *)fiber->stack_low, (void *)fiber->stack_high);
     if (DEBUG_ENABLED_STATIC(FIBER))
         CILK_ASSERT(w, !in_fiber(fiber, w->current_stack_frame));
     free_stack(fiber);
@@ -239,8 +240,8 @@ void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber) {
 
 void cilk_fiber_deallocate_global(struct global_state *g,
                                   struct cilk_fiber *fiber) {
-    cilkrts_alert(FIBER, NULL, "Deallocate fiber %p [%p--%p]", fiber,
-                  fiber->stack_low, fiber->stack_high);
+    cilkrts_alert(FIBER, NULL, "Deallocate fiber %p [%p--%p]", (void *)fiber,
+                  (void *)fiber->stack_low, (void *)fiber->stack_high);
     free_stack(fiber);
     cilk_internal_free_global(g, fiber, sizeof(*fiber), IM_FIBER);
 }
@@ -249,14 +250,16 @@ struct cilk_fiber *cilk_main_fiber_allocate() {
     struct cilk_fiber *fiber = malloc(sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    cilkrts_alert(FIBER, NULL, "[?]: Allocate main fiber %p [%p--%p]", fiber,
-                  fiber->stack_low, fiber->stack_high);
+    cilkrts_alert(FIBER, NULL, "[?]: Allocate main fiber %p [%p--%p]",
+                  (void *)fiber, (void *)fiber->stack_low,
+                  (void *)fiber->stack_high);
     return fiber;
 }
 
 void cilk_main_fiber_deallocate(struct cilk_fiber *fiber) {
-    cilkrts_alert(FIBER, NULL, "[?]: Deallocate main fiber %p [%p--%p]", fiber,
-                  fiber->stack_low, fiber->stack_high);
+    cilkrts_alert(FIBER, NULL, "[?]: Deallocate main fiber %p [%p--%p]",
+                  (void *)fiber, (void *)fiber->stack_low,
+                  (void *)fiber->stack_high);
     free_stack(fiber);
     free(fiber);
 }

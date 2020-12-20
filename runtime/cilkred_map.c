@@ -113,7 +113,8 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w, size_t size) {
     h->vinfo = (ViewInfo *)calloc(size, sizeof(ViewInfo));
     h->log = (hyper_id_t *)calloc(size / 2, sizeof(hyper_id_t));
 
-    cilkrts_alert(REDUCE, w, "created reducer map size %zu %p", size, h);
+    cilkrts_alert(REDUCE, w, "created reducer map size %zu %p", size,
+                  (void *)h);
 
     return h;
 }
@@ -139,14 +140,14 @@ void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h) {
     h->log = NULL;
     cilk_internal_free(w, h, sizeof(*h), IM_REDUCER_MAP);
 
-    cilkrts_alert(REDUCE, w, "freed reducer map %p", h);
+    cilkrts_alert(REDUCE, w, "freed reducer map %p", (void *)h);
 }
 
 /* This function is responsible for freeing other_map. */
 void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
                        cilkred_map *other_map, merge_kind kind) {
     cilkrts_alert(REDUCE, w, "merging reducer map %p into %p, order %d",
-                  other_map, this_map, kind);
+                  (void *)other_map, (void *)this_map, kind);
     // Remember the current stack frame.
     // __cilkrts_stack_frame *current_sf = w->current_stack_frame;
     this_map->merging = true;
