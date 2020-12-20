@@ -25,7 +25,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     sf->flags = 0;
     sf->magic = frame_magic;
     sf->call_parent = w->current_stack_frame;
-    sf->worker = w;
+    atomic_store_explicit(&sf->worker, w, memory_order_relaxed);
     w->current_stack_frame = sf;
     // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
 
@@ -46,7 +46,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     sf->flags = 0;
     sf->magic = frame_magic;
     sf->call_parent = w->current_stack_frame;
-    sf->worker = w;
+    atomic_store_explicit(&sf->worker, w, memory_order_relaxed);
     w->current_stack_frame = sf;
 
     // Pedigree maintenance.
@@ -60,7 +60,8 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_detach(__cilkrts_stack_frame *sf) {
-    struct __cilkrts_worker *w = sf->worker;
+    __cilkrts_worker *w =
+        atomic_load_explicit(&sf->worker, memory_order_relaxed);
     cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
@@ -86,7 +87,8 @@ void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = sf->worker;
+    __cilkrts_worker *w =
+        atomic_load_explicit(&sf->worker, memory_order_relaxed);
     cilkrts_alert(CFRAME, w, "__cilkrts_pop_frame %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
