@@ -94,13 +94,6 @@ int64_t* __cilkrts_get_pedigree(void) {
     return pedigree;
 }
 
-#ifdef __linux__ /* This feature requires the GNU linker */
-CHEETAH_INTERNAL
-const char get_workerwarn_msg[]
-    __attribute__((section(".gnu.warning.__cilkrts_get_worker_number"))) =
-        "__cilkrts_get_worker_number is deprecated";
-#endif
-
 // Called after a normal cilk_sync (i.e. not the cilk_sync called in the
 // personality function.) Checks if there is an exception that needs to be
 // propagated. This is called from the frame that will handle whatever exception
