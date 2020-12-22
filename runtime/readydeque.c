@@ -2,6 +2,7 @@
 #include "closure.h"
 #include "debug.h"
 #include "global.h"
+#include "local.h"
 
 /*********************************************************
  * Management of ReadyDeques

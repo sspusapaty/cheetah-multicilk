@@ -21,6 +21,7 @@
 #include "fiber.h"
 #include "global.h"
 #include "init.h"
+#include "local.h"
 #include "readydeque.h"
 #include "sched_stats.h"
 #include "scheduler.h"
@@ -42,14 +43,16 @@ long env_get_int(char const *var) {
 }
 
 void parse_environment() {
-    // ANGE: I don't think we should expose this ...
-    // alert_level = env_get_int("CILK_ALERT");
+    /* Only the bits also set in ALERT_LVL are used. */
+    set_alert_level(env_get_int("CILK_ALERT"));
+    /* Only the bits also set in DEBUG_LVL are used. */
+    set_debug_level(env_get_int("CILK_DEBUG"));
 }
 
 static local_state *worker_local_init(global_state *g) {
-    local_state *l = (local_state *)malloc(sizeof(local_state));
-    l->shadow_stack = (__cilkrts_stack_frame **)malloc(
-        g->options.deqdepth * sizeof(struct __cilkrts_stack_frame *));
+    local_state *l = (local_state *)calloc(1, sizeof(local_state));
+    l->shadow_stack = (__cilkrts_stack_frame **)calloc(
+        g->options.deqdepth, sizeof(struct __cilkrts_stack_frame *));
     for (int i = 0; i < JMPBUF_SIZE; i++) {
         l->rts_ctx[i] = NULL;
     }
@@ -65,7 +68,7 @@ static local_state *worker_local_init(global_state *g) {
 
 static void deques_init(global_state *g) {
     cilkrts_alert(BOOT, NULL, "(deques_init) Initializing deques");
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->nworkers; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
         g->deques[i].mutex_owner = NO_WORKER;
@@ -75,7 +78,7 @@ static void deques_init(global_state *g) {
 
 static void workers_init(global_state *g) {
     cilkrts_alert(BOOT, NULL, "(workers_init) Initializing workers");
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->nworkers; i++) {
         cilkrts_alert(BOOT, NULL, "(workers_init) Initializing worker %u", i);
         __cilkrts_worker *w = (__cilkrts_worker *)cilk_aligned_alloc(
             __alignof__(__cilkrts_worker), sizeof(__cilkrts_worker));
@@ -178,7 +181,8 @@ static void threads_init(global_state *g) {
         break;
     }
 #endif
-    int n_threads = g->options.nproc;
+    int n_threads = g->nworkers;
+    CILK_ASSERT_G(n_threads > 0);
 
     /* TODO: Apple supports thread affinity using a different interface. */
 
@@ -261,7 +265,7 @@ global_state *__cilkrts_init(int argc, char *argv[]) {
 }
 
 static void global_state_terminate(global_state *g) {
-    cilk_fiber_pool_global_terminate(g);
+    cilk_fiber_pool_global_terminate(g); /* before malloc terminate */
     cilk_internal_malloc_global_terminate(g);
     cilk_sched_stats_print(g);
 }
@@ -275,6 +279,7 @@ static void global_state_deinit(global_state *g) {
     cilk_mutex_destroy(&(g->print_lock));
     free(g->workers);
     g->workers = NULL;
+    g->nworkers = 0;
     free(g->deques);
     g->deques = NULL;
     free(g->threads);
@@ -286,35 +291,56 @@ static void global_state_deinit(global_state *g) {
 
 static void deques_deinit(global_state *g) {
     cilkrts_alert(BOOT, NULL, "(deques_deinit) Clean up deques");
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->nworkers; i++) {
         CILK_ASSERT_G(g->deques[i].mutex_owner == NO_WORKER);
         cilk_mutex_destroy(&(g->deques[i].mutex));
     }
 }
 
-static void workers_terminate(global_state *g) {
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
-        __cilkrts_worker *w = g->workers[i];
-        cilk_fiber_pool_per_worker_terminate(w);
-        cilk_internal_malloc_per_worker_terminate(w); // internal malloc last
+static void worker_terminate(__cilkrts_worker *w, void *data) {
+    cilk_fiber_pool_per_worker_terminate(w);
+    cilkred_map *rm = w->reducer_map;
+    w->reducer_map = NULL;
+    // Workers can have NULL reducer maps now.
+    if (rm) {
+        cilkred_map_destroy_map(w, rm);
     }
+    cilk_internal_malloc_per_worker_terminate(w); // internal malloc last
+}
+
+static void workers_terminate(global_state *g) {
+    for_each_worker_rev(g, worker_terminate, NULL);
+}
+
+static void sum_allocations(__cilkrts_worker *w, void *data) {
+    long *counts = (long *)data;
+    local_state *l = w->l;
+    for (int i = 0; i < NUM_BUCKETS; ++i) {
+        counts[i] += l->im_desc.buckets[i].allocated;
+    }
+}
+
+static void wrap_fiber_pool_destroy(__cilkrts_worker *w, void *data) {
+    CILK_ASSERT(w, w->l->fiber_to_free == NULL);
+    cilk_fiber_pool_per_worker_destroy(w);
 }
 
 static void workers_deinit(global_state *g) {
     cilkrts_alert(BOOT, NULL, "(workers_deinit) Clean up workers");
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
+
+    long allocations[NUM_BUCKETS] = {0, 0, 0, 0};
+
+    for_each_worker_rev(g, sum_allocations, allocations);
+
+    if (DEBUG_ENABLED(MEMORY)) {
+        for (int i = 0; i < NUM_BUCKETS; ++i)
+            CILK_ASSERT_INDEX_ZERO(NULL, allocations, i, , "%ld");
+    }
+
+    unsigned i = g->nworkers;
+    while (i-- > 0) {
         __cilkrts_worker *w = g->workers[i];
         g->workers[i] = NULL;
-        CILK_ASSERT(w, w->l->fiber_to_free == NULL);
-
-        cilkred_map *rm = w->reducer_map;
-        w->reducer_map = NULL;
-        // Workers can have NULL reducer maps now.
-        if (rm) {
-            cilkred_map_destroy_map(w, rm);
-        }
-
-        cilk_fiber_pool_per_worker_destroy(w);
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
         w->l->shadow_stack = NULL;
@@ -322,6 +348,7 @@ static void workers_deinit(global_state *g) {
         w->l = NULL;
         free(w);
     }
+
     /* TODO: Export initial reducer map */
 }
 
@@ -329,6 +356,9 @@ CHEETAH_INTERNAL
 void __cilkrts_cleanup(global_state *g) {
     reducers_deinit(g);
     workers_terminate(g);
+    flush_alert_log();
+    /* This needs to be before global_state_terminate for good stats. */
+    for_each_worker(g, wrap_fiber_pool_destroy, NULL);
     // global_state_terminate collects and prints out stats, and thus
     // should occur *BEFORE* worker_deinit, because worker_deinit
     // deinitializes worker-related data structures which may
@@ -337,7 +367,6 @@ void __cilkrts_cleanup(global_state *g) {
     // pools are not freed until workers_deinit.  Thus the stats included on
     // internal-malloc that does not include all the free fibers.
     global_state_terminate(g);
-
     workers_deinit(g);
     deques_deinit(g);
     global_state_deinit(g);

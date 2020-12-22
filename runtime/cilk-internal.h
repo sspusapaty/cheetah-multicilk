@@ -167,21 +167,6 @@ enum __cilkrts_worker_state {
     WORKER_RUN
 };
 
-struct local_state {
-    __cilkrts_stack_frame **shadow_stack;
-
-    unsigned short state; /* __cilkrts_worker_state */
-    bool lock_wait;
-    bool provably_good_steal;
-    unsigned int rand_next;
-
-    jmpbuf rts_ctx;
-    struct cilk_fiber_pool fiber_pool;
-    struct cilk_im_desc im_desc;
-    struct cilk_fiber *fiber_to_free;
-    struct sched_stats stats;
-};
-
 /**
  * NOTE: if you are using the Tapir compiler, you should not change
  * these fields; ok to change for hand-compiled code.

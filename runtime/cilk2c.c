@@ -267,7 +267,6 @@ void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
 }
 
 void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
-
     __cilkrts_worker *w = sf->worker;
     cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame %p", sf);
 

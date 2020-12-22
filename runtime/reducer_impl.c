@@ -4,6 +4,7 @@
 #include "cilk/hyperobject_base.h"
 #include "global.h"
 #include "init.h"
+#include "internal-malloc.h"
 #include "mutex.h"
 #include "scheduler.h"
 #include <assert.h>
@@ -12,6 +13,8 @@
 #include <string.h>
 
 #include <limits.h>
+
+#define USE_INTERNAL_MALLOC 1
 
 #define REDUCER_LIMIT 1024U
 #define GLOBAL_REDUCER_LIMIT 100U
@@ -212,8 +215,7 @@ static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     h = cilkred_map_make_map(w, m->spa_cap);
     w->reducer_map = h;
 
-    cilkrts_alert(REDUCE, w,
-                  "(install_new_reducer_map) installed reducer_map %p", h);
+    cilkrts_alert(REDUCE, w, "installed reducer map %p", h);
     return h;
 }
 
@@ -234,9 +236,10 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
 
     if (w) {
 #define UNSYNCED_REDUCER_MSG                                                   \
-    "Destroying a reducer while it is visible to unsynced child tasks,  or\n"  \
+    "Destroying a reducer while it is visible to unsynced child tasks, or\n"   \
     "calling CILK_C_UNREGISTER_REDUCER() on an unregistered reducer.\n"        \
     "Did you forget a _Cilk_sync or CILK_C_REGISTER_REDUCER()?"
+
         cilkred_map *h = w->reducer_map;
         if (NULL == h)
             cilkrts_bug(w, UNSYNCED_REDUCER_MSG); // Does not return
@@ -320,7 +323,7 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
        global scope, install the leftmost view. */
 
     if (w->g->options.force_reduce) {
-        CILK_ASSERT(w, w->g->options.nproc == 1);
+        CILK_ASSERT(w, w->g->nworkers == 1);
         promote_own_deque(w);
     }
 
@@ -337,10 +340,10 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     if (vinfo == NULL) {
         CILK_ASSERT(w, id < h->spa_cap);
         vinfo = &h->vinfo[id];
+        CILK_ASSERT(w, vinfo->key == NULL && vinfo->val == NULL);
 
         void *val = key->__c_monoid.allocate_fn(key, key->__view_size);
         key->__c_monoid.identity_fn(key, val);
-        CILK_ASSERT(w, vinfo->key == NULL && vinfo->val == NULL);
 
         // allocate space for the val and initialize it to identity
         vinfo->key = key;
@@ -350,11 +353,21 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     return vinfo->val;
 }
 
-void *__cilkrts_hyper_alloc(void *ignore, size_t bytes) {
-    return cilk_aligned_alloc(16, bytes); /* ??? what is the best alignment? */
+void *__cilkrts_hyper_alloc(__cilkrts_hyperobject_base *key, size_t bytes) {
+    if (USE_INTERNAL_MALLOC)
+        return cilk_internal_malloc(__cilkrts_get_tls_worker(), bytes,
+                                    IM_REDUCER_MAP);
+    else
+        return cilk_aligned_alloc(16, bytes);
 }
 
-void __cilkrts_hyper_dealloc(void *ignore, void *view) { free(view); }
+void __cilkrts_hyper_dealloc(__cilkrts_hyperobject_base *key, void *view) {
+    if (USE_INTERNAL_MALLOC)
+        cilk_internal_free(__cilkrts_get_tls_worker(), view, key->__view_size,
+                           IM_REDUCER_MAP);
+    else
+        free(view);
+}
 
 // =================================================================
 // Helper function for the scheduler

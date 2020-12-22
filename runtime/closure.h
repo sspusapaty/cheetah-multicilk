@@ -22,17 +22,7 @@ enum ClosureStatus {
     CLOSURE_POST_INVALID /* after destruction */
 };
 
-static inline const char *Closure_status_to_str(enum ClosureStatus status) {
-    switch(status) {
-        case CLOSURE_RUNNING:      return "running";
-        case CLOSURE_SUSPENDED:    return "suspended";
-        case CLOSURE_RETURNING:    return "returning";
-        case CLOSURE_READY:        return "ready";
-        case CLOSURE_PRE_INVALID:  return "pre-invalid";
-        case CLOSURE_POST_INVALID: return "post-invalid";
-        default: return "unknown";
-    }
-}
+CHEETAH_INTERNAL const char *Closure_status_to_str(enum ClosureStatus status);
 
 #if CILK_DEBUG
 #define Closure_assert_ownership(w, t) Closure_assert_ownership(w, t)
@@ -68,14 +58,11 @@ struct Closure {
     worker_id owner_ready_deque; /* debug only */
     worker_id mutex_owner;       /* debug only */
 
-    enum ClosureStatus status : 16; /* doubles as magic number */
-    bool lock_wait;
+    enum ClosureStatus status : 8; /* doubles as magic number */
     bool has_cilk_callee;
+    bool lock_wait;
+    bool simulated_stolen;
     unsigned int join_counter; /* number of outstanding spawned children */
-    bool simulated_stolen; /* ANGE XXX: Sorry, I probably messed
-                              up the alignment; should we update join_counter
-                              to be a short instead? */
-
     char *orig_rsp; /* the rsp one should use when sync successfully */
 
     Closure *callee;

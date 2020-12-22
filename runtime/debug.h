@@ -9,8 +9,8 @@
 struct global_state;
 struct __cilkrts_worker;
 
-#define CILK_CHECK(g, cond, complain)                                          \
-    ((cond) ? (void)0 : cilk_die_internal(g, complain))
+#define CILK_CHECK(g, cond, complain, ...)                                     \
+    ((cond) ? (void)0 : cilk_die_internal(g, complain, __VA_ARGS__))
 
 #ifndef ALERT_LVL
 #define ALERT_LVL 0x3103

@@ -153,7 +153,7 @@ static void main_thread_init(global_state *g) {
 }
 
 static void threads_join(global_state *g) {
-    for (unsigned int i = 0; i < g->options.nproc; i++) {
+    for (unsigned int i = 0; i < g->nworkers; i++) {
         int status = pthread_join(g->threads[i], NULL);
         if (status != 0)
             cilkrts_bug(NULL, "Cilk runtime error: thread join (%u) failed: %d",
@@ -174,8 +174,8 @@ int main(int argc, char *argv[]) {
     int ret;
 
     global_state *g = __cilkrts_init(argc, argv);
-    cilkrts_alert(START, NULL, "Cheetah: invoking user main with %d workers",
-                  g->options.nproc);
+    cilkrts_alert(START, NULL, "Cheetah: invoking user main with %u workers",
+                  g->nworkers);
 
     __cilkrts_run(g);
     /* The store to cilk_main_return precedes the release store to done.

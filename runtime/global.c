@@ -43,7 +43,7 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     parse_environment();
 
-    int proc_override = env_get_int("CILK_NWORKERS");
+    long proc_override = env_get_int("CILK_NWORKERS");
     if (g->options.nproc == 0) {
         // use the number of cores online right now
         int available_cores = 0;
@@ -92,11 +92,14 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     unsigned active_size = g->options.nproc;
     CILK_ASSERT_G(active_size > 0);
+    g->nworkers = active_size;
     cilkg_nproc = active_size;
 
     g->invoke_main_initialized = false;
     atomic_store_explicit(&g->start, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->cilk_main_return, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->reducer_map_count, 0, memory_order_relaxed);
 
     g->workers =
         (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
@@ -137,4 +140,17 @@ global_state *global_state_init(int argc, char *argv[]) {
     g->frame_magic = hash;
 
     return g;
+}
+
+void for_each_worker(global_state *g, void (*fn)(__cilkrts_worker *, void *),
+                     void *data) {
+    for (unsigned i = 0; i < g->nworkers; ++i)
+        fn(g->workers[i], data);
+}
+
+void for_each_worker_rev(global_state *g,
+                         void (*fn)(__cilkrts_worker *, void *), void *data) {
+    unsigned i = g->nworkers;
+    while (i-- > 0)
+        fn(g->workers[i], data);
 }

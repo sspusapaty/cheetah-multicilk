@@ -12,6 +12,7 @@
 #include "fiber.h"
 #include "global.h"
 #include "jmpbuf.h"
+#include "local.h"
 #include "readydeque.h"
 #include "scheduler.h"
 
@@ -92,7 +93,7 @@ static void reset_exception_pointer(__cilkrts_worker *const w, Closure *cl) {
 
 /* Unused for now but may be helpful later
 static void signal_immediate_exception_to_all(__cilkrts_worker *const w) {
-    int i, active_size = w->g->options.nproc;
+    int i, active_size = w->g->nworkers;
     __cilkrts_worker *curr_w;
 
     for(i=0; i<active_size; i++) {
@@ -1159,10 +1160,8 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         // only set in the personality function.)
         if ((sf->flags & CILK_FRAME_EXCEPTING) == 0) {
             CILK_ASSERT(w, t->orig_rsp == NULL);
-            CILK_ASSERT(w, ((char *)FP(sf) > fiber->m_stack) &&
-                               ((char *)FP(sf) < fiber->m_stack_base));
-            CILK_ASSERT(w, ((char *)SP(sf) > fiber->m_stack) &&
-                               ((char *)SP(sf) < fiber->m_stack_base));
+            CILK_ASSERT(w, in_fiber(fiber, (char *)FP(sf)));
+            CILK_ASSERT(w, in_fiber(fiber, (char *)SP(sf)));
         }
         sf->flags &= ~CILK_FRAME_EXCEPTING;
 
@@ -1359,8 +1358,9 @@ static Closure *do_what_it_says(__cilkrts_worker *w, Closure *t) {
         break; // ?
 
     default:
-        cilkrts_alert(SCHED, w, "(do_what_it_says) got status %d", t->status);
-        cilkrts_bug(w, "BUG in do_what_it_says()");
+        cilkrts_bug(w, "do_what_it_says invalid status %d", t->status);
+        cilkrts_bug(w, "do_what_it_says() closure status %s",
+                    Closure_status_to_str(t->status));
         break;
     }
 
@@ -1394,7 +1394,7 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
         while (!t && !atomic_load_explicit(&w->g->done, memory_order_acquire)) {
             CILK_START_TIMING(w, INTERVAL_SCHED);
             CILK_START_TIMING(w, INTERVAL_IDLE);
-            unsigned int victim = rts_rand(w) % w->g->options.nproc;
+            unsigned int victim = rts_rand(w) % w->g->nworkers;
             if (victim != w->self) {
                 t = Closure_steal(w, victim);
             }
