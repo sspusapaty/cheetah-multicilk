@@ -136,13 +136,16 @@ int run_queens(bool verbose) {
 }
 
 int main(int argc, char *argv[]) {
-  int i;
   clockmark_t begin, end;
   uint64_t running_time[TIMING_COUNT];
 
+  int count = argc > 1 ? atoi(argv[1]) : -1;
+  if (count <= 0)
+    count = TIMING_COUNT;
+
   int num_solutions = 92, res = 0;
 
-  for (i = 0; i < TIMING_COUNT; i++) {
+  for (int i = 0; i < count; i++) {
     begin = ktiming_getmark();
     int run_solutions = run_queens(false);
 
@@ -150,13 +153,14 @@ int main(int argc, char *argv[]) {
     end = ktiming_getmark();
     running_time[i] = ktiming_diff_usec(&begin, &end);
   }
-  if (res == TIMING_COUNT) {
+  if (res == count) {
     printf("Success\n");
   } else {
-    printf("Result: %d/%d successes (%d failures)\n", res, TIMING_COUNT,
-           TIMING_COUNT - res);
+    printf("Result: %d/%d successes (%d failures)\n", res, count, count - res);
   }
-  print_runtime(running_time, TIMING_COUNT);
+  if (count > 0) {
+    print_runtime(running_time, TIMING_COUNT);
+  }
 
   return res != TIMING_COUNT;
 }
