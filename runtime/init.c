@@ -64,7 +64,7 @@ static local_state *worker_local_init(global_state *g) {
 }
 
 static void deques_init(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(deques_init) Initializing deques");
+    cilkrts_alert(BOOT, NULL, "(deques_init) Initializing deques");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
         g->deques[i].top = NULL;
         g->deques[i].bottom = NULL;
@@ -74,10 +74,9 @@ static void deques_init(global_state *g) {
 }
 
 static void workers_init(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(workers_init) Initializing workers");
+    cilkrts_alert(BOOT, NULL, "(workers_init) Initializing workers");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
-        cilkrts_alert(ALERT_BOOT, NULL, "(workers_init) Initializing worker %u",
-                      i);
+        cilkrts_alert(BOOT, NULL, "(workers_init) Initializing worker %u", i);
         __cilkrts_worker *w = (__cilkrts_worker *)cilk_aligned_alloc(
             __alignof__(__cilkrts_worker), sizeof(__cilkrts_worker));
         w->self = i;
@@ -100,7 +99,7 @@ static void workers_init(global_state *g) {
 
 static void *scheduler_thread_proc(void *arg) {
     __cilkrts_worker *w = (__cilkrts_worker *)arg;
-    cilkrts_alert(ALERT_BOOT, w, "scheduler_thread_proc");
+    cilkrts_alert(BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
     worker_id self = w->self;
@@ -183,7 +182,7 @@ static void threads_init(global_state *g) {
 
     /* TODO: Apple supports thread affinity using a different interface. */
 
-    cilkrts_alert(ALERT_BOOT, NULL, "(threads_init) Setting up threads");
+    cilkrts_alert(BOOT, NULL, "(threads_init) Setting up threads");
 
 #ifdef CPU_SETSIZE
     /* Three cases: core count at least twice worker count, allocate
@@ -224,8 +223,8 @@ static void threads_init(global_state *g) {
                 ++cpu;
             }
 
-            cilkrts_alert(ALERT_BOOT, NULL, "Bind worker %u to core %d of %d",
-                          w, cpu, available_cores);
+            cilkrts_alert(BOOT, NULL, "Bind worker %u to core %d of %d", w, cpu,
+                          available_cores);
 
             CPU_CLR(cpu, &process_mask);
             cpu_set_t worker_mask;
@@ -234,8 +233,7 @@ static void threads_init(global_state *g) {
             int off;
             for (off = 1; off < group_size; ++off) {
                 move_bit(cpu + off * step_in, &worker_mask, &process_mask);
-                cilkrts_alert(ALERT_BOOT, NULL,
-                              "Bind worker %u to core %d of %d", w,
+                cilkrts_alert(BOOT, NULL, "Bind worker %u to core %d of %d", w,
                               cpu + off * step_in, available_cores);
             }
             cpu += step_out;
@@ -250,7 +248,7 @@ static void threads_init(global_state *g) {
 }
 
 global_state *__cilkrts_init(int argc, char *argv[]) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(__cilkrts_init)");
+    cilkrts_alert(BOOT, NULL, "(__cilkrts_init)");
     global_state *g = global_state_init(argc, argv);
     reducers_init(g);
     __cilkrts_init_tls_variables();
@@ -269,8 +267,7 @@ static void global_state_terminate(global_state *g) {
 }
 
 static void global_state_deinit(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL,
-                  "(global_state_deinit) Clean up global state");
+    cilkrts_alert(BOOT, NULL, "(global_state_deinit) Clean up global state");
 
     cleanup_invoke_main(g->invoke_main);
     cilk_fiber_pool_global_destroy(g);
@@ -288,7 +285,7 @@ static void global_state_deinit(global_state *g) {
 }
 
 static void deques_deinit(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(deques_deinit) Clean up deques");
+    cilkrts_alert(BOOT, NULL, "(deques_deinit) Clean up deques");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
         CILK_ASSERT_G(g->deques[i].mutex_owner == NO_WORKER);
         cilk_mutex_destroy(&(g->deques[i].mutex));
@@ -304,7 +301,7 @@ static void workers_terminate(global_state *g) {
 }
 
 static void workers_deinit(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(workers_deinit) Clean up workers");
+    cilkrts_alert(BOOT, NULL, "(workers_deinit) Clean up workers");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
         __cilkrts_worker *w = g->workers[i];
         g->workers[i] = NULL;

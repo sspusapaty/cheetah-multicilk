@@ -67,7 +67,7 @@ static reducer_id_manager *init_reducer_id_manager(hyper_id_t cap) {
     reducer_id_manager *m =
         cilk_aligned_alloc(align, sizeof(reducer_id_manager));
     memset(m, 0, sizeof *m);
-    cilkrts_alert(ALERT_BOOT, NULL, "(reducers_init) Initializing reducers");
+    cilkrts_alert(BOOT, NULL, "(reducers_init) Initializing reducers");
     cap = (cap + LONG_BIT - 1) / LONG_BIT * LONG_BIT; /* round up */
     CILK_ASSERT_G(cap > 0 && cap < 9999999);
     pthread_mutex_init(&m->mutex, NULL);
@@ -116,8 +116,7 @@ static hyper_id_t reducer_id_get(reducer_id_manager *m, __cilkrts_worker *w) {
             }
         }
     }
-    cilkrts_alert(ALERT_REDUCE_ID, w, "allocate reducer ID %lu",
-                  (unsigned long)id);
+    cilkrts_alert(REDUCE_ID, w, "allocate reducer ID %lu", (unsigned long)id);
     m->next = id + 1 >= m->spa_cap ? 0 : id + 1;
     if (id >= m->hwm)
         m->hwm = id + 1;
@@ -140,8 +139,8 @@ static void reducer_id_free(__cilkrts_worker *const ws, hyper_id_t id) {
         CILK_ASSERT(ws, m);
     }
     reducer_id_manager_lock(m, ws);
-    cilkrts_alert(ALERT_REDUCE_ID, ws, "free reducer ID %lu of %lu",
-                  (unsigned long)id, m->spa_cap);
+    cilkrts_alert(REDUCE_ID, ws, "free reducer ID %lu of %lu",
+                  (unsigned long)id, (unsigned long)m->spa_cap);
     CILK_ASSERT(ws, id < m->spa_cap);
     CILK_ASSERT(ws, m->used[id / LONG_BIT] & (1UL << id % LONG_BIT));
     m->used[id / LONG_BIT] &= ~(1UL << id % LONG_BIT);
@@ -169,7 +168,7 @@ void reducers_init(global_state *g) {
 }
 
 void reducers_deinit(global_state *g) {
-    cilkrts_alert(ALERT_BOOT, NULL, "(reducers_deinit) Cleaning up reducers");
+    cilkrts_alert(BOOT, NULL, "(reducers_deinit) Cleaning up reducers");
     CILK_ASSERT_G(!id_manager);
     if (false) { /* TODO: If the reducer set is empty, discard. */
         free_reducer_id_manager(g->id_manager);
@@ -213,7 +212,7 @@ static cilkred_map *install_new_reducer_map(__cilkrts_worker *w) {
     h = cilkred_map_make_map(w, m->spa_cap);
     w->reducer_map = h;
 
-    cilkrts_alert(ALERT_REDUCE, w,
+    cilkrts_alert(REDUCE, w,
                   "(install_new_reducer_map) installed reducer_map %p", h);
     return h;
 }
@@ -234,12 +233,10 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
     key->__id_num = id;
 
     if (w) {
-        const char *UNSYNCED_REDUCER_MSG =
-            "Destroying a reducer while it is visible to unsynced child tasks, "
-            "or\n"
-            "calling CILK_C_UNREGISTER_REDUCER() on an unregistered reducer.\n"
-            "Did you forget a _Cilk_sync or CILK_C_REGISTER_REDUCER()?";
-
+#define UNSYNCED_REDUCER_MSG                                                   \
+    "Destroying a reducer while it is visible to unsynced child tasks,  or\n"  \
+    "calling CILK_C_UNREGISTER_REDUCER() on an unregistered reducer.\n"        \
+    "Did you forget a _Cilk_sync or CILK_C_REGISTER_REDUCER()?"
         cilkred_map *h = w->reducer_map;
         if (NULL == h)
             cilkrts_bug(w, UNSYNCED_REDUCER_MSG); // Does not return
@@ -261,8 +258,7 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     if (__builtin_expect(!w, 0)) {
         m = id_manager;
         if (__builtin_expect(!m, 0)) {
-            cilkrts_alert(ALERT_BOOT, NULL,
-                          "(reducers_init) Initializing reducers");
+            cilkrts_alert(BOOT, NULL, "(reducers_init) Initializing reducers");
             id_manager = m = init_reducer_id_manager(REDUCER_LIMIT);
         }
     } else {
@@ -323,7 +319,7 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     /* TODO: If this is the first reference to a reducer created at
        global scope, install the leftmost view. */
 
-    if(w->g->options.force_reduce) {
+    if (w->g->options.force_reduce) {
         CILK_ASSERT(w, w->g->options.nproc == 1);
         promote_own_deque(w);
     }

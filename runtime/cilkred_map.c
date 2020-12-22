@@ -99,7 +99,7 @@ ViewInfo *cilkred_map_lookup(cilkred_map *this_map,
 cilkred_map *cilkred_map_make_map(__cilkrts_worker *w, size_t size) {
     CILK_ASSERT_G(w);
     CILK_ASSERT(w, size > 0 && (hyper_id_t)size == size);
-    cilkrts_alert(ALERT_REDUCE, w,
+    cilkrts_alert(REDUCE, w,
                   "(cilkred_map_make_map) creating a cilkred_map size %u",
                   (unsigned int)size);
 
@@ -113,8 +113,8 @@ cilkred_map *cilkred_map_make_map(__cilkrts_worker *w, size_t size) {
     h->log = (hyper_id_t *)calloc(size / 2, sizeof(hyper_id_t));
     h->merging = false;
 
-    cilkrts_alert(ALERT_REDUCE, w,
-                  "(cilkred_map_make_map) created cilkred_map %p", h);
+    cilkrts_alert(REDUCE, w, "(cilkred_map_make_map) created cilkred_map %p",
+                  h);
 
     return h;
 }
@@ -130,24 +130,23 @@ void cilkred_map_destroy_map(__cilkrts_worker *w, cilkred_map *h) {
     if (!h) {
         return;
     }
-    cilkrts_alert(ALERT_REDUCE, w,
-                  "(cilkred_map_destroy_map) freeing cilkred_map %p", h);
+    cilkrts_alert(REDUCE, w, "(cilkred_map_destroy_map) freeing cilkred_map %p",
+                  h);
     free(h->vinfo);
     h->vinfo = NULL;
     free(h->log);
     h->log = NULL;
     free(h);
 
-    cilkrts_alert(ALERT_REDUCE, w,
-                  "(cilkred_map_destroy_map) freed cilkred_map %p\n", h);
+    cilkrts_alert(REDUCE, w, "(cilkred_map_destroy_map) freed cilkred_map %p\n",
+                  h);
 }
 
 /* This function is responsible for freeing other_map. */
 void cilkred_map_merge(cilkred_map *this_map, __cilkrts_worker *w,
                        cilkred_map *other_map, merge_kind kind) {
-    cilkrts_alert(ALERT_REDUCE, w,
-                  "(cilkred_map_merge) merging %p into %p, order %d", other_map,
-                  this_map, kind);
+    cilkrts_alert(REDUCE, w, "(cilkred_map_merge) merging %p into %p, order %d",
+                  other_map, this_map, kind);
     // Remember the current stack frame.
     // __cilkrts_stack_frame *current_sf = w->current_stack_frame;
     this_map->merging = true;

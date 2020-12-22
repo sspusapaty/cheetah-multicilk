@@ -142,7 +142,7 @@ char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
 
 CHEETAH_INTERNAL_NORETURN
 void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
-    cilkrts_alert(ALERT_FIBER, sf->worker, "longjmp to sf, BP/SP/PC: %p/%p/%p",
+    cilkrts_alert(FIBER, sf->worker, "longjmp to sf, BP/SP/PC: %p/%p/%p",
                   FP(sf), SP(sf), PC(sf));
 
 #if defined CHEETAH_SAVE_MXCSR
@@ -157,7 +157,7 @@ CHEETAH_INTERNAL_NORETURN
 void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
                     __cilkrts_stack_frame *sf) {
     // owner of fiber not set at the moment
-    cilkrts_alert(ALERT_FIBER, w, "(cilk_fiber_run) starting fiber %p", fiber);
+    cilkrts_alert(FIBER, w, "(cilk_fiber_run) starting fiber %p", fiber);
 
     /* The if-else block is a longwinded way of changing the stack pointer
        onto the fiber.  A single assembly instruction would be sufficient
@@ -199,13 +199,13 @@ struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
     struct cilk_fiber *fiber = cilk_internal_malloc(w, sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    cilkrts_alert(ALERT_FIBER, w, "Allocate fiber %p [%p--%p]", fiber,
+    cilkrts_alert(FIBER, w, "Allocate fiber %p [%p--%p]", fiber,
                   fiber->m_stack_base, fiber->m_stack);
     return fiber;
 }
 
 void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber) {
-    cilkrts_alert(ALERT_FIBER, w, "Deallocate fiber %p [%p--%p]", fiber,
+    cilkrts_alert(FIBER, w, "Deallocate fiber %p [%p--%p]", fiber,
                   fiber->m_stack_base, fiber->m_stack);
     free_stack(fiber);
     cilk_internal_free(w, fiber, sizeof(*fiber));
@@ -215,14 +215,14 @@ struct cilk_fiber *cilk_main_fiber_allocate() {
     struct cilk_fiber *fiber = malloc(sizeof(*fiber));
     fiber_init(fiber);
     make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    cilkrts_alert(ALERT_FIBER, NULL, "[?]: Allocate main fiber %p [%p--%p]",
-                  fiber, fiber->m_stack_base, fiber->m_stack);
+    cilkrts_alert(FIBER, NULL, "[?]: Allocate main fiber %p [%p--%p]", fiber,
+                  fiber->m_stack_base, fiber->m_stack);
     return fiber;
 }
 
 void cilk_main_fiber_deallocate(struct cilk_fiber *fiber) {
-    cilkrts_alert(ALERT_FIBER, NULL, "[?]: Deallocate main fiber %p [%p--%p]",
-                  fiber, fiber->m_stack_base, fiber->m_stack);
+    cilkrts_alert(FIBER, NULL, "[?]: Deallocate main fiber %p [%p--%p]", fiber,
+                  fiber->m_stack_base, fiber->m_stack);
     free_stack(fiber);
     free(fiber);
 }

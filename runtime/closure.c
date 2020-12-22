@@ -321,7 +321,7 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
 
     CILK_ASSERT(w, !cl->user_rmap);
 
-    cilkrts_alert(ALERT_SCHED, w, "Closure_suspend %p", cl);
+    cilkrts_alert(SCHED, w, "Closure_suspend %p", cl);
 
     Closure_checkmagic(w, cl);
     Closure_assert_ownership(w, cl);

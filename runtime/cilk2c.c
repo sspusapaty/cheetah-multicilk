@@ -70,7 +70,7 @@ const char get_workerwarn_msg[]
 // inlined by the compiler
 void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame %p", sf);
 
     sf->flags = 0;
     sf->magic = w->g->frame_magic;
@@ -83,7 +83,7 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_enter_frame_fast %p", sf);
 
     sf->flags = 0;
     sf->magic = w->g->frame_magic;
@@ -95,7 +95,7 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_detach(__cilkrts_stack_frame *sf) {
     struct __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_detach %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -224,7 +224,7 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 // inlined by the compiler; this implementation is only used in invoke-main.c
 void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_pop_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_pop_frame %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -240,7 +240,7 @@ void __cilkrts_pop_frame(__cilkrts_stack_frame *sf) {
 void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
 
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_pause_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_pause_frame %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -269,7 +269,7 @@ void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
 void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
 
     __cilkrts_worker *w = sf->worker;
-    cilkrts_alert(ALERT_CFRAME, w, "__cilkrts_leave_frame %p", sf);
+    cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame %p", sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
     CILK_ASSERT(w, sf->worker == __cilkrts_get_tls_worker());
@@ -301,7 +301,7 @@ void __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
         // frame returning is done via a different protocol, which is
         // triggered in Cilk_exception_handler.
         if (sf->flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
-            cilkrts_alert(ALERT_RETURN, w,
+            cilkrts_alert(RETURN, w,
                           "__cilkrts_leave_frame parent is call_parent!");
             // leaving a full frame; need to get the full frame of its call
             // parent back onto the deque

@@ -15,8 +15,7 @@
 
 static global_state *global_state_allocate() {
     parse_environment(); /* sets alert level */
-    cilkrts_alert(ALERT_BOOT, NULL,
-                  "(global_state_init) Allocating global state");
+    cilkrts_alert(BOOT, NULL, "(global_state_init) Allocating global state");
     global_state *g = (global_state *)cilk_aligned_alloc(
         __alignof(global_state), sizeof(global_state));
     memset(g, 0, sizeof *g);
@@ -28,8 +27,7 @@ static global_state *global_state_allocate() {
 }
 
 global_state *global_state_init(int argc, char *argv[]) {
-    cilkrts_alert(ALERT_BOOT, NULL,
-                  "(global_state_init) Initializing global state");
+    cilkrts_alert(BOOT, NULL, "(global_state_init) Initializing global state");
 
 #ifdef DEBUG
     setlinebuf(stderr);
@@ -78,8 +76,8 @@ global_state *global_state_init(int argc, char *argv[]) {
     // an environment variable indicating whether we are running a bench
     // with cilksan and should check for reducer race.
     g->options.force_reduce = env_get_int("CILK_FORCE_REDUCE");
-    if(g->options.force_reduce != 0) {
-        if(proc_override != 1) {
+    if (g->options.force_reduce != 0) {
+        if (proc_override != 1) {
             printf("CILK_FORCE_REDUCE is set to non-zero\n"
                    "but CILK_NWORKERS is not set to 1.  Running normally.\n");
             g->options.force_reduce = 0;
