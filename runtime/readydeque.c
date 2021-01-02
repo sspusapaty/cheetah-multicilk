@@ -97,7 +97,12 @@ Closure *deque_peek_top(__cilkrts_worker *const w, worker_id pn) {
     /* ANGE: return the top but does not unlink it from the rest */
     cl = w->g->deques[pn].top;
     if (cl) {
-        CILK_ASSERT(w, cl->owner_ready_deque == pn);
+        // If w is stealing, then it may peek the top of the deque of the worker
+        // who is in the midst of exiting a Cilkified region.  In that case, cl
+        // will be the root closure, and cl->owner_ready_deque is not
+        // necessarily pn.  The steal will subsequently fail do_dekker_on.
+        CILK_ASSERT(w, cl->owner_ready_deque == pn ||
+                           (w->self != pn && cl == w->g->root_closure));
     } else {
         CILK_ASSERT(w, w->g->deques[pn].bottom == (Closure *)NULL);
     }

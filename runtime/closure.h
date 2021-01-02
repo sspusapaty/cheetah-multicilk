@@ -177,4 +177,6 @@ CHEETAH_INTERNAL void Closure_suspend(__cilkrts_worker *const w, Closure *cl);
 CHEETAH_INTERNAL void Closure_make_ready(Closure *cl);
 CHEETAH_INTERNAL void Closure_destroy(__cilkrts_worker *const w, Closure *t);
 CHEETAH_INTERNAL void Closure_destroy_main(Closure *t);
+CHEETAH_INTERNAL void Closure_destroy_global(struct global_state *const g,
+                                             Closure *t);
 #endif

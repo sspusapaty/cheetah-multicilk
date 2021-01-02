@@ -14,7 +14,6 @@ set(CHEETAH_SOURCES
   global.c
   init.c
   internal-malloc.c
-  invoke-main.c
   mutex.c
   personality.c
   readydeque.c
@@ -49,9 +48,6 @@ else()
 endif()
 
 add_flags_if_supported(-g3)
-add_flags_if_supported(-mavx)
-add_flags_if_supported(-march=sandybridge)
-add_flags_if_supported(-fPIC)
 add_flags_if_supported(-Wno-covered-switch-default)
 if (CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
   set_source_files_properties(invoke-main.c PROPERTIES COMPILE_FLAGS -fno-omit-frame-pointer)
@@ -64,9 +60,6 @@ list(APPEND CHEETAH_COMPILE_DEFS OPENCILK_LIBRARY)
 set(CHEETAH_DEBUG_OPTIONS -Og)
 set(CHEETAH_RELEASE_OPTIONS -O3)
 
-split_list(CHEETAH_COMPILE_FLAGS)
-split_list(CHEETAH_LINK_FLAGS)
-
 # Setup flags and defs for cheetah bitcode ABI build
 set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS} -emit-llvm)
 set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
@@ -74,6 +67,18 @@ set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
   "CHEETAH_INTERNAL="
   "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
   "CILK_DEBUG=0")
+
+# Add compile flags for Cheetah-runtime compilation that should be
+# excluded from bitcode compilation
+if (CHEETAH_HAS_MAVX_FLAG)
+  list(APPEND CHEETAH_COMPILE_FLAGS -mavx)
+endif()
+if (CHEETAH_HAS_MARCH_SANDYBRIDGE_FLAG)
+  list(APPEND CHEETAH_COMPILER_FLAGS -march=sandybridge)
+endif()
+
+split_list(CHEETAH_COMPILE_FLAGS)
+split_list(CHEETAH_LINK_FLAGS)
 split_list(CHEETAH_BITCODE_ABI_COMPILE_FLAGS)
 
 # Build the shared library.
@@ -201,7 +206,7 @@ if (CHEETAH_ENABLE_BITCODE_ABI AND (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
   # cheetah_abi_bc_compile generates just one output, so there's
   # nothing to link together.
   add_custom_command(OUTPUT ${CHEETAH_ABI_BITCODE_FILE}
-    DEPENDS cheetah_abi_bc_compile
+    DEPENDS cheetah_abi_bc_compile ${CHEETAH_ABI_SOURCE}
     COMMAND cp $<TARGET_OBJECTS:cheetah_abi_bc_compile> ${CHEETAH_ABI_BITCODE_FILE}
     COMMENT "Generating ${CHEETAH_ABI_BITCODE_FILE}"
     VERBATIM

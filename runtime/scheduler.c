@@ -73,7 +73,9 @@ static void decrement_exception_pointer(__cilkrts_worker *const w,
                                         __cilkrts_worker *const victim_w,
                                         Closure *cl) {
     Closure_assert_ownership(w, cl);
-    CILK_ASSERT(w, cl->status == CLOSURE_RUNNING);
+    // It's possible that this steal attempt peeked the root closure from the
+    // top of a deque while a new Cilkified region was starting.
+    CILK_ASSERT(w, cl->status == CLOSURE_RUNNING || cl == w->g->root_closure);
     __cilkrts_stack_frame **exc =
         atomic_load_explicit(&victim_w->exc, memory_order_relaxed);
     if (exc != EXCEPTION_INFINITY) {
@@ -83,9 +85,7 @@ static void decrement_exception_pointer(__cilkrts_worker *const w,
 
 static void reset_exception_pointer(__cilkrts_worker *const w, Closure *cl) {
     Closure_assert_ownership(w, cl);
-    CILK_ASSERT(
-        w, (cl->frame == NULL) || (cl->frame->worker == w) ||
-               (cl == w->g->invoke_main && ((intptr_t)cl->frame->worker & 1)));
+    CILK_ASSERT(w, (cl->frame == NULL) || (cl->frame->worker == w));
     atomic_store_explicit(&w->exc,
                           atomic_load_explicit(&w->head, memory_order_relaxed),
                           memory_order_release);
@@ -202,7 +202,6 @@ static Closure *setup_call_parent_resumption(__cilkrts_worker *const w,
     return t;
 }
 
-CHEETAH_INTERNAL
 void Cilk_set_return(__cilkrts_worker *const w) {
 
     Closure *t;
@@ -247,7 +246,7 @@ void Cilk_set_return(__cilkrts_worker *const w) {
         deque_add_bottom(w, call_parent, w->self);
 
     } else {
-        CILK_ASSERT(w, t == w->g->invoke_main);
+        CILK_ASSERT(w, t == w->g->root_closure);
         Closure_unlock(w, t);
     }
     deque_unlock_self(w);
@@ -814,7 +813,7 @@ static Closure *promote_child(__cilkrts_worker *const w,
      * suspended
      */
     CILK_ASSERT(w,
-                cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
+                cl == w->g->root_closure || cl->spawn_parent || cl->call_parent);
 
     Closure *spawn_parent = NULL;
     /* JFC: Should this load be relaxed or acquire? */
@@ -1072,8 +1071,12 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
             break;
 
         default:
-            cilkrts_bug(victim_w, "Bug: %s closure in ready deque",
-                        Closure_status_to_str(cl->status));
+            // It's possible that this steal attempt peeked the root closure
+            // from the top of a deque while a new Cilkified region was
+            // starting.
+            if (cl != w->g->root_closure)
+                cilkrts_bug(victim_w, "Bug: %s closure in ready deque",
+                            Closure_status_to_str(cl->status));
         }
     } else {
         deque_unlock(w, victim);
@@ -1163,21 +1166,20 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         // only set in the personality function.)
         if ((sf->flags & CILK_FRAME_EXCEPTING) == 0) {
             CILK_ASSERT(w, t->orig_rsp == NULL);
-            CILK_ASSERT(w, in_fiber(fiber, (char *)FP(sf)));
+            CILK_ASSERT(w, (sf->flags & CILK_FRAME_LAST) ||
+                               in_fiber(fiber, (char *)FP(sf)));
             CILK_ASSERT(w, in_fiber(fiber, (char *)SP(sf)));
         }
         sf->flags &= ~CILK_FRAME_EXCEPTING;
 
         w->l->provably_good_steal = false;
     } else { // this is stolen work; the fiber is a new fiber
-        // This is the first time we run the root frame, invoke_main
-        // init_fiber_run is going to setup the fiber for unning user code
-        // and "longjmp" into invoke_main (at the very beginning of the
-        // function) after user fiber is set up.
-        volatile bool *initialized = &w->g->invoke_main_initialized;
-        if (t == w->g->invoke_main && *initialized == 0) {
+        // This is the first time we run the root closure in this Cilkified
+        // region.  The closure has been completely setup at this point by
+        // invoke_cilkified_root().  We just need jump to the user code.
+        volatile bool *initialized = &w->g->root_closure_initialized;
+        if (t == w->g->root_closure && *initialized == 0) {
             *initialized = true;
-            init_fiber_run(w, fiber, sf);
         } else if (!t->simulated_stolen) {
             void *new_rsp = sysdep_reset_stack_for_resume(fiber, sf);
             USE_UNUSED(new_rsp);
@@ -1442,7 +1444,10 @@ void worker_scheduler(__cilkrts_worker *w, Closure *t) {
             }
         }
         CILK_START_TIMING(w, INTERVAL_SCHED);
-        if (!atomic_load_explicit(&w->g->done, memory_order_acquire)) {
+        // If one Cilkified region stops and another one starts, then a worker
+        // can reach this point with t == NULL and w->g->done == false.  Check
+        // that t is not NULL before calling do_what_it_says.
+        if (t) {
             // if provably-good steal happens, do_what_it_says will return
             // the next closure to execute
             t = do_what_it_says(w, t);

@@ -105,44 +105,11 @@ static void fiber_init(struct cilk_fiber *fiber) {
     fiber->owner = NULL;
 }
 
-/*
- * Restore the floating point state that is stored in a stack frame at each
- * spawn.  This should be called each time a frame is resumed.  OpenCilk
- * only saves MXCSR.  The 80387 status word is obsolete.
- */
-static void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
-    /* TODO: Find a way to do this only when using floating point. */
-#ifdef CHEETAH_SAVE_MXCSR
-#if 1
-    __asm__ volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
-#else
-    /* Disabled because LLVM's implementation is bad. */
-    __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
-#endif
-#endif
-
-#ifdef __AVX__
-    /* VZEROUPPER improves performance when mixing SSE and AVX code.
-       VZEROALL would work as well here because vector registers are
-       dead but takes about 10 cycles longer. */
-    __builtin_ia32_vzeroupper();
-#endif
-}
 
 //===============================================================
 // Supported public functions
 //===============================================================
 
-void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
-#ifdef CHEETAH_SAVE_MXCSR
-#if 1
-    __asm__("stmxcsr %0" : "=m"(sf->mxcsr));
-#else
-    /* Disabled because LLVM's implementation is bad. */
-    sf->mxcsr = __builtin_ia32_stmxcsr(); /* aka _mm_setcsr */
-#endif
-#endif
-}
 
 char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
                                     __cilkrts_stack_frame *sf) {
@@ -176,48 +143,6 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     __builtin_longjmp(sf->ctx, 1);
 }
 
-CHEETAH_INTERNAL_NORETURN
-void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
-                    __cilkrts_stack_frame *sf) {
-    // owner of fiber not set at the moment
-    cilkrts_alert(FIBER, w, "(cilk_fiber_run) starting fiber %p",
-                  (void *)fiber);
-
-    /* The if-else block is a longwinded way of changing the stack pointer
-       onto the fiber.  A single assembly instruction would be sufficient
-       if the compiler understood it could not save stack addresses in
-       registers across the operation.
-
-       TODO 1: It would probably be simpler to write a little assembly
-       language for each target.
-       TODO 2: A comment in the old Cilk code said longjmp should not
-       be used to return to a setjmp in the same function. */
-    if (__builtin_setjmp(sf->ctx) == 0) {
-        size_t frame_size = (size_t)FP(sf) - (size_t)SP(sf);
-        /* This should not be needed if the original frame pointer
-           is aligned, but the old Cilk code aligned the stack and
-           doing it doesn't cost much. */
-        frame_size =
-            (frame_size + MAX_STACK_ALIGN - 1) & ~(MAX_STACK_ALIGN - 1);
-
-        /* The stack frame should be small.  If it exceeeds 1000 bytes
-           there is probably a bug in the frame size calculation, e.g.
-           the compiler may have eliminated the frame pointer. */
-        CILK_ASSERT_G(frame_size <= 1000);
-
-        /* Switch to the fiber reserving frame_size bytes for this
-           function's stack. */
-        SP(sf) = fiber->stack_high - frame_size;
-        __builtin_longjmp(sf->ctx, 1);
-    } else {
-        // fiber is set up; now we longjmp into invoke_main; switch sched_stats
-        CILK_STOP_TIMING(w, INTERVAL_SCHED);
-        CILK_START_TIMING(w, INTERVAL_WORK);
-        invoke_main();
-    }
-
-    CILK_ASSERT_G(0); // should never get here
-}
 
 struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
     struct cilk_fiber *fiber =

@@ -15,6 +15,8 @@
 #include "readydeque.h"
 #include "reducer_impl.h"
 
+global_state *default_cilkrts;
+
 static global_state *global_state_allocate() {
     parse_environment(); /* sets alert level */
     cilkrts_alert(BOOT, NULL, "(global_state_init) Allocating global state");
@@ -24,6 +26,12 @@ static global_state *global_state_allocate() {
 
     cilk_mutex_init(&g->im_lock);
     cilk_mutex_init(&g->print_lock);
+
+    // TODO: Convert to cilk_* equivalents
+    pthread_mutex_init(&g->cilkified_lock, NULL);
+    pthread_cond_init(&g->cilkified_cond_var, NULL);
+    pthread_mutex_init(&g->start_lock, NULL);
+    pthread_cond_init(&g->start_cond_var, NULL);
 
     return g;
 }
@@ -97,10 +105,13 @@ global_state *global_state_init(int argc, char *argv[]) {
     g->nworkers = active_size;
     cilkg_nproc = active_size;
 
-    g->invoke_main_initialized = false;
+    g->workers_started = false;
+    g->root_closure_initialized = false;
     atomic_store_explicit(&g->start, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
-    atomic_store_explicit(&g->cilk_main_return, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
+    g->terminate = false;
+    g->exiting_worker = 0;
     atomic_store_explicit(&g->reducer_map_count, 0, memory_order_relaxed);
 
     g->workers =
@@ -112,23 +123,32 @@ global_state *global_state_init(int argc, char *argv[]) {
     cilk_fiber_pool_global_init(g);
     cilk_global_sched_stats_init(&(g->stats));
 
-    g->cilk_main_argc = argc;
-    g->cilk_main_args = argv;
-
     g->id_manager = NULL;
 
     return g;
 }
 
+void set_nworkers(global_state *g, unsigned int nworkers) {
+    CILK_ASSERT_G(!g->workers_started);
+    CILK_ASSERT_G(nworkers <= g->options.nproc);
+    CILK_ASSERT_G(nworkers > g->exiting_worker);
+    g->nworkers = nworkers;
+}
+
+void set_force_reduce(global_state *g, unsigned int force_reduce) {
+    CILK_ASSERT_G(!g->workers_started);
+    g->options.force_reduce = force_reduce;
+}
+
 void for_each_worker(global_state *g, void (*fn)(__cilkrts_worker *, void *),
                      void *data) {
-    for (unsigned i = 0; i < g->nworkers; ++i)
+    for (unsigned i = 0; i < g->options.nproc; ++i)
         fn(g->workers[i], data);
 }
 
 void for_each_worker_rev(global_state *g,
                          void (*fn)(__cilkrts_worker *, void *), void *data) {
-    unsigned i = g->nworkers;
+    unsigned i = g->options.nproc;
     while (i-- > 0)
         fn(g->workers[i], data);
 }

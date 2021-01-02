@@ -50,7 +50,11 @@ int __cilkrts_atexit(void (*callback)(void)) {
 //
 // TODO: Figure out how we want to support worker-local storage.
 unsigned __cilkrts_get_worker_number(void) {
-    return __cilkrts_get_tls_worker()->self;
+    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    if (w)
+        return w->self;
+    // Use the last exiting worker from default_cilkrts instead
+    return default_cilkrts->exiting_worker;
 }
 
 /* void __cilkrts_pedigree_bump_rank(void) { */

@@ -328,7 +328,7 @@ void Closure_suspend_victim(__cilkrts_worker *thief, __cilkrts_worker *victim,
     Closure_assert_ownership(thief, cl);
     deque_assert_ownership(thief, victim->self);
 
-    CILK_ASSERT(thief, cl == thief->g->invoke_main || cl->spawn_parent ||
+    CILK_ASSERT(thief, cl == thief->g->root_closure || cl->spawn_parent ||
                            cl->call_parent);
 
     Closure_change_status(thief, cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);
@@ -350,8 +350,8 @@ void Closure_suspend(__cilkrts_worker *const w, Closure *cl) {
     Closure_assert_ownership(w, cl);
     deque_assert_ownership(w, w->self);
 
-    CILK_ASSERT(w,
-                cl == w->g->invoke_main || cl->spawn_parent || cl->call_parent);
+    CILK_ASSERT(w, cl == w->g->root_closure || cl->spawn_parent ||
+                       cl->call_parent);
     CILK_ASSERT(w, cl->frame != NULL);
     CILK_ASSERT(w, __cilkrts_stolen(cl->frame));
     CILK_ASSERT(w, cl->frame->worker->self == w->self);
@@ -408,4 +408,14 @@ void Closure_destroy(struct __cilkrts_worker *const w, Closure *t) {
     t->status = CLOSURE_POST_INVALID;
     Closure_clean(w, t);
     cilk_internal_free(w, t, sizeof(*t), IM_CLOSURE);
+}
+
+/* Destroy the closure and internally free it (put back to global pool), after
+   workers have been terminated.
+ */
+void Closure_destroy_global(struct global_state *const g, Closure *t) {
+    cilkrts_alert(CLOSURE, NULL, "Deallocate closure %p", (void *)t);
+    t->status = CLOSURE_POST_INVALID;
+    Closure_clean(NULL, t);
+    cilk_internal_free_global(g, t, sizeof(*t), IM_CLOSURE);
 }

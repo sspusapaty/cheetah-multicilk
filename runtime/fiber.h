@@ -39,16 +39,49 @@ struct cilk_fiber; // opaque type
 // Supported functions
 //===============================================================
 
-CHEETAH_INTERNAL
-void sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf);
+static inline __attribute__((always_inline)) void
+sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
+#ifdef CHEETAH_SAVE_MXCSR
+#if 1
+    __asm__("stmxcsr %0" : "=m"(sf->mxcsr));
+#else
+    /* Disabled because LLVM's implementation is bad. */
+    sf->mxcsr = __builtin_ia32_stmxcsr(); /* aka _mm_setcsr */
+#endif
+#endif
+}
+
+/*
+ * Restore the floating point state that is stored in a stack frame at each
+ * spawn.  This should be called each time a frame is resumed.  OpenCilk
+ * only saves MXCSR.  The 80387 status word is obsolete.
+ */
+static inline
+__attribute__((always_inline))
+void sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
+    /* TODO: Find a way to do this only when using floating point. */
+#ifdef CHEETAH_SAVE_MXCSR
+#if 1
+    __asm__ volatile("ldmxcsr %0" : : "m"(sf->mxcsr));
+#else
+    /* Disabled because LLVM's implementation is bad. */
+    __builtin_ia32_ldmxcsr(sf->mxcsr); /* aka _mm_getcsr */
+#endif
+#endif
+
+#ifdef __AVX__
+    /* VZEROUPPER improves performance when mixing SSE and AVX code.
+       VZEROALL would work as well here because vector registers are
+       dead but takes about 10 cycles longer. */
+    __builtin_ia32_vzeroupper();
+#endif
+}
+
 CHEETAH_INTERNAL
 char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
                                     __cilkrts_stack_frame *sf);
 CHEETAH_INTERNAL_NORETURN
 void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf);
-CHEETAH_INTERNAL_NORETURN
-void init_fiber_run(__cilkrts_worker *w, struct cilk_fiber *fiber,
-                    __cilkrts_stack_frame *sf);
 
 CHEETAH_INTERNAL void cilk_fiber_pool_global_init(global_state *g);
 CHEETAH_INTERNAL void cilk_fiber_pool_global_terminate(global_state *g);
