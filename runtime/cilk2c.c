@@ -175,6 +175,11 @@ void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
     SP(sf) = (void *)t->parent_rsp;
     t->parent_rsp = NULL;
 
+    if (t->saved_throwing_fiber) {
+        cilk_fiber_deallocate_to_pool(w, t->saved_throwing_fiber);
+        t->saved_throwing_fiber = NULL;
+    }
+
     deque_unlock_self(w);
     __builtin_longjmp(sf->ctx, 1); // Does not return
     return;

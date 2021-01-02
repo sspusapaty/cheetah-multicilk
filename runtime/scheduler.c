@@ -1256,8 +1256,10 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         // fiber for unwinding.
         if (t->user_exn.exn == NULL) {
             w->l->fiber_to_free = t->fiber;
+        } else {
+            t->saved_throwing_fiber = t->fiber;
         }
-        t->fiber = NULL; /* JFC: is this a leak? */
+        t->fiber = NULL;
         // place holder for reducer map; the view in tlmm (if any) are
         // updated by the last strand in Closure t before sync; need to
         // reduce these when successful provably good steal occurs

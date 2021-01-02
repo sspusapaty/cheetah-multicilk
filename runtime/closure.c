@@ -143,6 +143,7 @@ static inline void Closure_init(Closure *t) {
     clear_closure_exception(&(t->user_exn));
     t->reraise_cfa = NULL;
     t->parent_rsp = NULL;
+    t->saved_throwing_fiber = NULL;
 
     atomic_store_explicit(&t->child_rmap, NULL, memory_order_relaxed);
     atomic_store_explicit(&t->right_rmap, NULL, memory_order_relaxed);

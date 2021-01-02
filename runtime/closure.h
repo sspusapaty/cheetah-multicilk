@@ -106,6 +106,7 @@ struct Closure {
 
     char *reraise_cfa;
     char *parent_rsp;
+    struct cilk_fiber *saved_throwing_fiber;
 
     // cilkred_map *children_reducer_map;
     // cilkred_map *right_reducer_map;
