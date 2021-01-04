@@ -29,13 +29,13 @@ void __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     w->current_stack_frame = sf;
     // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
 
-    // Pedigree maintenance.
-    if (sf->call_parent != NULL) {
-        sf->parent_rank = sf->call_parent->rank++;
-    } else {
-        sf->parent_rank = -1;
-    }
-    sf->rank = 0;
+    /* // Pedigree maintenance. */
+    /* if (sf->call_parent != NULL) { */
+    /*     sf->parent_rank = sf->call_parent->rank++; */
+    /* } else { */
+    /*     sf->parent_rank = -1; */
+    /* } */
+    /* sf->rank = 0; */
 }
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
@@ -49,13 +49,13 @@ void __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     atomic_store_explicit(&sf->worker, w, memory_order_relaxed);
     w->current_stack_frame = sf;
 
-    // Pedigree maintenance.
-    if (sf->call_parent != NULL) {
-        sf->parent_rank = sf->call_parent->rank++;
-    } else {
-        sf->parent_rank = -1;
-    }
-    sf->rank = 0;
+    /* // Pedigree maintenance. */
+    /* if (sf->call_parent != NULL) { */
+    /*     sf->parent_rank = sf->call_parent->rank++; */
+    /* } else { */
+    /*     sf->parent_rank = -1; */
+    /* } */
+    /* sf->rank = 0; */
 }
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
