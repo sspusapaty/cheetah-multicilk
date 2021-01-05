@@ -1008,6 +1008,18 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
     Closure *cl;
     Closure *res = (Closure *)NULL;
     __cilkrts_worker *victim_w;
+    victim_w = w->g->workers[victim];
+
+    // Fast test for an unsuccessful steal attempt using only read operations.
+    // This fast test seems to improve parallel performance.
+    {
+        __cilkrts_stack_frame **head =
+            atomic_load_explicit(&victim_w->head, memory_order_relaxed);
+        __cilkrts_stack_frame **tail =
+            atomic_load_explicit(&victim_w->tail, memory_order_relaxed);
+        if (head >= tail)
+            return NULL;
+    }
 
     //----- EVENT_STEAL_ATTEMPT
     if (deque_trylock(w, victim) == 0) {
@@ -1024,7 +1036,6 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
 
         // cilkrts_alert(STEAL, "[%d]: trying steal from W%d; cl=%p",
         // (void *)victim, (void *)cl);
-        victim_w = w->g->workers[victim];
 
         switch (cl->status) {
         case CLOSURE_RUNNING:
