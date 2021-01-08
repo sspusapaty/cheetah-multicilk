@@ -97,7 +97,7 @@ int main(int argc, char * args[]) {
         begin = ktiming_getmark();
         res = fib(n);
         end = ktiming_getmark();
-        running_time[i] = ktiming_diff_usec(&begin, &end);
+        running_time[i] = ktiming_diff_nsec(&begin, &end);
     }
     printf("Result: %d\n", res);
     print_runtime(running_time, TIMING_COUNT); 

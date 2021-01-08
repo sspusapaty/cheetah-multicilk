@@ -557,7 +557,7 @@ int main(int argc, char **argv) {
         begin = ktiming_getmark();
         cilksort(array, tmp, size);
         end = ktiming_getmark();
-        elapsed[i] = ktiming_diff_usec(&begin, &end);
+        elapsed[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(elapsed, TIMING_COUNT);
 

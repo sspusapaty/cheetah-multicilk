@@ -208,7 +208,7 @@ static void test_mm(int n, int check) {
         begin = ktiming_getmark();
         mm_dac(C, A, B, n, n);
         end = ktiming_getmark();
-        running_time[i] = ktiming_diff_usec(&begin, &end);
+        running_time[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(running_time, TIMING_COUNT);
 
