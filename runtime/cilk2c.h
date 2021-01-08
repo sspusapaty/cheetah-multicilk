@@ -4,9 +4,6 @@
 #include "cilk-internal.h"
 #include <stdlib.h>
 
-// mainly used by invoke-main.c
-CHEETAH_INTERNAL unsigned long cilkrts_zero;
-
 // These functions are mostly inlined by the compiler, except for
 // __cilkrts_leave_frame.  However, their implementations are also
 // provided in cilk2c.c.  The implementations in cilk2c.c are used

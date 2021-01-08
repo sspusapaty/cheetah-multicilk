@@ -20,7 +20,6 @@ set(CHEETAH_SOURCES
   reducer_impl.c
   sched_stats.c
   scheduler.c
-  ZERO.c
 )
 
 # We assume there is just one source file to compile for the cheetah
