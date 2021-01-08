@@ -139,6 +139,7 @@ void __cilkrts_detach(__cilkrts_stack_frame *sf) {
 }
 
 // inlined by the compiler; this implementation is only used in invoke-main.c
+__attribute__((always_inline))
 void __cilkrts_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
     sysdep_save_fp_ctrl_state(sf);
 }
