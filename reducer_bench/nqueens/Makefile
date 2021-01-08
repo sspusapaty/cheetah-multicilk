@@ -32,8 +32,8 @@ nqueens: board.o nqueens.o ktiming.o
 #	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
 
 check: nqueens_int nqueens
-	./nqueens_int --nproc 2
-	./nqueens --nproc 2
+	CILK_NWORKERS=2 ./nqueens_int
+	CILK_NWORKERS=2 ./nqueens
 
 clean:
 	rm -f nqueens_int nqueens *.o *~ core.*
