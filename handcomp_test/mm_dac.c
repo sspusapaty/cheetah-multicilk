@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "../runtime/cilk2c.h"
+#include "../runtime/cilk2c_inlined.c"
 #include "ktiming.h"
 #include "getoptions.h"
 
@@ -15,6 +16,7 @@
 #define FALSE 0
 
 extern size_t ZERO;
+void __attribute__((weak)) dummy(void *p) { return; }
 
 unsigned int randomSeed = 1;
 
@@ -79,7 +81,7 @@ static void mm_dac(int *C, const int *A, const int *B, int n, int length) {
         return;
     }
 
-    alloca(ZERO);
+    dummy(alloca(ZERO));
     __cilkrts_stack_frame sf;
     __cilkrts_enter_frame(&sf);
 
@@ -156,7 +158,8 @@ static void mm_dac(int *C, const int *A, const int *B, int n, int length) {
     }
 
     __cilkrts_pop_frame(&sf);
-    __cilkrts_leave_frame(&sf);
+    if (0 != sf.flags)
+        __cilkrts_leave_frame(&sf);
 }
 
 __attribute__((noinline))
@@ -236,7 +239,7 @@ static int is_power_of_2(int n) {
 const char *specifiers[] = {"-n", "-c", "-h", 0};
 int opt_types[] = {LONGARG, BOOLARG, BOOLARG, 0};
 
-int cilk_main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     long size;
     int help, check;
