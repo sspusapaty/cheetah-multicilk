@@ -36,6 +36,43 @@ static global_state *global_state_allocate() {
     return g;
 }
 
+// Methods for setting runtime options.
+void set_stacksize(global_state *g, size_t stacksize) {
+    // TODO: Verify that g has not yet been initialized.
+    CILK_ASSERT_G(!g->workers_started);
+    CILK_ASSERT_G(stacksize >= 16384);
+    CILK_ASSERT_G(stacksize <= 100 * 1024 * 1024);
+    g->options.stacksize = stacksize;
+}
+
+void set_deqdepth(global_state *g, unsigned int deqdepth) {
+    // TODO: Verify that g has not yet been initialized.
+    CILK_ASSERT_G(!g->workers_started);
+    CILK_ASSERT_G(deqdepth >= 1);
+    CILK_ASSERT_G(deqdepth <= 99999);
+    g->options.deqdepth = deqdepth;
+}
+
+void set_fiber_pool_cap(global_state *g, unsigned int fiber_pool_cap) {
+    // TODO: Verify that g has not yet been initialized.
+    CILK_ASSERT_G(!g->workers_started);
+    CILK_ASSERT_G(fiber_pool_cap >= 8);
+    CILK_ASSERT_G(fiber_pool_cap <= 999999);
+    g->options.fiber_pool_cap = fiber_pool_cap;
+}
+
+void set_nworkers(global_state *g, unsigned int nworkers) {
+    CILK_ASSERT_G(!g->workers_started);
+    CILK_ASSERT_G(nworkers <= g->options.nproc);
+    CILK_ASSERT_G(nworkers > g->exiting_worker);
+    g->nworkers = nworkers;
+}
+
+void set_force_reduce(global_state *g, unsigned int force_reduce) {
+    CILK_ASSERT_G(!g->workers_started);
+    g->options.force_reduce = force_reduce;
+}
+
 global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(BOOT, NULL, "(global_state_init) Initializing global state");
 
@@ -52,6 +89,19 @@ global_state *global_state_init(int argc, char *argv[]) {
     }
 
     parse_environment();
+
+    // Set global RTS options from environment variables.
+    {
+        size_t stacksize = env_get_int("CILK_STACKSIZE");
+        if (stacksize > 0)
+            set_stacksize(g, stacksize);
+        unsigned int deqdepth = env_get_int("CILK_DEQDEPTH");
+        if (deqdepth > 0)
+            set_deqdepth(g, deqdepth);
+        unsigned int fiber_pool_cap = env_get_int("CILK_FIBER_POOL");
+        if (fiber_pool_cap > 0)
+            set_fiber_pool_cap(g, fiber_pool_cap);
+    }
 
     long proc_override = env_get_int("CILK_NWORKERS");
     if (g->options.nproc == 0) {
@@ -126,18 +176,6 @@ global_state *global_state_init(int argc, char *argv[]) {
     g->id_manager = NULL;
 
     return g;
-}
-
-void set_nworkers(global_state *g, unsigned int nworkers) {
-    CILK_ASSERT_G(!g->workers_started);
-    CILK_ASSERT_G(nworkers <= g->options.nproc);
-    CILK_ASSERT_G(nworkers > g->exiting_worker);
-    g->nworkers = nworkers;
-}
-
-void set_force_reduce(global_state *g, unsigned int force_reduce) {
-    CILK_ASSERT_G(!g->workers_started);
-    g->options.force_reduce = force_reduce;
 }
 
 void for_each_worker(global_state *g, void (*fn)(__cilkrts_worker *, void *),

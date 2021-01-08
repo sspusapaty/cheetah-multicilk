@@ -79,11 +79,14 @@ struct global_state {
 
 extern global_state *default_cilkrts;
 
+CHEETAH_INTERNAL void set_stacksize(global_state *g, size_t stacksize);
+CHEETAH_INTERNAL void set_deqdepth(global_state *g, unsigned int deqdepth);
+CHEETAH_INTERNAL void set_fiber_pool_cap(global_state *g,
+                                         unsigned int fiber_pool_cap);
+CHEETAH_INTERNAL void set_nworkers(global_state *g, unsigned int nworkers);
+CHEETAH_INTERNAL void set_force_reduce(global_state *g,
+                                       unsigned int force_reduce);
 CHEETAH_INTERNAL global_state *global_state_init(int argc, char *argv[]);
-CHEETAH_INTERNAL
-void set_nworkers(global_state *g, unsigned int nworkers);
-CHEETAH_INTERNAL
-void set_force_reduce(global_state *g, unsigned int force_reduce);
 CHEETAH_INTERNAL void for_each_worker(global_state *,
                                       void (*)(__cilkrts_worker *, void *),
                                       void *data);
