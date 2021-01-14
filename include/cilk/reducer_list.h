@@ -588,8 +588,8 @@ public:
      */
     void reduce(op_list_append_view* right)
     {
-        __CILKRTS_ASSERT(
-            this->m_value.get_allocator() == right->m_value.get_allocator());
+        //__CILKRTS_ASSERT(
+        //    this->m_value.get_allocator() == right->m_value.get_allocator());
         this->m_value.splice(end(), right->m_value);
     }
 };
@@ -737,8 +737,8 @@ public:
      */
     void reduce(op_list_prepend_view* right)
     {
-        __CILKRTS_ASSERT(
-            this->m_value.get_allocator() == right->m_value.get_allocator());
+        //__CILKRTS_ASSERT(
+        //    this->m_value.get_allocator() == right->m_value.get_allocator());
         this->m_value.splice(begin(), right->m_value);
     }
 };

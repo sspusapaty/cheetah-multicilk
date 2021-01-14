@@ -26,6 +26,8 @@ typedef struct local_state local_state;
 // Cilk stack frame related defs
 //===============================================
 
+
+
 /**
  * Every spawning function has a frame descriptor.  A spawning function
  * is a function that spawns or detaches.  Only spawning functions
@@ -65,6 +67,13 @@ struct __cilkrts_stack_frame {
 #else
     uint32_t reserved1;
 #endif
+#endif
+
+#ifdef ENABLE_CILKRTS_PEDIGREE
+    __cilkrts_pedigree pedigree; // Fields for pedigrees.
+    int64_t rank;
+    //uint64_t dprng_dotproduct;
+    //int64_t dprng_depth;
 #endif
     /* // Fields for pedigrees. */
     /* int64_t rank; */

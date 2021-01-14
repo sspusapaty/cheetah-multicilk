@@ -28,6 +28,10 @@ set(CHEETAH_ABI_SOURCE
   cilk2c_inlined.c
 )
 
+set(CHEETAH_PEDIGREE_GLOBALS_SOURCES
+  pedigree_globals.c
+)
+
 set(CHEETAH_PERSONALITY_C_SOURCES
   personality-c.c
 )
@@ -66,6 +70,12 @@ set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
   "CHEETAH_INTERNAL="
   "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
   "CILK_DEBUG=0")
+set(CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
+  "CHEETAH_API="
+  "CHEETAH_INTERNAL="
+  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
+  "CILK_DEBUG=0"
+  "ENABLE_CILKRTS_PEDIGREE=1")
 
 # Add compile flags for Cheetah-runtime compilation that should be
 # excluded from bitcode compilation
@@ -133,6 +143,24 @@ if (CHEETAH_ENABLE_SHARED)
     list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_personality_cpp_shared")
   endif()
 
+  add_library(cheetah_pedigree_globals_shared SHARED ${CHEETAH_PEDIGREE_GLOBALS_SOURCES})
+  target_link_libraries(cheetah_pedigree_globals_shared ${CHEETAH_LIBRARIES})
+  set_target_properties(cheetah_pedigree_globals_shared
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_COMPILE_DEFS}"
+      LINK_FLAGS    "${CHEETAH_LINK_FLAGS}"
+      OUTPUT_NAME   "pedigree_globals"
+      VERSION       "${CHEETAH_ABI_VERSION}.0"
+      SOVERSION     "${CHEETAH_ABI_VERSION}"
+  )
+  target_compile_options(cheetah_pedigree_globals_shared PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_pedigree_globals_shared PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_pedigree_globals_shared")
+  if (CHEETAH_INSTALL_SHARED_LIBRARY)
+    list(APPEND CHEETAH_INSTALL_TARGETS "cheetah_pedigree_globals_shared")
+  endif()
+
 endif()
 
 # Build the static library.
@@ -193,6 +221,7 @@ if (CHEETAH_ENABLE_BITCODE_ABI AND (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
   set(CHEETAH_ABI_BITCODE_FILE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libopencilk-abi.bc")
   # Commands to compile the source files for the ABI into bitcode.
   add_library(cheetah_abi_bc_compile OBJECT ${CHEETAH_ABI_SOURCE})
+
   set_target_properties(cheetah_abi_bc_compile
     PROPERTIES
       COMPILE_FLAGS "${CHEETAH_BITCODE_ABI_COMPILE_FLAGS}"
@@ -222,6 +251,44 @@ if (CHEETAH_ENABLE_BITCODE_ABI AND (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
     list(APPEND CHEETAH_INSTALL_FILES ${CHEETAH_ABI_BITCODE_FILE})
   endif()
 endif()
+
+# Build the Cheetah ABI as LLVM bitcode (for pedigrees)
+if (CHEETAH_ENABLE_BITCODE_ABI AND (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
+  set(CHEETAH_PEDIGREE_ABI_BITCODE_FILE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libopencilk-pedigrees-abi.bc")
+  # Commands to compile the source files for the ABI into bitcode.
+  add_library(cheetah_pedigree_abi_bc_compile OBJECT ${CHEETAH_ABI_SOURCE})
+
+  set_target_properties(cheetah_pedigree_abi_bc_compile
+    PROPERTIES
+      COMPILE_FLAGS "${CHEETAH_BITCODE_ABI_COMPILE_FLAGS}"
+      COMPILE_DEFINITIONS "${CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS}"
+    )
+  target_compile_options(cheetah_pedigree_abi_bc_compile PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
+  target_compile_options(cheetah_pedigree_abi_bc_compile PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
+
+  # Custom command to generate the ABI bitcode file.  We assume that
+  # cheetah_abi_bc_compile generates just one output, so there's
+  # nothing to link together.
+  add_custom_command(OUTPUT ${CHEETAH_PEDIGREE_ABI_BITCODE_FILE}
+    DEPENDS cheetah_pedigree_abi_bc_compile ${CHEETAH_ABI_SOURCE}
+    COMMAND cp $<TARGET_OBJECTS:cheetah_pedigree_abi_bc_compile> ${CHEETAH_PEDIGREE_ABI_BITCODE_FILE}
+    COMMENT "Generating ${CHEETAH_PEDIGREE_ABI_BITCODE_FILE}"
+    VERBATIM
+  )
+
+  # Add a top-level custom target to drive the creation of the ABI
+  # bitcode file.
+  add_custom_target(cheetah_pedigree_abi_bc ALL DEPENDS ${CHEETAH_PEDIGREE_ABI_BITCODE_FILE})
+  list(APPEND CHEETAH_BUILD_TARGETS "cheetah_pedigree_abi_bc")
+  # Because the ABI bitcode file is a custom target, we cannot use
+  # CMake's install(TARGETS) to install it.  Instead, we use
+  # install(FILES) to install bitcode ABI file.
+  if (CHEETAH_INSTALL_BITCODE_ABI)
+    list(APPEND CHEETAH_INSTALL_FILES ${CHEETAH_PEDIGREE_ABI_BITCODE_FILE})
+  endif()
+endif()
+
+
 
 if (CHEETAH_INSTALL_LIBRARY)
   install(TARGETS ${CHEETAH_INSTALL_TARGETS}

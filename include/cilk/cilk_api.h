@@ -9,7 +9,18 @@ extern int __cilkrts_atexit(void (*callback)(void));
 extern unsigned __cilkrts_get_nworkers(void);
 extern unsigned __cilkrts_get_worker_number(void) __attribute__((deprecated));
 struct __cilkrts_worker *__cilkrts_get_tls_worker(void);
-/* extern int64_t* __cilkrts_get_pedigree(void); */
+
+
+#ifdef ENABLE_CILKRTS_PEDIGREE
+#include <inttypes.h>
+typedef struct __cilkrts_pedigree {
+    uint64_t rank;
+    struct __cilkrts_pedigree *parent;
+} __cilkrts_pedigree;
+extern __cilkrts_pedigree __cilkrts_get_pedigree(void);
+extern void __cilkrts_bump_worker_rank(void);
+#endif
+
 #undef VISIBILITY
 
 #ifdef __cplusplus

@@ -10,7 +10,7 @@ BITCODE_ABI = $(MAIN)-abi.bc
 SRCS = $(filter-out $(PERSON_C_SRC).c, $(filter-out $(PERSON_CPP_SRC).c, $(filter-out invoke-main.c, $(wildcard *.c))))
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
-INCLUDES =
+INCLUDES = -I../include/
 DEFINES = $(REDUCER_DEF) $(ABI_DEF) $(ALERT_DEF)
 OPTIONS = $(OPT) $(DBG) $(ARCH) -Werror -Wall -fpic $(DEFINES) $(INCLUDES)
 
@@ -48,8 +48,14 @@ build/%.o: %.c $(HDRS)
 	$(CC) -c $(OPTIONS) -o $@ $<
 
 
+build/pedigree_globals.a: build/pedigree_globals.o
+	ar rcs $@ $^
+
+build/libpedigree_globals.so: build/pedigree_globals.o
+	$(CC) -shared -o $@ $^
+
 build/cilk2c_inlined.bc: cilk2c_inlined.c $(HDRS)
-	$(CC) -O3 -DCHEETAH_API="" -DCHEETAH_INTERNAL_NORETURN='__attribute((noreturn))' -DCHEETAH_INTERNAL="" -DCILK_DEBUG=0 -c -emit-llvm -o $@ $<
+	$(CC) -O3 -DCHEETAH_API="" -DCHEETAH_INTERNAL_NORETURN='__attribute((noreturn))' -DCHEETAH_INTERNAL="" -DCILK_DEBUG=0 -DENABLE_CILKRTS_PEDIGREE=1 -c -emit-llvm $(INCLUDES) -o $@ $<
 
 $(BITCODE_ABI) : build/cilk2c_inlined.bc
 	cp $< $@

@@ -18,6 +18,10 @@
 #include "readydeque.h"
 #include "scheduler.h"
 
+#ifdef ENABLE_CILKRTS_PEDIGREE
+extern __cilkrts_pedigree cilkrts_root_pedigree_node;
+#endif
+
 // Begin a Cilkified region.  The routine runs on a Cilkifying thread to
 // transfer the execution of this function to the workers in global_state g.
 // This routine must be inlined for correctness.
@@ -63,6 +67,34 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
     }
 }
 
+
+#ifdef ENABLE_CILKRTS_PEDIGREE
+__attribute__((always_inline))
+__cilkrts_pedigree __cilkrts_get_pedigree(void) {
+  __cilkrts_worker *w = __cilkrts_get_tls_worker();
+  if (w == NULL) {
+    return cilkrts_root_pedigree_node;
+  } else {
+    __cilkrts_pedigree ret_ped;
+    ret_ped.parent = &(w->current_stack_frame->pedigree);
+    ret_ped.rank = w->current_stack_frame->rank;
+    return ret_ped;
+  }
+}
+
+__attribute__((always_inline))
+void __cilkrts_bump_worker_rank(void) {
+    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    if (w == NULL) {
+      cilkrts_root_pedigree_node.rank++;
+    } else {
+      w->current_stack_frame->rank++;
+    }
+    //w->current_stack_frame->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(w->current_stack_frame->dprng_dotproduct, dprng_m_array[w->current_stack_frame->dprng_depth]);
+}
+#endif
+
+
 // Enter a new Cilk function, i.e., a function that contains a cilk_spawn.  This
 // function must be inlined for correctness.
 __attribute__((always_inline)) void
@@ -80,6 +112,23 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     atomic_store_explicit(&sf->worker, w, memory_order_relaxed);
     w->current_stack_frame = sf;
     // WHEN_CILK_DEBUG(sf->magic = CILK_STACKFRAME_MAGIC);
+
+    #ifdef ENABLE_CILKRTS_PEDIGREE
+    // Pedigree maintenance.
+    if (sf->call_parent != NULL && !(sf->flags & CILK_FRAME_LAST)) {
+        sf->pedigree.rank = sf->call_parent->rank++;
+        sf->pedigree.parent = &(sf->call_parent->pedigree);
+        //sf->dprng_depth = sf->call_parent->dprng_depth+1;
+        //sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
+        //sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
+    } else {
+        sf->pedigree.rank = 0;
+        sf->pedigree.parent = NULL;
+        //sf->dprng_depth = 0;
+        //sf->dprng_dotproduct = dprng_m_X;
+    }
+    sf->rank = 0;
+    #endif
 
     /* // Pedigree maintenance. */
     /* if (sf->call_parent != NULL) { */
@@ -104,6 +153,23 @@ __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     sf->call_parent = w->current_stack_frame;
     atomic_store_explicit(&sf->worker, w, memory_order_relaxed);
     w->current_stack_frame = sf;
+
+    #ifdef ENABLE_CILKRTS_PEDIGREE
+    // Pedigree maintenance.
+    if (sf->call_parent != NULL && !(sf->flags & CILK_FRAME_LAST)) {
+        sf->pedigree.rank = sf->call_parent->rank++;
+        sf->pedigree.parent = &(sf->call_parent->pedigree);
+        //sf->dprng_depth = sf->call_parent->dprng_depth+1;
+        //sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
+        //sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
+    } else {
+        sf->pedigree.rank = 0;
+        sf->pedigree.parent = NULL;
+        //sf->dprng_depth = 0;
+        //sf->dprng_dotproduct = dprng_m_X;
+    }
+    sf->rank = 0;
+    #endif
 
     /* // Pedigree maintenance. */
     /* if (sf->call_parent != NULL) { */
