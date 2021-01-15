@@ -34,7 +34,7 @@
 #include <stdlib.h>
 
 #ifndef TIMING_COUNT
-#define TIMING_COUNT 0
+#define TIMING_COUNT 1
 #endif
 
 #if TIMING_COUNT
@@ -855,7 +855,6 @@ int main(int argc, char *argv[]) {
     init_matrix(n, A, n);
     init_matrix(n, B, n);
 
-#if TIMING_COUNT
     clockmark_t begin, end;
     uint64_t elapsed[TIMING_COUNT];
 
@@ -864,19 +863,12 @@ int main(int argc, char *argv[]) {
         strassen(n, A, n, B, n, C, n);
         end = ktiming_getmark();
         elapsed[i] = ktiming_diff_nsec(&begin, &end);
-
-        if (rand_check || verify) {
-            check_result(rand_check, verify, A, B, C, n);
-        }
     }
     print_runtime(elapsed, TIMING_COUNT);
-#else
-    strassen(n, A, n, B, n, C, n);
+
     if (rand_check || verify) {
         check_result(rand_check, verify, A, B, C, n);
     }
-#endif
-
     printf("\nCilk Example: strassen\n");
     printf("Options: n = %d\n\n", n);
 

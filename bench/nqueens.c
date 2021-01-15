@@ -120,7 +120,6 @@ int main(int argc, char *argv[]) {
     int res = 0;
     char a[n];
 
-#if TIMING_COUNT
     clockmark_t begin, end;
     uint64_t elapsed[TIMING_COUNT];
 
@@ -131,9 +130,6 @@ int main(int argc, char *argv[]) {
         elapsed[i] = ktiming_diff_nsec(&begin, &end);
     }
     print_runtime(elapsed, TIMING_COUNT);
-#else
-    res = nqueens(n, 0, a);
-#endif
 
     if (res == 0) {
         printf("No solution found.\n");

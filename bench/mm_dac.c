@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
     get_options(argc, argv, specifiers, opt_types, &size, &check, &help);
 
     if (help) {
-        fprintf(stderr, "Usage: mm_dac [cilk options] -n <size> [-c|-h]\n");
+        fprintf(stderr, "Usage: mm_dac -n <size> [-c|-h]\n");
         fprintf(
             stderr,
             "   when -c is set, check result against sequential MM (slow).\n");
