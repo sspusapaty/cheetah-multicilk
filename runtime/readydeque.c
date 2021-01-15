@@ -182,24 +182,3 @@ void deque_add_bottom(__cilkrts_worker *const w, Closure *cl, worker_id pn) {
         w->g->deques[pn].top = cl;
     }
 }
-
-/* ANGE: remove closure for frame f from bottom of pn's deque and _really_
- *       free them (i.e. not internal-free).  As far as I can tell.
- *       This is called only in invoke_main_slow in invoke-main.c.
- */
-void Cilk_remove_and_free_closure_and_frame(__cilkrts_worker *const w,
-                                            __cilkrts_stack_frame *f,
-                                            worker_id pn) {
-    Closure *t;
-
-    deque_lock(w, pn);
-    t = deque_xtract_bottom(w, pn);
-
-    CILK_ASSERT(w, t->frame == f);
-    USE_UNUSED(t);
-    deque_unlock(w, pn);
-
-    /* ANGE: there is no splitter logging in the invoke_main frame */
-    // Cilk_free(f);
-    // Closure_destroy_malloc(w, t);
-}

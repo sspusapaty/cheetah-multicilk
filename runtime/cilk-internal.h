@@ -30,11 +30,6 @@ typedef struct local_state local_state;
  * Every spawning function has a frame descriptor.  A spawning function
  * is a function that spawns or detaches.  Only spawning functions
  * are visible to the Cilk runtime.
- *
- * NOTE: if you are using the Tapir compiler, you should not change
- * these fields; ok to change for hand-compiled code.
- * See Tapir compiler ABI:
- * https://github.com/wsmoses/Tapir-LLVM/blob/cilkr/lib/Transforms/Tapir/CilkRABI.cpp
  */
 struct __cilkrts_stack_frame {
     // Flags is a bitfield with values defined below. Client code

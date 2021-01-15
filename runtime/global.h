@@ -32,12 +32,12 @@ struct Closure;
 // clang-format on
 
 struct rts_options {
-    size_t stacksize;
-    unsigned int nproc;
+    size_t stacksize;            /* can be set via env variable CILK_STACKSIZE */
+    unsigned int nproc;          /* can be set via env variable CILK_NWORKERS */
     unsigned int reducer_cap;
-    unsigned int deqdepth;
-    unsigned int fiber_pool_cap;
-    unsigned int force_reduce;
+    unsigned int deqdepth;       /* can be set via env variable CILK_DEQDEPTH */
+    unsigned int fiber_pool_cap; /* can be set via env variable CILK_FIBER_POOL */
+    unsigned int force_reduce;   /* can be set via env variable CILK_FORCE_REDUCE */
 };
 
 struct global_state {
@@ -79,10 +79,6 @@ struct global_state {
 
 extern global_state *default_cilkrts;
 
-CHEETAH_INTERNAL void set_stacksize(global_state *g, size_t stacksize);
-CHEETAH_INTERNAL void set_deqdepth(global_state *g, unsigned int deqdepth);
-CHEETAH_INTERNAL void set_fiber_pool_cap(global_state *g,
-                                         unsigned int fiber_pool_cap);
 CHEETAH_INTERNAL void set_nworkers(global_state *g, unsigned int nworkers);
 CHEETAH_INTERNAL void set_force_reduce(global_state *g,
                                        unsigned int force_reduce);
@@ -93,5 +89,13 @@ CHEETAH_INTERNAL void for_each_worker(global_state *,
 CHEETAH_INTERNAL void for_each_worker_rev(global_state *,
                                           void (*)(__cilkrts_worker *, void *),
                                           void *data);
+
+// util functions used by both init.c and global.c
+inline static long env_get_int(char const *var) {
+    const char *envstr = getenv(var);
+    if (envstr)
+        return strtol(envstr, NULL, 0);
+    return 0;
+}
 
 #endif /* _CILK_GLOBAL_H */

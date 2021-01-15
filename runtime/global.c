@@ -8,7 +8,6 @@
 #include <string.h>
 #include <unistd.h> /* _SC_NPROCESSORS_ONLN */
 
-#include "cmdline.h"
 #include "debug.h"
 #include "global.h"
 #include "init.h"
@@ -17,9 +16,18 @@
 
 global_state *default_cilkrts;
 
+extern CHEETAH_INTERNAL unsigned cilkg_nproc;
+
+static void set_alert_debug_level() {
+    /* Only the bits also set in ALERT_LVL are used. */
+    set_alert_level(env_get_int("CILK_ALERT"));
+    /* Only the bits also set in DEBUG_LVL are used. */
+    set_debug_level(env_get_int("CILK_DEBUG"));
+}
+
 static global_state *global_state_allocate() {
-    parse_environment(); /* sets alert level */
-    cilkrts_alert(BOOT, NULL, "(global_state_init) Allocating global state");
+    cilkrts_alert(BOOT, NULL,
+                  "(global_state_init) Allocating global state");
     global_state *g = (global_state *)cilk_aligned_alloc(
         __alignof(global_state), sizeof(global_state));
     memset(g, 0, sizeof *g);
@@ -37,7 +45,7 @@ static global_state *global_state_allocate() {
 }
 
 // Methods for setting runtime options.
-void set_stacksize(global_state *g, size_t stacksize) {
+static void set_stacksize(global_state *g, size_t stacksize) {
     // TODO: Verify that g has not yet been initialized.
     CILK_ASSERT_G(!g->workers_started);
     CILK_ASSERT_G(stacksize >= 16384);
@@ -45,7 +53,7 @@ void set_stacksize(global_state *g, size_t stacksize) {
     g->options.stacksize = stacksize;
 }
 
-void set_deqdepth(global_state *g, unsigned int deqdepth) {
+static void set_deqdepth(global_state *g, unsigned int deqdepth) {
     // TODO: Verify that g has not yet been initialized.
     CILK_ASSERT_G(!g->workers_started);
     CILK_ASSERT_G(deqdepth >= 1);
@@ -53,7 +61,7 @@ void set_deqdepth(global_state *g, unsigned int deqdepth) {
     g->options.deqdepth = deqdepth;
 }
 
-void set_fiber_pool_cap(global_state *g, unsigned int fiber_pool_cap) {
+static void set_fiber_pool_cap(global_state *g, unsigned int fiber_pool_cap) {
     // TODO: Verify that g has not yet been initialized.
     CILK_ASSERT_G(!g->workers_started);
     CILK_ASSERT_G(fiber_pool_cap >= 8);
@@ -61,6 +69,8 @@ void set_fiber_pool_cap(global_state *g, unsigned int fiber_pool_cap) {
     g->options.fiber_pool_cap = fiber_pool_cap;
 }
 
+// not marked as static as it's called by __cilkrts_internal_set_nworkers
+// used by Cilksan to set nworker to 1 
 void set_nworkers(global_state *g, unsigned int nworkers) {
     CILK_ASSERT_G(!g->workers_started);
     CILK_ASSERT_G(nworkers <= g->options.nproc);
@@ -68,40 +78,24 @@ void set_nworkers(global_state *g, unsigned int nworkers) {
     g->nworkers = nworkers;
 }
 
+// not marked as static as it's called by __cilkrts_internal_set_force_reduce
+// used by Cilksan to set force reduction
 void set_force_reduce(global_state *g, unsigned int force_reduce) {
     CILK_ASSERT_G(!g->workers_started);
     g->options.force_reduce = force_reduce;
 }
 
-global_state *global_state_init(int argc, char *argv[]) {
-    cilkrts_alert(BOOT, NULL, "(global_state_init) Initializing global state");
-
-#ifdef DEBUG
-    setlinebuf(stderr);
-#endif
-
-    global_state *g = global_state_allocate();
-
-    if (parse_command_line(&g->options, &argc, argv)) {
-        // user invoked --help; quit
-        free(g);
-        exit(0);
-    }
-
-    parse_environment();
-
-    // Set global RTS options from environment variables.
-    {
-        size_t stacksize = env_get_int("CILK_STACKSIZE");
-        if (stacksize > 0)
-            set_stacksize(g, stacksize);
-        unsigned int deqdepth = env_get_int("CILK_DEQDEPTH");
-        if (deqdepth > 0)
-            set_deqdepth(g, deqdepth);
-        unsigned int fiber_pool_cap = env_get_int("CILK_FIBER_POOL");
-        if (fiber_pool_cap > 0)
-            set_fiber_pool_cap(g, fiber_pool_cap);
-    }
+// Set global RTS options from environment variables.
+static void parse_rts_environment(global_state *g) {
+    size_t stacksize = env_get_int("CILK_STACKSIZE");
+    if (stacksize > 0)
+        set_stacksize(g, stacksize);
+    unsigned int deqdepth = env_get_int("CILK_DEQDEPTH");
+    if (deqdepth > 0)
+        set_deqdepth(g, deqdepth);
+    unsigned int fiber_pool_cap = env_get_int("CILK_FIBER_POOL");
+    if (fiber_pool_cap > 0)
+        set_fiber_pool_cap(g, fiber_pool_cap);
 
     long proc_override = env_get_int("CILK_NWORKERS");
     if (g->options.nproc == 0) {
@@ -149,6 +143,21 @@ global_state *global_state_init(int argc, char *argv[]) {
         }
         fflush(stdout);
     }
+}
+
+global_state *global_state_init(int argc, char *argv[]) {
+    cilkrts_alert(BOOT, NULL,
+                  "(global_state_init) Initializing global state");
+
+#ifdef DEBUG
+    setlinebuf(stderr);
+#endif
+    
+    set_alert_debug_level(); // alert / debug used by global_state_allocate
+    global_state *g = global_state_allocate();
+
+    g->options = (struct rts_options)DEFAULT_OPTIONS;
+    parse_rts_environment(g);
 
     unsigned active_size = g->options.nproc;
     CILK_ASSERT_G(active_size > 0);

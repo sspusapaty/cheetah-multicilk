@@ -55,5 +55,5 @@ $(BITCODE_ABI) : build/cilk2c_inlined.bc
 	cp $< $@
 
 clean:
-	rm -f $(OBJS) *.a *.so *~
+	rm -f $(OBJS) $(BITCODE_ABI) *.a *.so *~
 	rm -f build/cilk2c_inlined.bc

@@ -37,20 +37,6 @@ extern void cleanup_invoke_main(Closure *invoke_main);
 typedef cpuset_t cpu_set_t;
 #endif
 
-long env_get_int(char const *var) {
-    const char *envstr = getenv(var);
-    if (envstr)
-        return strtol(envstr, NULL, 0);
-    return 0;
-}
-
-void parse_environment() {
-    /* Only the bits also set in ALERT_LVL are used. */
-    set_alert_level(env_get_int("CILK_ALERT"));
-    /* Only the bits also set in DEBUG_LVL are used. */
-    set_debug_level(env_get_int("CILK_DEBUG"));
-}
-
 static local_state *worker_local_init(global_state *g) {
     local_state *l = (local_state *)calloc(1, sizeof(local_state));
     l->shadow_stack = (__cilkrts_stack_frame **)calloc(
@@ -277,19 +263,6 @@ static void threads_init(global_state *g) {
     usleep(10);
 }
 
-global_state *__cilkrts_init(int argc, char *argv[]) {
-    cilkrts_alert(BOOT, NULL, "(__cilkrts_init)");
-    global_state *g = global_state_init(argc, argv);
-    reducers_init(g);
-    __cilkrts_init_tls_variables();
-    workers_init(g);
-    deques_init(g);
-    reducers_import(g, g->workers[0]);
-    threads_init(g);
-
-    return g;
-}
-
 global_state *__cilkrts_startup(int argc, char *argv[]) {
     cilkrts_alert(BOOT, NULL, "(__cilkrts_startup) argc %d", argc);
     global_state *g = global_state_init(argc, argv);
@@ -326,13 +299,13 @@ void __cilkrts_internal_set_force_reduce(unsigned int force_reduce) {
 
 // Start the Cilk workers in g, for example, by creating their underlying
 // Pthreads.
-void __cilkrts_start_workers(global_state *g) {
+static void __cilkrts_start_workers(global_state *g) {
     threads_init(g);
     g->workers_started = true;
 }
 
 // Stop the Cilk workers in g, for example, by joining their underlying Pthreads.
-void __cilkrts_stop_workers(global_state *g) {
+static void __cilkrts_stop_workers(global_state *g) {
     CILK_ASSERT_G(!atomic_load_explicit(&g->start, memory_order_acquire));
     CILK_ASSERT_G(CLOSURE_READY != g->root_closure->status);
 
@@ -547,26 +520,6 @@ static void workers_deinit(global_state *g) {
     }
 
     /* TODO: Export initial reducer map */
-}
-
-CHEETAH_INTERNAL
-void __cilkrts_cleanup(global_state *g) {
-    reducers_deinit(g);
-    workers_terminate(g);
-    flush_alert_log();
-    /* This needs to be before global_state_terminate for good stats. */
-    for_each_worker(g, wrap_fiber_pool_destroy, NULL);
-    // global_state_terminate collects and prints out stats, and thus
-    // should occur *BEFORE* worker_deinit, because worker_deinit
-    // deinitializes worker-related data structures which may
-    // include stats that we care about.
-    // Note: the fiber pools uses the internal-malloc, and fibers in fiber
-    // pools are not freed until workers_deinit.  Thus the stats included on
-    // internal-malloc that does not include all the free fibers.
-    global_state_terminate(g);
-    workers_deinit(g);
-    deques_deinit(g);
-    global_state_deinit(g);
 }
 
 CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
