@@ -218,37 +218,32 @@ void Cilk_set_return(__cilkrts_worker *const w) {
     // all rmaps from child or right sibling must have been reduced
     CILK_ASSERT(w, t->child_rmap == (cilkred_map *)NULL &&
                        t->right_rmap == (cilkred_map *)NULL);
+    CILK_ASSERT(w, t->call_parent);
+    CILK_ASSERT(w, t->spawn_parent == NULL);
+    CILK_ASSERT(w, (t->frame->flags & CILK_FRAME_DETACHED) == 0);
+    CILK_ASSERT(w, t->simulated_stolen == false);
 
-    if (t->call_parent != NULL) {
-        CILK_ASSERT(w, t->spawn_parent == NULL);
-        CILK_ASSERT(w, (t->frame->flags & CILK_FRAME_DETACHED) == 0);
-        CILK_ASSERT(w, t->simulated_stolen == false);
+    Closure *call_parent = t->call_parent;
+    Closure *t1 = deque_xtract_bottom(w, w->self);
 
-        Closure *call_parent = t->call_parent;
-        Closure *t1 = deque_xtract_bottom(w, w->self);
+    USE_UNUSED(t1);
+    CILK_ASSERT(w, t == t1);
+    CILK_ASSERT(w, __cilkrts_stolen(t->frame));
 
-        USE_UNUSED(t1);
-        CILK_ASSERT(w, t == t1);
-        CILK_ASSERT(w, __cilkrts_stolen(t->frame));
+    t->frame = NULL;
+    Closure_unlock(w, t);
 
-        t->frame = NULL;
-        Closure_unlock(w, t);
+    Closure_lock(w, call_parent);
+    CILK_ASSERT(w, call_parent->fiber == t->fiber);
+    t->fiber = NULL;
 
-        Closure_lock(w, call_parent);
-        CILK_ASSERT(w, call_parent->fiber == t->fiber);
-        t->fiber = NULL;
+    Closure_remove_callee(w, call_parent);
+    setup_call_parent_resumption(w, call_parent);
+    Closure_unlock(w, call_parent);
 
-        Closure_remove_callee(w, call_parent);
-        setup_call_parent_resumption(w, call_parent);
-        Closure_unlock(w, call_parent);
+    Closure_destroy(w, t);
+    deque_add_bottom(w, call_parent, w->self);
 
-        Closure_destroy(w, t);
-        deque_add_bottom(w, call_parent, w->self);
-
-    } else {
-        CILK_ASSERT(w, t == w->g->root_closure);
-        Closure_unlock(w, t);
-    }
     deque_unlock_self(w);
 }
 
