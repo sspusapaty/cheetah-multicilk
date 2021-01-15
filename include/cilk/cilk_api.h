@@ -19,6 +19,7 @@ typedef struct __cilkrts_pedigree {
 } __cilkrts_pedigree;
 extern __cilkrts_pedigree __cilkrts_get_pedigree(void);
 extern void __cilkrts_bump_worker_rank(void);
+extern uint64_t __cilkrts_get_dprand(void);
 #endif
 
 #undef VISIBILITY

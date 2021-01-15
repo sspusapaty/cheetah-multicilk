@@ -20,6 +20,22 @@
 
 #ifdef ENABLE_CILKRTS_PEDIGREE
 extern __cilkrts_pedigree cilkrts_root_pedigree_node;
+extern uint64_t DPRNG_PRIME;
+extern uint64_t* dprng_m_array;
+extern uint64_t dprng_m_X;
+
+uint64_t __cilkrts_dprng_swap_halves(uint64_t x);
+uint64_t __cilkrts_dprng_mix(uint64_t x);
+uint64_t __cilkrts_dprng_mix_mod_p(uint64_t x);
+uint64_t __cilkrts_dprng_sum_mod_p(uint64_t a, uint64_t b);
+void __cilkrts_init_dprng(void);
+
+uint64_t __cilkrts_get_dprand(void) {
+    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    __cilkrts_bump_worker_rank();
+    return __cilkrts_dprng_mix_mod_p(w->current_stack_frame->dprng_dotproduct);
+}
+
 #endif
 
 // Begin a Cilkified region.  The routine runs on a Cilkifying thread to
@@ -31,6 +47,10 @@ cilkify(global_state *g, __cilkrts_stack_frame *sf) {
     // frame of the Cilk function instantiation on the Cilkifying thread.
     void *orig_rsp = NULL;
     ASM_GET_SP(orig_rsp);
+
+    #ifdef ENABLE_CILKRTS_PEDIGREE
+    __cilkrts_init_dprng();
+    #endif
 
     // After inlining, the setjmp saves the processor state, including the frame
     // pointer, of the Cilk function.
@@ -90,7 +110,7 @@ void __cilkrts_bump_worker_rank(void) {
     } else {
       w->current_stack_frame->rank++;
     }
-    //w->current_stack_frame->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(w->current_stack_frame->dprng_dotproduct, dprng_m_array[w->current_stack_frame->dprng_depth]);
+    w->current_stack_frame->dprng_dotproduct = __cilkrts_dprng_sum_mod_p(w->current_stack_frame->dprng_dotproduct, dprng_m_array[w->current_stack_frame->dprng_depth]);
 }
 #endif
 
@@ -118,14 +138,14 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     if (sf->call_parent != NULL && !(sf->flags & CILK_FRAME_LAST)) {
         sf->pedigree.rank = sf->call_parent->rank++;
         sf->pedigree.parent = &(sf->call_parent->pedigree);
-        //sf->dprng_depth = sf->call_parent->dprng_depth+1;
-        //sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
-        //sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
+        sf->dprng_depth = sf->call_parent->dprng_depth+1;
+        sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
+        sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
     } else {
         sf->pedigree.rank = 0;
         sf->pedigree.parent = NULL;
-        //sf->dprng_depth = 0;
-        //sf->dprng_dotproduct = dprng_m_X;
+        sf->dprng_depth = 0;
+        sf->dprng_dotproduct = dprng_m_X;
     }
     sf->rank = 0;
     #endif
@@ -159,14 +179,14 @@ __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     if (sf->call_parent != NULL && !(sf->flags & CILK_FRAME_LAST)) {
         sf->pedigree.rank = sf->call_parent->rank++;
         sf->pedigree.parent = &(sf->call_parent->pedigree);
-        //sf->dprng_depth = sf->call_parent->dprng_depth+1;
-        //sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p2(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
-        //sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
+        sf->dprng_depth = sf->call_parent->dprng_depth+1;
+        sf->call_parent->dprng_dotproduct = __cilkrts_dprng_sum_mod_p(sf->call_parent->dprng_dotproduct, dprng_m_array[sf->call_parent->dprng_depth]);
+        sf->dprng_dotproduct = sf->call_parent->dprng_dotproduct;
     } else {
         sf->pedigree.rank = 0;
         sf->pedigree.parent = NULL;
-        //sf->dprng_depth = 0;
-        //sf->dprng_dotproduct = dprng_m_X;
+        sf->dprng_depth = 0;
+        sf->dprng_dotproduct = dprng_m_X;
     }
     sf->rank = 0;
     #endif

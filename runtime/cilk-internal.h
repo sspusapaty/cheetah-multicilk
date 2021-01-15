@@ -72,8 +72,8 @@ struct __cilkrts_stack_frame {
 #ifdef ENABLE_CILKRTS_PEDIGREE
     __cilkrts_pedigree pedigree; // Fields for pedigrees.
     int64_t rank;
-    //uint64_t dprng_dotproduct;
-    //int64_t dprng_depth;
+    uint64_t dprng_dotproduct;
+    int64_t dprng_depth;
 #endif
     /* // Fields for pedigrees. */
     /* int64_t rank; */
