@@ -7,7 +7,7 @@ REDUCER_DEF = -DREDUCER_MODULE
 
 MAIN = $(RTS_LIB)
 BITCODE_ABI = $(MAIN)-abi.bc
-SRCS = $(filter-out $(PERSON_C_SRC).c, $(filter-out $(PERSON_CPP_SRC).c, $(filter-out invoke-main.c, $(wildcard *.c))))
+SRCS = $(filter-out $(PERSON_C_SRC).c, $(filter-out $(PERSON_CPP_SRC).c, $(wildcard *.c)))
 HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,./build/%.o,$(SRCS))
 INCLUDES = -I../include/

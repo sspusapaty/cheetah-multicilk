@@ -7,7 +7,6 @@ set(CHEETAH_SOURCES
   cilk2c_inlined.c
   cilkred_map.c
   closure.c
-  cmdline.c
   debug.c
   fiber.c
   fiber-pool.c
