@@ -10,6 +10,7 @@
 #include "mutex.h"
 #include "scheduler.h"
 #include <assert.h>
+#include <dlfcn.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -369,6 +370,35 @@ void __cilkrts_hyper_dealloc(__cilkrts_hyperobject_base *key, void *view) {
 // =================================================================
 // Helper function for the scheduler
 // =================================================================
+
+#if DL_INTERPOSE
+#define START_DL_INTERPOSABLE(func, type)                               \
+    if (__builtin_expect(dl_##func == NULL, false)) {                   \
+        dl_##func = (type)dlsym(RTLD_DEFAULT, #func);                   \
+        if (__builtin_expect(dl_##func == NULL, false)) {               \
+            char *error = dlerror();                                    \
+            if (error != NULL) {                                        \
+                fputs(error, stderr);                                   \
+                fflush(stderr);                                         \
+                abort();                                                \
+            }                                                           \
+        }                                                               \
+    }
+
+typedef cilkred_map *(*merge_two_rmaps_t)(__cilkrts_worker *const,
+                                          cilkred_map *,
+                                          cilkred_map *);
+static merge_two_rmaps_t dl___cilkrts_internal_merge_two_rmaps = NULL;
+
+cilkred_map *merge_two_rmaps(__cilkrts_worker *const ws,
+                             cilkred_map *left,
+                             cilkred_map *right) {
+    START_DL_INTERPOSABLE(__cilkrts_internal_merge_two_rmaps,
+                          merge_two_rmaps_t);
+
+    return dl___cilkrts_internal_merge_two_rmaps(ws, left, right);
+}
+#endif // DL_INTERPOSE
 
 cilkred_map *__cilkrts_internal_merge_two_rmaps(__cilkrts_worker *const ws,
                                                 cilkred_map *left,
