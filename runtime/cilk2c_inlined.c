@@ -149,14 +149,6 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     }
     sf->rank = 0;
     #endif
-
-    /* // Pedigree maintenance. */
-    /* if (sf->call_parent != NULL) { */
-    /*     sf->parent_rank = sf->call_parent->rank++; */
-    /* } else { */
-    /*     sf->parent_rank = -1; */
-    /* } */
-    /* sf->rank = 0; */
 }
 
 // Enter a spawn helper, i.e., a fucntion containing code that was cilk_spawn'd.
@@ -190,14 +182,6 @@ __cilkrts_enter_frame_fast(__cilkrts_stack_frame *sf) {
     }
     sf->rank = 0;
     #endif
-
-    /* // Pedigree maintenance. */
-    /* if (sf->call_parent != NULL) { */
-    /*     sf->parent_rank = sf->call_parent->rank++; */
-    /* } else { */
-    /*     sf->parent_rank = -1; */
-    /* } */
-    /* sf->rank = 0; */
 }
 
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
