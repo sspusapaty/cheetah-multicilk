@@ -151,7 +151,7 @@ static void setup_for_sync(__cilkrts_worker *w, Closure *t) {
     //         (void *)t->fiber);
     __cilkrts_set_synced(t->frame);
 
-    CILK_ASSERT(w, w->current_stack_frame == t->frame);
+    CILK_ASSERT_POINTER_EQUAL(w, w->current_stack_frame, t->frame);
 
     SP(t->frame) = (void *)t->orig_rsp;
     t->orig_rsp = NULL; // unset once we have sync-ed
@@ -188,12 +188,12 @@ static Closure *setup_call_parent_resumption(__cilkrts_worker *const w,
     deque_assert_ownership(w, w->self);
     Closure_assert_ownership(w, t);
 
-    CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
+    CILK_ASSERT_POINTER_EQUAL(w, w, __cilkrts_get_tls_worker());
     CILK_ASSERT(w, __cilkrts_stolen(t->frame) != 0);
     CILK_ASSERT(w, t->frame != NULL);
     CILK_ASSERT(w, ((intptr_t)t->frame->worker) & 1);
-    CILK_ASSERT(w, w->head == w->tail);
-    CILK_ASSERT(w, w->current_stack_frame == t->frame);
+    CILK_ASSERT_POINTER_EQUAL(w, w->head, w->tail);
+    CILK_ASSERT_POINTER_EQUAL(w, w->current_stack_frame, t->frame);
 
     Closure_change_status(w, t, CLOSURE_SUSPENDED, CLOSURE_RUNNING);
     t->frame->worker = w;
@@ -807,8 +807,8 @@ static Closure *promote_child(__cilkrts_worker *const w,
      * stacklet is stolen, and it's call parent is promoted into full and
      * suspended
      */
-    CILK_ASSERT(w,
-                cl == w->g->root_closure || cl->spawn_parent || cl->call_parent);
+    CILK_ASSERT(w, cl == w->g->root_closure || cl->spawn_parent ||
+                       cl->call_parent);
 
     Closure *spawn_parent = NULL;
     /* JFC: Should this load be relaxed or acquire? */
@@ -1347,11 +1347,14 @@ static Closure *do_what_it_says(__cilkrts_worker *w, Closure *t) {
         // t->fiber);
         // cilkrts_alert(SCHED, w, "(do_what_it_says) Back from user
         // code");
+        // longjmp invalidates non-volatile variables
+        __cilkrts_worker *volatile w_save = w;
         if (__builtin_setjmp(w->l->rts_ctx) == 0) {
             worker_change_state(w, WORKER_RUN);
             longjmp_to_user_code(w, t);
         } else {
-            CILK_ASSERT(w, w == __cilkrts_get_tls_worker());
+            w = w_save;
+            CILK_ASSERT_POINTER_EQUAL(w, w, __cilkrts_get_tls_worker());
             worker_change_state(w, WORKER_SCHED);
             // CILK_ASSERT(w, t->fiber == w->l->fiber_to_free);
             if (w->l->fiber_to_free) {

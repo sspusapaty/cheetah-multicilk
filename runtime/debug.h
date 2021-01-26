@@ -78,6 +78,16 @@ CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed;
          : cilkrts_bug(w, __cilkrts_assertion_failed, __FILE__, __LINE__,      \
                        #ex))
 
+#define CILK_ASSERT_POINTER_EQUAL(w, P1, P2)                                   \
+    ({                                                                         \
+        void *_t1 = (P1), *_t2 = (P2);                                         \
+        __builtin_expect(_t1 == _t2, 1)                                        \
+            ? (void)0                                                          \
+            : cilkrts_bug(w,                                                   \
+                          "%s: %d: cilk_assertion failed: %s (%p) == %s (%p)", \
+                          __FILE__, __LINE__, #P1, _t1, #P2, _t2);             \
+    })
+
 #define CILK_ASSERT_ZERO(w, ex, FMT)                                           \
     (__builtin_expect(!(ex), 1)                                                \
          ? (void)0                                                             \
