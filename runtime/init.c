@@ -276,8 +276,8 @@ global_state *__cilkrts_startup(int argc, char *argv[]) {
     // Create the root closure and a fiber to go with it.  Use worker 0 to
     // allocate the closure and fiber.
     Closure *t = Closure_create(g->workers[g->exiting_worker]);
-    struct cilk_fiber *fiber =
-        cilk_fiber_allocate(g->workers[g->exiting_worker]);
+    struct cilk_fiber *fiber = cilk_fiber_allocate(
+        g->workers[g->exiting_worker], g->options.stacksize);
     t->fiber = fiber;
     g->root_closure = t;
 

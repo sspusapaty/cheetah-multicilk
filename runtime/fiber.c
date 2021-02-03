@@ -144,11 +144,11 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 }
 
 
-struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w) {
+struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w, size_t stacksize) {
     struct cilk_fiber *fiber =
         cilk_internal_malloc(w, sizeof(*fiber), IM_FIBER);
     fiber_init(fiber);
-    make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
+    make_stack(fiber, stacksize);
     cilkrts_alert(FIBER, w, "Allocate fiber %p [%p--%p]", (void *)fiber,
                   (void *)fiber->stack_low, (void *)fiber->stack_high);
     return fiber;

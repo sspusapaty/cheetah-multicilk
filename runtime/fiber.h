@@ -92,7 +92,7 @@ CHEETAH_INTERNAL void cilk_fiber_pool_per_worker_destroy(__cilkrts_worker *w);
 
 // allocate / deallocate one fiber from / back to OS
 CHEETAH_INTERNAL
-struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w);
+struct cilk_fiber *cilk_fiber_allocate(__cilkrts_worker *w, size_t stacksize);
 CHEETAH_INTERNAL
 void cilk_fiber_deallocate(__cilkrts_worker *w, struct cilk_fiber *fiber);
 CHEETAH_INTERNAL

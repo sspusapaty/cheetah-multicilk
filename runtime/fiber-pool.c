@@ -201,7 +201,8 @@ static void fiber_pool_allocate_batch(__cilkrts_worker *w,
     }
     if (batch_size > from_parent) { // if we need more still
         for (unsigned int i = from_parent; i < batch_size; i++) {
-            pool->fibers[pool->size++] = cilk_fiber_allocate(w);
+            pool->fibers[pool->size++] =
+                cilk_fiber_allocate(w, pool->stack_size);
         }
     }
     if (pool->size > pool->stats.max_free) {
