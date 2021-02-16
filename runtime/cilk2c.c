@@ -27,45 +27,9 @@ unsigned __cilkrts_get_worker_number(void) {
     return default_cilkrts->exiting_worker;
 }
 
-/* void __cilkrts_pedigree_bump_rank(void) { */
-/*     __cilkrts_worker *w = __cilkrts_get_tls_worker(); */
-/*     w->current_stack_frame->rank++; */
-/* } */
-
-/* int64_t* __cilkrts_get_pedigree(void) { */
-/*     __cilkrts_worker *w = __cilkrts_get_tls_worker(); */
-
-/*     int64_t pedigree_len = 0; */
-
-/*     // get the length of the pedigree ---> can be maintained incrementally if we desire. */
-/*     { */
-/*       __cilkrts_stack_frame *sf = w->current_stack_frame; */
-/*       pedigree_len++; // my frame's rank */
-/*       pedigree_len++; // my frame's parent rank */
-/*       sf = sf->call_parent; */
-/*       while (sf != NULL) { */
-/*         pedigree_len++; // sf's parent rank. */
-/*         sf = sf->call_parent; */
-/*       } */
-/*     } */
-
-/*     CILK_ASSERT(w, pedigree_len > 0); */
-
-/*     int64_t* pedigree = (int64_t*) malloc(sizeof(int64_t) * (pedigree_len+1)); */
-/*     int idx = 0; */
-/*     pedigree[idx++] = pedigree_len; */
-/*     { */
-/*       __cilkrts_stack_frame *sf = w->current_stack_frame; */
-/*       pedigree[idx++] = sf->rank; */
-/*       pedigree[idx++] = sf->parent_rank; */
-/*       sf = sf->call_parent; */
-/*       while (sf != NULL) { */
-/*         pedigree[idx++] = sf->parent_rank; */
-/*         sf = sf->call_parent; */
-/*       } */
-/*     } */
-/*     return pedigree; */
-/* } */
+// Test if the Cilk runtime has been initialized.  This method is intended to
+// help initialization of libraries that depend on the OpenCilk runtime.
+int __cilkrts_is_initialized(void) { return NULL != default_cilkrts; }
 
 // Called after a normal cilk_sync (i.e. not the cilk_sync called in the
 // personality function.) Checks if there is an exception that needs to be
