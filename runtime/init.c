@@ -287,6 +287,12 @@ global_state *__cilkrts_startup(int argc, char *argv[]) {
 // Global constructor for starting up the default cilkrts.
 __attribute__((constructor)) void __default_cilkrts_startup() {
     default_cilkrts = __cilkrts_startup(0, NULL);
+
+    for (unsigned i = 0; i < cilkrts_callbacks.last_init; ++i)
+        cilkrts_callbacks.init[i]();
+
+    /* Any attempt to register more initializers should fail. */
+    cilkrts_callbacks.after_init = true;
 }
 
 void __cilkrts_internal_set_nworkers(unsigned int nworkers) {
@@ -526,6 +532,9 @@ CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
     // If the workers are still running, stop them now.
     if (g->workers_started)
         __cilkrts_stop_workers(g);
+
+    for (unsigned i = cilkrts_callbacks.last_exit; i > 0;)
+        cilkrts_callbacks.exit[--i]();
 
     // Deallocate the root closure and its fiber
     cilk_fiber_deallocate_global(g, g->root_closure->fiber);

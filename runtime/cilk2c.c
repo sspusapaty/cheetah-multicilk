@@ -16,6 +16,9 @@ extern _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *);
 
 CHEETAH_INTERNAL unsigned cilkg_nproc = 0;
 
+CHEETAH_INTERNAL struct cilkrts_callbacks cilkrts_callbacks = {
+    0, 0, false, {NULL}, {NULL}};
+
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.
 //
 // TODO: Figure out how we want to support worker-local storage.
@@ -30,6 +33,33 @@ unsigned __cilkrts_get_worker_number(void) {
 // Test if the Cilk runtime has been initialized.  This method is intended to
 // help initialization of libraries that depend on the OpenCilk runtime.
 int __cilkrts_is_initialized(void) { return NULL != default_cilkrts; }
+
+// These callback-registration methods can run before the runtime system has
+// started.
+//
+// Init callbacks are called in order of registration.  Exit callbacks are
+// called in reverse order of registration.
+
+// Register a callback to run at Cilk-runtime initialization.  Returns 0 on
+// successful registration, nonzero otherwise.
+int __cilkrts_atinit(void (*callback)(void)) {
+    if (cilkrts_callbacks.last_init >= MAX_CALLBACKS ||
+        cilkrts_callbacks.after_init)
+        return -1;
+
+    cilkrts_callbacks.init[cilkrts_callbacks.last_init++] = callback;
+    return 0;
+}
+
+// Register a callback to run at Cilk-runtime exit.  Returns 0 on successful
+// registration, nonzero otherwise.
+int __cilkrts_atexit(void (*callback)(void)) {
+    if (cilkrts_callbacks.last_exit >= MAX_CALLBACKS)
+        return -1;
+
+    cilkrts_callbacks.exit[cilkrts_callbacks.last_exit++] = callback;
+    return 0;
+}
 
 // Called after a normal cilk_sync (i.e. not the cilk_sync called in the
 // personality function.) Checks if there is an exception that needs to be
