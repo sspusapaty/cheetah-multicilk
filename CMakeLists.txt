@@ -75,7 +75,7 @@ if (NOT CHEETAH_ENABLE_SHARED AND NOT CHEETAH_ENABLE_STATIC)
 endif()
 
 # Target options --------------------------------------------------------------
-set(CHEETAH_MIN_OSX_VERSION 10.9)
+set(CHEETAH_MIN_OSX_VERSION 10.14)
 
 #===============================================================================
 # Configure System
