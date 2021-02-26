@@ -13,7 +13,7 @@ struct __cilkrts_worker;
     ((cond) ? (void)0 : cilk_die_internal(g, complain, __VA_ARGS__))
 
 #ifndef ALERT_LVL
-#define ALERT_LVL 0x3103
+#define ALERT_LVL 0x3d03
 #endif
 #define ALERT_NONE 0x0
 #define ALERT_FIBER 0x001
@@ -58,7 +58,7 @@ cilkrts_bug(struct __cilkrts_worker *w, const char *fmt, ...);
 CHEETAH_INTERNAL_NORETURN
 void cilk_die_internal(struct global_state *const g, const char *fmt, ...);
 
-#if CILK_DEBUG
+#if ALERT_LVL != 0
 __attribute__((__format__(__printf__, 3, 4))) void
 cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
 #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
@@ -66,6 +66,11 @@ cilkrts_alert(int lvl, struct __cilkrts_worker *w, const char *fmt, ...);
     (alert_level & ((ALERT_##CODE) & ALERT_LVL))                               \
         ? cilkrts_alert(ALERT_##CODE, W, FMT, ##__VA_ARGS__)                   \
         : (void)0
+#else
+#define cilkrts_alert(lvl, fmt, ...)
+#endif
+
+#if CILK_DEBUG
 
 #define WHEN_CILK_DEBUG(ex) ex
 
@@ -79,14 +84,10 @@ CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed;
                        #ex))
 
 #define CILK_ASSERT_POINTER_EQUAL(w, P1, P2)                                   \
-    ({                                                                         \
-        void *_t1 = (P1), *_t2 = (P2);                                         \
-        __builtin_expect(_t1 == _t2, 1)                                        \
-            ? (void)0                                                          \
-            : cilkrts_bug(w,                                                   \
-                          "%s: %d: cilk_assertion failed: %s (%p) == %s (%p)", \
-                          __FILE__, __LINE__, #P1, _t1, #P2, _t2);             \
-    })
+    ({ void *_t1 = (P1), *_t2 = (P2); __builtin_expect(_t1 == _t2, 1)          \
+         ? (void)0                                                             \
+         : cilkrts_bug(w, "%s: %d: cilk_assertion failed: %s (%p) == %s (%p)", \
+                       __FILE__, __LINE__, #P1, _t1, #P2, _t2);})
 
 #define CILK_ASSERT_ZERO(w, ex, FMT)                                           \
     (__builtin_expect(!(ex), 1)                                                \
@@ -123,7 +124,6 @@ CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed;
     cilkrts_bug(NULL, __cilkrts_assertion_failed_g, __FILE__, __LINE__, msg)
 
 #else
-#define cilkrts_alert(lvl, fmt, ...)
 #define CILK_ASSERT(w, ex)
 #define CILK_ASSERT_G(ex)
 #define CILK_ABORT(w, msg)

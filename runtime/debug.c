@@ -22,6 +22,9 @@ void set_alert_level(unsigned int level) {
         flush_alert_log();
         return;
     }
+    if (level & 0x80000000) {
+        return;
+    }
     if (alert_log == NULL) {
         alert_log_size = 5000;
         alert_log = malloc(alert_log_size);
@@ -41,6 +44,7 @@ void cilk_die_internal(struct global_state *const g, const char *fmt, ...) {
     va_list l;
     va_start(l, fmt);
     cilk_mutex_lock(&(g->print_lock));
+    flush_alert_log();
     fprintf(stderr, "Fatal error: ");
     vfprintf(stderr, fmt, l);
     fputc('\n', stderr);
@@ -53,18 +57,18 @@ CHEETAH_INTERNAL_NORETURN
 void cilkrts_bug(__cilkrts_worker *w, const char *fmt, ...) {
     fflush(NULL);
     if (w) {
+        cilk_mutex_lock(&(w->g->print_lock));
+        flush_alert_log();
+        cilk_mutex_unlock(&(w->g->print_lock));
         fprintf(stderr, "[W%02u]: ", w->self);
     }
-
-    /* To reduce user confusion, write all user-generated output
-       before the system-generated error message. */
+    /* Without a worker there is no safe way to flush the log */
     va_list l;
     va_start(l, fmt);
     vfprintf(stderr, fmt, l);
     va_end(l);
     fputc('\n', stderr);
     fflush(stderr);
-
     abort(); // generate core file
 }
 

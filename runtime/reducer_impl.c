@@ -218,8 +218,9 @@ void __cilkrts_hyper_destroy(__cilkrts_hyperobject_base *key) {
         w = default_cilkrts->workers[default_cilkrts->exiting_worker];
 
     hyper_id_t id = key->__id_num;
+    cilkrts_alert(REDUCE_ID, w, "Destroy reducer %x at %p", (unsigned)id, key);
     if (!__builtin_expect(id & HYPER_ID_VALID, HYPER_ID_VALID)) {
-        cilkrts_bug(w, "unregistering unregistered hyperobject");
+        cilkrts_bug(w, "unregistering unregistered hyperobject %p", key);
         return;
     }
     id &= ~HYPER_ID_VALID;
@@ -261,6 +262,8 @@ void __cilkrts_hyper_create(__cilkrts_hyperobject_base *key) {
     hyper_id_t id = reducer_id_get(m, w);
     key->__id_num = id | HYPER_ID_VALID;
 
+    cilkrts_alert(REDUCE_ID, w, "Create reducer %x at %p", (unsigned)id, key);
+
     if (__builtin_expect(!w, 0)) {
         if (id >= GLOBAL_REDUCER_LIMIT) {
             cilkrts_bug(w, "Global reducer pool exhausted");
@@ -301,7 +304,8 @@ void *__cilkrts_hyper_lookup(__cilkrts_hyperobject_base *key) {
     hyper_id_t id = key->__id_num;
 
     if (!__builtin_expect(id & HYPER_ID_VALID, HYPER_ID_VALID)) {
-        cilkrts_bug(w, "User error: reference to unregistered hyperobject");
+        cilkrts_bug(w, "User error: reference to unregistered hyperobject %p",
+                    key);
     }
     id &= ~HYPER_ID_VALID;
 
