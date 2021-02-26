@@ -20,7 +20,7 @@ TIMING_COUNT := 3
 all: $(TESTS)
 
 $(TESTS): %: %.o getoptions.o ktiming.o
-	$(LINK_CC) $^ -o $@ $(LD_FLAGS) -lrt -lpthread -lm -ldl
+	$(LINK_CC) $^ -o $@ $(LD_FLAGS) -lm
 
 # Add these flag to use the runtime-defined ABI functions
 # -mllvm -use-external-abi-functions
