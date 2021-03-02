@@ -75,7 +75,10 @@ if (NOT CHEETAH_ENABLE_SHARED AND NOT CHEETAH_ENABLE_STATIC)
 endif()
 
 # Target options --------------------------------------------------------------
-# TODO: Add target-specific options
+
+# Default minimum OSX version to support, if
+# CMAKE_OSX_DEPLOYMENT_TARGET is not specified
+set(CHEETAH_MIN_OSX_VERSION 10.14)
 
 #===============================================================================
 # Configure System
@@ -130,10 +133,12 @@ set(CHEETAH_CXX_FLAGS "")
 set(CHEETAH_COMPILE_FLAGS "")
 set(CHEETAH_COMPILE_DEFS "")
 set(CHEETAH_LINK_FLAGS "")
-if (APPLE AND CHEETAH_HAS_APP_EXTENSION)
-  list(APPEND CHEETAH_LINK_FLAGS "-fapplication-extension")
-endif()
 set(CHEETAH_LIBRARIES "")
+
+if (APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+  list(APPEND CHEETAH_COMPILE_FLAGS -mmacosx-version-min=${CHEETAH_MIN_OSX_VERSION})
+  list(APPEND CHEETAH_LINK_FLAGS -mmacosx-version-min=${CHEETAH_MIN_OSX_VERSION})
+endif()
 
 # Include macros for adding and removing cheetah flags.
 include(HandleCheetahFlags)
@@ -165,6 +170,10 @@ endif()
 
 # Configure compiler.
 include(config-ix)
+
+if (APPLE AND CHEETAH_HAS_APP_EXTENSION)
+  list(APPEND CHEETAH_LINK_FLAGS "-fapplication-extension")
+endif()
 
 if (CHEETAH_USE_COMPILER_RT)
   list(APPEND CHEETAH_LINK_FLAGS "--rtlib=compiler-rt")
