@@ -75,7 +75,7 @@ if (NOT CHEETAH_ENABLE_SHARED AND NOT CHEETAH_ENABLE_STATIC)
 endif()
 
 # Target options --------------------------------------------------------------
-set(CHEETAH_MIN_OSX_VERSION 10.14)
+# TODO: Add target-specific options
 
 #===============================================================================
 # Configure System
@@ -128,11 +128,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CHEETAH_LIBRARY_DIR})
 set(CHEETAH_C_FLAGS "")
 set(CHEETAH_CXX_FLAGS "")
 set(CHEETAH_COMPILE_FLAGS "")
-if (APPLE)
-  list(APPEND CHEETAH_COMPILE_FLAGS -mmacosx-version-min=${CHEETAH_MIN_OSX_VERSION})
-endif()
 set(CHEETAH_COMPILE_DEFS "")
 set(CHEETAH_LINK_FLAGS "")
+if (APPLE AND CHEETAH_HAS_APP_EXTENSION)
+  list(APPEND CHEETAH_LINK_FLAGS "-fapplication-extension")
+endif()
 set(CHEETAH_LIBRARIES "")
 
 # Include macros for adding and removing cheetah flags.
