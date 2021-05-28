@@ -2,11 +2,6 @@
 
 cmake_minimum_required(VERSION 3.9)
 
-if(POLICY CMP0068)
-  cmake_policy(SET CMP0068 NEW)
-  set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
-endif()
-
 # Add path for custom cheetah modules.
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
@@ -17,15 +12,13 @@ set(CMAKE_MODULE_PATH
 # Check if cheetah is built as a standalone project.
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR OR CHEETAH_STANDALONE_BUILD)
   project(Cheetah CXX C)
+  set(CHEETAH_STANDALONE_BUILD TRUE)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
   set(PACKAGE_NAME Cheetah)
   set(PACKAGE_VERSION 12.0.0)
   set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
   set(PACKAGE_BUGREPORT "bugs@opencilk.org")
-
-  # Find the LLVM sources and simulate LLVM CMake options.
-  include(HandleOutOfTreeLLVM)
 endif()
 
 # Require out of source build.
@@ -34,6 +27,15 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
   "${PROJECT_NAME} requires an out of source build. Please create a separate
  build directory and run 'cmake /path/to/${PROJECT_NAME} [options]' there."
   )
+
+# Option to build cheetah into separate directories per target.
+# Defaults to true.
+option(CHEETAH_DIRECTORY_PER_TARGET "Build cheetah into a separate directory per target." ON)
+if (LLVM_ENABLE_PER_TARGET_RUNTIME_DIR)
+  set(CHEETAH_ENABLE_PER_TARGET_RUNTIME_DIR ${LLVM_ENABLE_PER_TARGET_RUNTIME_DIR})
+else()
+  set(CHEETAH_ENABLE_PER_TARGET_RUNTIME_DIR ${CHEETAH_DIRECTORY_PER_TARGET})
+endif()
 
 include(base-config-ix)
 include(CheetahUtils)
@@ -70,6 +72,43 @@ set(DEFAULT_CHEETAH_MIN_OSX_VERSION 10.14)
 #===============================================================================
 # Configure System
 #===============================================================================
+
+if (CHEETAH_STANDALONE_BUILD)
+  load_llvm_config()
+  if (TARGET intrinsics_gen)
+    # Loading the llvm config causes this target to be imported so place it
+    # under the appropriate folder in an IDE.
+    set_target_properties(intrinsics_gen PROPERTIES FOLDER "Cheetah Misc")
+  endif()
+
+  find_package(Python3 COMPONENTS Interpreter)
+  if(NOT Python3_Interpreter_FOUND)
+    message(WARNING "Python3 not found, using python2 as a fallback")
+    find_package(Python2 COMPONENTS Interpreter REQUIRED)
+    if(Python2_VERSION VERSION_LESS 2.7)
+      message(SEND_ERROR "Python 2.7 or newer is required")
+    endif()
+
+    # Treat python2 as python3
+    add_executable(Python3::Interpreter IMPORTED)
+    set_target_properties(Python3::Interpreter PROPERTIES
+      IMPORTED_LOCATION ${Python2_EXECUTABLE})
+    set(Python3_EXECUTABLE ${Python2_EXECUTABLE})
+  endif()
+
+  # Ensure that fat libraries are built correctly on Darwin
+  if(APPLE)
+    include(UseLibtool)
+  endif()
+
+  # Define default arguments to lit.
+  set(LIT_ARGS_DEFAULT "-sv")
+  if (MSVC OR XCODE)
+    set(LIT_ARGS_DEFAULT "${LIT_ARGS_DEFAULT} --no-progress-bar")
+  endif()
+  set(LLVM_LIT_ARGS "${LIT_ARGS_DEFAULT}" CACHE STRING "Default options for lit")
+  set(LLVM_LIT_OUTPUT_DIR "${CHEETAH_EXEC_OUTPUT_DIR}")
+endif()
 
 construct_cheetah_default_triple()
 if ("${CHEETAH_DEFAULT_TARGET_TRIPLE}" MATCHES ".*hf$")

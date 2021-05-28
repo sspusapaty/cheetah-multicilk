@@ -259,28 +259,31 @@ macro(load_llvm_config)
       set(CHEETAH_HAS_LLVMXRAY TRUE)
     endif()
 
-    set(CHEETAH_HAS_LLVMTESTINGSUPPORT FALSE)
-    execute_process(
-      COMMAND ${LLVM_CONFIG_PATH} "--ldflags" "--libs" "testingsupport"
-      RESULT_VARIABLE HAD_ERROR
-      OUTPUT_VARIABLE CONFIG_OUTPUT
-      ERROR_QUIET)
-    if (HAD_ERROR)
-      message(WARNING "llvm-config finding testingsupport failed with status ${HAD_ERROR}")
-    elseif(CHEETAH_INCLUDE_TESTS)
-      string(REGEX REPLACE "[ \t]*[\r\n]+[ \t]*" ";" CONFIG_OUTPUT ${CONFIG_OUTPUT})
-      list(GET CONFIG_OUTPUT 0 LDFLAGS)
-      list(GET CONFIG_OUTPUT 1 LIBLIST)
-      if (LIBLIST STREQUAL "")
-        message(WARNING "testingsupport library not installed, some tests will be skipped")
-      else()
-        file(TO_CMAKE_PATH "${LDFLAGS}" LDFLAGS)
-        file(TO_CMAKE_PATH "${LIBLIST}" LIBLIST)
-        set(LLVM_TESTINGSUPPORT_LDFLAGS ${LDFLAGS} CACHE STRING "Linker flags for LLVMTestingSupport library")
-        set(LLVM_TESTINGSUPPORT_LIBLIST ${LIBLIST} CACHE STRING "Library list for LLVMTestingSupport")
-        set(CHEETAH_HAS_LLVMTESTINGSUPPORT TRUE)
-      endif()
-    endif()
+    # CHEETAH_HAS_LLVMTESTINGSUPPORT is currently unused, and this
+    # test triggers a CMake warning.  Removing this test for now.
+    #
+    # set(CHEETAH_HAS_LLVMTESTINGSUPPORT FALSE)
+    # execute_process(
+    #   COMMAND ${LLVM_CONFIG_PATH} "--ldflags" "--libs" "testingsupport"
+    #   RESULT_VARIABLE HAD_ERROR
+    #   OUTPUT_VARIABLE CONFIG_OUTPUT
+    #   ERROR_QUIET)
+    # if (HAD_ERROR)
+    #   message(WARNING "llvm-config finding testingsupport failed with status ${HAD_ERROR}")
+    # elseif(CHEETAH_INCLUDE_TESTS)
+    #   string(REGEX REPLACE "[ \t]*[\r\n]+[ \t]*" ";" CONFIG_OUTPUT ${CONFIG_OUTPUT})
+    #   list(GET CONFIG_OUTPUT 0 LDFLAGS)
+    #   list(GET CONFIG_OUTPUT 1 LIBLIST)
+    #   if (LIBLIST STREQUAL "")
+    #     message(WARNING "testingsupport library not installed, some tests will be skipped")
+    #   else()
+    #     file(TO_CMAKE_PATH "${LDFLAGS}" LDFLAGS)
+    #     file(TO_CMAKE_PATH "${LIBLIST}" LIBLIST)
+    #     set(LLVM_TESTINGSUPPORT_LDFLAGS ${LDFLAGS} CACHE STRING "Linker flags for LLVMTestingSupport library")
+    #     set(LLVM_TESTINGSUPPORT_LIBLIST ${LIBLIST} CACHE STRING "Library list for LLVMTestingSupport")
+    #     set(CHEETAH_HAS_LLVMTESTINGSUPPORT TRUE)
+    #   endif()
+    # endif()
 
     # Make use of LLVM CMake modules.
     # --cmakedir is supported since llvm r291218 (4.0 release)
@@ -374,7 +377,7 @@ function(get_cheetah_target arch variable)
 endfunction()
 
 function(get_cheetah_install_dir arch install_dir)
-  if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
+  if(CHEETAH_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
     get_cheetah_target(${arch} target)
     set(${install_dir} ${CHEETAH_INSTALL_PATH}/lib/${target} PARENT_SCOPE)
   else()
@@ -383,7 +386,7 @@ function(get_cheetah_install_dir arch install_dir)
 endfunction()
 
 function(get_cheetah_output_dir arch output_dir)
-  if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
+  if(CHEETAH_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
     get_cheetah_target(${arch} target)
     set(${output_dir} ${CHEETAH_OUTPUT_DIR}/lib/${target} PARENT_SCOPE)
   else()
