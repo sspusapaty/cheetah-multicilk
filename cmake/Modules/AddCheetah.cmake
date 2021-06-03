@@ -78,6 +78,7 @@ function(add_cheetah_object_libraries name)
 
     set_target_compile_flags(${libname}
       ${extra_cflags_${libname}} ${target_flags})
+    target_include_directories(${libname} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
     set_property(TARGET ${libname} APPEND PROPERTY
       COMPILE_DEFINITIONS ${LIB_DEFS})
     set_target_properties(${libname} PROPERTIES FOLDER "Cheetah Libraries")
@@ -286,6 +287,7 @@ function(add_cheetah_runtime name type)
     else()
       add_library(${libname} ${type} ${sources_${libname}})
       set_target_compile_flags(${libname} ${extra_cflags_${libname}})
+      target_include_directories(${libname} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
       set_target_link_flags(${libname} ${extra_link_flags_${libname}})
       set_property(TARGET ${libname} APPEND PROPERTY
                    COMPILE_DEFINITIONS ${LIB_DEFS})
@@ -455,6 +457,7 @@ function(add_cheetah_bitcode name)
     set(output_file_${libname} ${output_name_${libname}}.bc)
     # Add compile command for bitcode file.
     add_library(${libname}_compile OBJECT ${LIB_SOURCES})
+    target_include_directories(${libname}_compile PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
     set_target_compile_flags(${libname}_compile ${extra_cflags_${libname}})
     target_compile_options(${libname}_compile PUBLIC "$<$<CONFIG:DEBUG>:${CHEETAH_DEBUG_OPTIONS}>")
     target_compile_options(${libname}_compile PUBLIC "$<$<CONFIG:RELEASE>:${CHEETAH_RELEASE_OPTIONS}>")
