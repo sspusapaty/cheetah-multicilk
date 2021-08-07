@@ -22,7 +22,7 @@
 
 #ifndef CILK_DEBUG
 #define CILK_DEBUG 1
-#endif 
+#endif
 #define CILK_STATS 0
 
 #define CILK_CACHE_LINE 64
@@ -39,7 +39,6 @@
 
 #define MIN_NUM_PAGES_PER_STACK 4
 #define MAX_NUM_PAGES_PER_STACK 2000
-#define DEFAULT_STACKSIZE 0x100000 // 1 MBytes
 
 /* The largest known stack alignment requirement is for AVX-512
    which may access memory in aligned 64 byte units. */

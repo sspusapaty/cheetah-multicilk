@@ -10,10 +10,13 @@
 #include "debug.h"
 #include "fiber.h"
 #include "internal-malloc-impl.h"
+#include "jmpbuf.h"
 #include "mutex.h"
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "types.h"
+
+extern unsigned cilkg_nproc;
 
 struct __cilkrts_worker;
 struct reducer_id_manager;
@@ -57,20 +60,33 @@ struct global_state {
     cilk_mutex im_lock; // lock for accessing global im_desc
 
     volatile bool workers_started;
+    volatile bool terminate;
+
+    volatile worker_id exiting_worker;
     volatile bool root_closure_initialized;
-    volatile atomic_bool start;
+    volatile atomic_bool start_thieves;
     volatile atomic_bool done;
     volatile atomic_bool cilkified;
-    volatile bool terminate;
-    volatile worker_id exiting_worker;
-    volatile atomic_uint reducer_map_count;
 
-    cilk_mutex print_lock; // global lock for printing messages
+    _Atomic uint32_t start_root_worker __attribute__((aligned(CILK_CACHE_LINE)));
+    jmpbuf boss_ctx;
+    void *orig_rsp;
 
+    _Atomic uint32_t start_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
+    // NOTE: We can probably update the runtime system so that, when it uses
+    // cilkified_futex, it does not also use the cilkified field.  But the
+    // cilkified field is helpful for debugging, and it seems unlikely that this
+    // optimization would improve performance.
+    _Atomic uint32_t cilkified_futex;
+
+    pthread_mutex_t start_root_worker_lock;
+    pthread_cond_t start_root_worker_cond_var;
+    pthread_mutex_t start_thieves_lock;
+    pthread_cond_t start_thieves_cond_var;
     pthread_mutex_t cilkified_lock;
     pthread_cond_t cilkified_cond_var;
-    pthread_mutex_t start_lock;
-    pthread_cond_t start_cond_var;
+
+    cilk_mutex print_lock; // global lock for printing messages
 
     struct reducer_id_manager *id_manager; /* null while Cilk is running */
 

@@ -17,7 +17,6 @@ struct cilk_fiber {
     char *stack_low;         // lowest usable byte of stack
     char *stack_high;        // one byte above highest usable byte of stack
     char *alloc_high;        // last byte of mmap-ed region
-    __cilkrts_worker *owner; // worker using this fiber
 };
 
 #ifndef MAP_GROWSDOWN
@@ -102,14 +101,12 @@ static void fiber_init(struct cilk_fiber *fiber) {
     fiber->stack_low = NULL;
     fiber->stack_high = NULL;
     fiber->alloc_high = NULL;
-    fiber->owner = NULL;
 }
 
 
 //===============================================================
 // Supported public functions
 //===============================================================
-
 
 char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
                                     __cilkrts_stack_frame *sf) {
@@ -118,9 +115,13 @@ char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
        boundary just after usable memory.  */
     /* JFC: This may need to be more than 256 if the stolen function
        has more than 256 bytes of outgoing arguments.  I think
-       Cilk++ looked at fp-sp in the stolen function.
-       It should also exceed frame_size in init_fiber_run. */
-    size_t align = MAX_STACK_ALIGN > 256 ? MAX_STACK_ALIGN : 256;
+       Cilk++ looked at fp-sp in the stolen function. */
+    /* size_t align = MAX_STACK_ALIGN > 256 ? MAX_STACK_ALIGN : 256; */
+    /* TB: The OpenCilk compiler should ensure that sufficient space is
+       allocated for outgoing arguments of any function, so we don't need any
+       particular alignment here.  We use a positive alignment here for the
+       subsequent debugging step that checks the stack is accessible. */
+    size_t align = 64;
     char *sp = fiber->stack_high - align;
     SP(sf) = sp;
 
@@ -169,24 +170,6 @@ void cilk_fiber_deallocate_global(struct global_state *g,
                   (void *)fiber->stack_low, (void *)fiber->stack_high);
     free_stack(fiber);
     cilk_internal_free_global(g, fiber, sizeof(*fiber), IM_FIBER);
-}
-
-struct cilk_fiber *cilk_main_fiber_allocate() {
-    struct cilk_fiber *fiber = malloc(sizeof(*fiber));
-    fiber_init(fiber);
-    make_stack(fiber, DEFAULT_STACK_SIZE); // default ~1MB stack
-    cilkrts_alert(FIBER, NULL, "[?]: Allocate main fiber %p [%p--%p]",
-                  (void *)fiber, (void *)fiber->stack_low,
-                  (void *)fiber->stack_high);
-    return fiber;
-}
-
-void cilk_main_fiber_deallocate(struct cilk_fiber *fiber) {
-    cilkrts_alert(FIBER, NULL, "[?]: Deallocate main fiber %p [%p--%p]",
-                  (void *)fiber, (void *)fiber->stack_low,
-                  (void *)fiber->stack_high);
-    free_stack(fiber);
-    free(fiber);
 }
 
 int in_fiber(struct cilk_fiber *fiber, void *p) {

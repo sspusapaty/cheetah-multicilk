@@ -16,7 +16,7 @@
 
 global_state *default_cilkrts;
 
-extern CHEETAH_INTERNAL unsigned cilkg_nproc;
+unsigned cilkg_nproc = 0;
 
 static void set_alert_debug_level() {
     /* Only the bits also set in ALERT_LVL are used. */
@@ -35,11 +35,17 @@ static global_state *global_state_allocate() {
     cilk_mutex_init(&g->im_lock);
     cilk_mutex_init(&g->print_lock);
 
+    atomic_store_explicit(&g->start_thieves_futex, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->start_root_worker, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->cilkified_futex, 0, memory_order_relaxed);
+
     // TODO: Convert to cilk_* equivalents
     pthread_mutex_init(&g->cilkified_lock, NULL);
     pthread_cond_init(&g->cilkified_cond_var, NULL);
-    pthread_mutex_init(&g->start_lock, NULL);
-    pthread_cond_init(&g->start_cond_var, NULL);
+    pthread_mutex_init(&g->start_thieves_lock, NULL);
+    pthread_cond_init(&g->start_thieves_cond_var, NULL);
+    pthread_mutex_init(&g->start_root_worker_lock, NULL);
+    pthread_cond_init(&g->start_root_worker_cond_var, NULL);
 
     return g;
 }
@@ -152,7 +158,7 @@ global_state *global_state_init(int argc, char *argv[]) {
 #ifdef DEBUG
     setlinebuf(stderr);
 #endif
-    
+
     set_alert_debug_level(); // alert / debug used by global_state_allocate
     global_state *g = global_state_allocate();
 
@@ -166,12 +172,12 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     g->workers_started = false;
     g->root_closure_initialized = false;
-    atomic_store_explicit(&g->start, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->start_thieves, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
     atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
+
     g->terminate = false;
     g->exiting_worker = 0;
-    atomic_store_explicit(&g->reducer_map_count, 0, memory_order_relaxed);
 
     g->workers =
         (__cilkrts_worker **)calloc(active_size, sizeof(__cilkrts_worker *));
