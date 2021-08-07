@@ -1196,16 +1196,14 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
             CILK_ASSERT(w, SP(sf) == new_rsp);
         }
     }
-    CILK_STOP_TIMING(w, INTERVAL_SCHED);
-    CILK_START_TIMING(w, INTERVAL_WORK);
+    CILK_SWITCH_TIMING(w, INTERVAL_SCHED, INTERVAL_WORK);
     sysdep_longjmp_to_sf(sf);
 }
 
 __attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker *w) {
     cilkrts_alert(SCHED | ALERT_FIBER, w, "(longjmp_to_runtime)");
 
-    CILK_STOP_TIMING(w, INTERVAL_WORK);
-    CILK_START_TIMING(w, INTERVAL_SCHED);
+    CILK_SWITCH_TIMING(w, INTERVAL_WORK, INTERVAL_SCHED);
     /* Can't change to WORKER_SCHED yet because the reducer map
        may still be set. */
     __builtin_longjmp(w->l->rts_ctx, 1);
@@ -1389,6 +1387,9 @@ static void do_what_it_says(__cilkrts_worker *w, Closure *t) {
                         Closure_status_to_str(t->status));
             break;
         }
+        if (t) {
+            WHEN_SCHED_STATS(w->l->stats.repos++);
+        }
     } while (t);
 }
 
@@ -1401,6 +1402,7 @@ void do_what_it_says_boss(__cilkrts_worker *w, Closure *t) {
     // At this point, the boss has run out of work to do.  Rather than become a
     // thief itself, the boss wakes up the root worker to become a thief.
 
+    CILK_STOP_TIMING(w, INTERVAL_SCHED);
     worker_change_state(w, WORKER_IDLE);
     __builtin_longjmp(w->g->boss_ctx, 1);
 }
@@ -1619,6 +1621,7 @@ void worker_scheduler(__cilkrts_worker *w) {
             }
 #endif
             if (t) {
+                WHEN_SCHED_STATS(w->l->stats.steals++);
                 if (fails >= DEPRIVED_THRESHOLD) {
                     // This thief is no longer deprived.  Decrement the number
                     // of deprived thieves.
@@ -1633,6 +1636,7 @@ void worker_scheduler(__cilkrts_worker *w) {
                 fails = 0;
                 break;
             }
+            CILK_START_TIMING(w, INTERVAL_SLEEP);
             fails += ATTEMPTS;
 
             // Every DEPRIVED_THRESHOLD consecutive failed steal attempts,
@@ -1683,6 +1687,7 @@ void worker_scheduler(__cilkrts_worker *w) {
                     nanosleep(&sleeptime, NULL);
                 }
             }
+            CILK_STOP_TIMING(w, INTERVAL_SLEEP);
         }
         CILK_START_TIMING(w, INTERVAL_SCHED);
         // If one Cilkified region stops and another one starts, then a worker
@@ -1721,6 +1726,7 @@ void *scheduler_thread_proc(void *arg) {
     // Initialize worker's random-number generator.
     rts_srand(w, (self + 1) * 162347);
 
+    CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
     do {
         // Wait for g->start == 1 to start executing the work-stealing loop.  We
         // use a condition variable to wait on g->start, because this approach
@@ -1730,6 +1736,7 @@ void *scheduler_thread_proc(void *arg) {
         } else {
             thief_wait(rts);
         }
+        CILK_STOP_TIMING(w, INTERVAL_SLEEP_UNCILK);
 
         // Check if we should exit this scheduling function.
         if (rts->terminate) {
@@ -1755,8 +1762,11 @@ void *scheduler_thread_proc(void *arg) {
         if (self == rts->exiting_worker) {
             // Mark the computation as no longer cilkified, to signal the thread
             // that originally cilkified the execution.
+            CILK_EXIT_WORKER_TIMING(rts);
             signal_uncilkified(rts);
+            CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
         } else {
+            CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
             // Busy-wait for a while to amortize the cost of syscalls to put
             // thief threads to sleep.
             unsigned int fail = 0;

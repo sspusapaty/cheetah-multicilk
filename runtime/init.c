@@ -307,6 +307,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     // The boss thread will impersonate the last exiting worker until it tries
     // to become a thief.
     tls_worker = g->workers[g->exiting_worker];
+    CILK_START_TIMING(tls_worker, INTERVAL_CILKIFY);
     is_boss_thread = true;
 
     // Mark the root closure as not initialized
@@ -350,6 +351,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     wake_thieves(g);
 
     if (__builtin_setjmp(g->boss_ctx) == 0) {
+        CILK_SWITCH_TIMING(tls_worker, INTERVAL_CILKIFY, INTERVAL_SCHED);
         do_what_it_says_boss(tls_worker, g->root_closure);
     } else {
         // The setjmp/longjmp to and from user code can invalidate the function
@@ -357,6 +359,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
         // these arguments from the runtime's global state.
         global_state *g = tls_worker->g;
         __cilkrts_stack_frame *sf = g->root_closure->frame;
+        CILK_BOSS_START_TIMING(g);
 
         worker_id self = tls_worker->self;
         tls_worker = NULL;
@@ -373,6 +376,8 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
         // only restore the stack pointer to its original value on the
         // Cilkifying thread's stack.
 
+        CILK_BOSS_STOP_TIMING(g);
+
         // Restore the boss's original rsp, so the boss completes the Cilk
         // function on its original stack.
         SP(sf) = g->orig_rsp;
@@ -386,6 +391,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
                                             __cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     CILK_ASSERT(w, w->l->state == WORKER_RUN);
+    CILK_SWITCH_TIMING(w, INTERVAL_WORK, INTERVAL_CILKIFY);
     // Record this worker as the exiting worker.  We keep track of this exiting
     // worker so that code outside of Cilkified regions can use this worker's
     // state, specifically, its reducer_map.  We make sure to do this before
@@ -427,6 +433,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     CILK_ASSERT(w, __cilkrts_synced(sf));
     sf->flags = 0;
 
+    CILK_STOP_TIMING(w, INTERVAL_CILKIFY);
     if (is_boss_thread) {
         // We finished the computation on the boss thread.  No need to jump to
         // the runtime in this case; just return normally.
@@ -442,6 +449,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         __builtin_longjmp(sf->ctx, 1);
     } else {
         // done; go back to runtime
+        CILK_START_TIMING(w, INTERVAL_WORK);
         longjmp_to_runtime(w);
     }
 }
