@@ -370,91 +370,84 @@ static Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
     Closure_lock(w, parent);
     Closure_lock(w, child);
 
-    // "Reduce" exceptions. Deallocate any exception objects and other fibers
-    // that have been reduced away.
-    while (1) {
+    // Deal with reducers and exceptions.  We do both in the same loop to ensure
+    // that we end up with a consistent view of reducers and exceptions in
+    // parent and sibling closures.  To "reduce" exceptions, deallocate any
+    // exception objects and other fibers that have been reduced away.
+    while (true) {
         // invariant: a closure cannot unlink itself w/out lock on parent
         // so what this points to cannot change while we have lock on parent
 
+        // Get the right-sibling hypermap and exception.
+        cilkred_map *right =
+            atomic_load_explicit(&child->right_rmap, memory_order_acquire);
+        atomic_store_explicit(&child->right_rmap, NULL, memory_order_relaxed);
         struct closure_exception right_exn = child->right_exn;
         clear_closure_exception(&(child->right_exn));
 
-        struct closure_exception left_exn;
+        // Get the "left" hypermap and exception, which either belongs to a
+        // left sibling, if it exists, or the parent, otherwise.
+        _Atomic(cilkred_map *) volatile *left_ptr;
+        struct closure_exception *left_exn_ptr;
         Closure *const left_sib = child->left_sib;
-        struct closure_exception *left_ptr;
         if (left_sib != NULL) {
-            left_exn = left_sib->right_exn;
-            left_ptr = &(left_sib->right_exn);
-            clear_closure_exception(left_ptr);
+            left_ptr = &left_sib->right_rmap;
+            left_exn_ptr = &left_sib->right_exn;
         } else {
-            left_exn = parent->child_exn;
-            left_ptr = &(parent->child_exn);
-            clear_closure_exception(left_ptr);
+            left_ptr = &parent->child_rmap;
+            left_exn_ptr = &parent->child_exn;
         }
+        cilkred_map *left =
+            atomic_load_explicit(left_ptr, memory_order_acquire);
+        atomic_store_explicit(left_ptr, NULL, memory_order_relaxed);
+        struct closure_exception left_exn = *left_exn_ptr;
+        clear_closure_exception(left_exn_ptr);
 
-        struct closure_exception active = child->user_exn;
+        // Get the current active hypermap and exception.
+        cilkred_map *active = w->reducer_map;
+        w->reducer_map = NULL;
+        struct closure_exception active_exn = child->user_exn;
 
-        if (left_exn.exn == NULL && right_exn.exn == NULL) {
-            *left_ptr = active;
+        // If we have no hypermaps or exceptions on either the left or right,
+        // deposit the active hypermap and exception and break from the loop.
+        if (left == NULL && right == NULL && left_exn.exn == NULL &&
+            right_exn.exn == NULL) {
+            /* deposit views */
+            atomic_store_explicit(left_ptr, active, memory_order_release);
+            *left_exn_ptr = active_exn;
             break;
         }
 
         Closure_unlock(w, child);
         Closure_unlock(w, parent);
         // clean up exception objects
-        // TODO: determine exactly when it's safe to clean up exception objects
         if (left_exn.exn) {
-            active = left_exn;
+            active_exn = left_exn;
+            // can safely delete any exceptions to the right of left_exn.
             if (child->user_exn.exn) {
-                // can safely delete this exception.
                 _Unwind_DeleteException(
                     (struct _Unwind_Exception *)child->user_exn.exn);
+                clear_closure_exception(&child->user_exn);
             }
             if (right_exn.exn) {
                 _Unwind_DeleteException(
                     (struct _Unwind_Exception *)right_exn.exn);
+                clear_closure_exception(&right_exn);
             }
         } else if (child->user_exn.exn) {
+            // can safely delete right_exn.
             if (right_exn.exn) {
                 _Unwind_DeleteException(
                     (struct _Unwind_Exception *)right_exn.exn);
+                clear_closure_exception(&right_exn);
             }
-        } else {
-            active = right_exn;
+        } else if (right_exn.exn) {
+            // save right_exn.
+            active_exn = right_exn;
         }
+        child->user_exn = active_exn;
 
-        child->user_exn = active;
-        Closure_lock(w, parent);
-        Closure_lock(w, child);
-    }
-
-    while (1) {
-        // invariant: a closure cannot unlink itself w/out lock on parent
-        // so what this points to cannot change while we have lock on parent
-        cilkred_map *right =
-            atomic_load_explicit(&child->right_rmap, memory_order_acquire);
-        atomic_store_explicit(&child->right_rmap, NULL, memory_order_relaxed);
-        _Atomic(cilkred_map *) volatile *left_ptr;
-        Closure *const left_sib = child->left_sib;
-        if (left_sib != NULL) {
-            left_ptr = &left_sib->right_rmap;
-        } else {
-            left_ptr = &parent->child_rmap;
-        }
-        cilkred_map *left =
-            atomic_load_explicit(left_ptr, memory_order_acquire);
-        atomic_store_explicit(left_ptr, NULL, memory_order_relaxed);
-
-        cilkred_map *active = w->reducer_map;
-        w->reducer_map = NULL;
-
-        if (left == NULL && right == NULL) {
-            /* deposit views */
-            atomic_store_explicit(left_ptr, active, memory_order_release);
-            break;
-        }
-        Closure_unlock(w, child);
-        Closure_unlock(w, parent);
+        // merge reducers
         if (left) {
             active = merge_two_rmaps(w, left, active);
         }
@@ -523,6 +516,7 @@ static Closure *Closure_return(__cilkrts_worker *const w, Closure *child) {
             if (active_exn.exn) {
                 _Unwind_DeleteException(
                     (struct _Unwind_Exception *)active_exn.exn);
+                clear_closure_exception(&active_exn);
             }
             parent->user_exn = child_exn;
             parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
@@ -1293,6 +1287,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
             if (t->user_exn.exn) {
                 _Unwind_DeleteException(
                     (struct _Unwind_Exception *)t->user_exn.exn);
+                clear_closure_exception(&t->user_exn);
             }
             t->user_exn = child_exn;
             clear_closure_exception(&(t->child_exn));
