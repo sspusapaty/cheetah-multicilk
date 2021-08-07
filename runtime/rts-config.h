@@ -47,7 +47,7 @@
 #define DEFAULT_NPROC 0 // 0 for # of cores available
 #define DEFAULT_DEQ_DEPTH 1024
 #define DEFAULT_STACK_SIZE 0x100000 // 1 MBytes
-#define DEFAULT_FIBER_POOL_CAP 128  // initial per-worker fiber pool capacity
+#define DEFAULT_FIBER_POOL_CAP 3  // initial per-worker fiber pool capacity
 #define DEFAULT_REDUCER_LIMIT 1024
 #define DEFAULT_FORCE_REDUCE 0 // do not self steal to force reduce
 

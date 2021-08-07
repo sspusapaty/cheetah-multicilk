@@ -74,7 +74,7 @@ static void set_deqdepth(global_state *g, unsigned int deqdepth) {
 static void set_fiber_pool_cap(global_state *g, unsigned int fiber_pool_cap) {
     // TODO: Verify that g has not yet been initialized.
     CILK_ASSERT_G(!g->workers_started);
-    CILK_ASSERT_G(fiber_pool_cap >= 8);
+    CILK_ASSERT_G(fiber_pool_cap >= 2);
     CILK_ASSERT_G(fiber_pool_cap <= 999999);
     g->options.fiber_pool_cap = fiber_pool_cap;
 }
