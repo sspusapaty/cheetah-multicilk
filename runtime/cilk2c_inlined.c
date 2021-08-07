@@ -51,6 +51,8 @@ cilkify(global_state *g, __cilkrts_stack_frame *sf) {
     if (__builtin_setjmp(sf->ctx) == 0) {
         sysdep_save_fp_ctrl_state(sf);
         __cilkrts_internal_invoke_cilkified_root(g, sf);
+    } else {
+        sanitizer_finish_switch_fiber();
     }
 }
 
@@ -67,6 +69,8 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
         // Finish this Cilkified region, and transfer control back to the
         // original thread that performed cilkify.
         __cilkrts_internal_exit_cilkified_root(g, sf);
+    } else {
+        sanitizer_finish_switch_fiber();
     }
 }
 
@@ -173,6 +177,9 @@ __attribute__((always_inline)) int
 __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
     sysdep_save_fp_ctrl_state(sf);
     int res = __builtin_setjmp(sf->ctx);
+    if (res != 0) {
+        sanitizer_finish_switch_fiber();
+    }
     return res;
 }
 
@@ -205,6 +212,7 @@ __attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
             sysdep_save_fp_ctrl_state(sf);
             __cilkrts_sync(sf);
         } else {
+            sanitizer_finish_switch_fiber();
             if (sf->flags & CILK_FRAME_EXCEPTION_PENDING) {
                 __cilkrts_check_exception_raise(sf);
             }
@@ -218,6 +226,8 @@ __cilk_sync_nothrow(__cilkrts_stack_frame *sf) {
         if (__builtin_setjmp(sf->ctx) == 0) {
             sysdep_save_fp_ctrl_state(sf);
             __cilkrts_sync(sf);
+        } else {
+            sanitizer_finish_switch_fiber();
         }
     }
 }

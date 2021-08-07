@@ -620,6 +620,7 @@ void Cilk_exception_handler(char *exn) {
 
         Closure_unlock(w, t);
         deque_unlock_self(w);
+        sanitizer_unpoison_fiber(t->fiber);
         longjmp_to_runtime(w); // NOT returning back to user code
 
     } else { // not steal, not abort; false alarm
@@ -1191,6 +1192,7 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         }
     }
     CILK_SWITCH_TIMING(w, INTERVAL_SCHED, INTERVAL_WORK);
+    sanitizer_start_switch_fiber(fiber);
     sysdep_longjmp_to_sf(sf);
 }
 
@@ -1200,6 +1202,7 @@ __attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker *w) {
     CILK_SWITCH_TIMING(w, INTERVAL_WORK, INTERVAL_SCHED);
     /* Can't change to WORKER_SCHED yet because the reducer map
        may still be set. */
+    sanitizer_start_switch_fiber(NULL);
     __builtin_longjmp(w->l->rts_ctx, 1);
 }
 
@@ -1302,6 +1305,8 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         }
         if (t->simulated_stolen)
             t->simulated_stolen = false;
+
+        sanitizer_start_switch_fiber(t->fiber);
     }
 
     return res;
@@ -1352,6 +1357,7 @@ static void do_what_it_says(__cilkrts_worker *w, Closure *t) {
             } else {
                 w = w_save;
                 CILK_ASSERT_POINTER_EQUAL(w, w, __cilkrts_get_tls_worker());
+                sanitizer_finish_switch_fiber();
                 worker_change_state(w, WORKER_SCHED);
                 // CILK_ASSERT(w, t->fiber == w->l->fiber_to_free);
                 if (w->l->fiber_to_free) {

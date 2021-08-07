@@ -382,6 +382,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
         // function on its original stack.
         SP(sf) = g->orig_rsp;
         sysdep_restore_fp_state(sf);
+        sanitizer_start_switch_fiber(NULL);
         __builtin_longjmp(sf->ctx, 1);
     }
 }
@@ -446,6 +447,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         // function on its original stack.
         SP(sf) = g->orig_rsp;
         sysdep_restore_fp_state(sf);
+        sanitizer_start_switch_fiber(NULL);
         __builtin_longjmp(sf->ctx, 1);
     } else {
         // done; go back to runtime

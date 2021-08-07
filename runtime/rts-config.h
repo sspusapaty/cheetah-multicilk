@@ -24,6 +24,10 @@
 #define CILK_DEBUG 1
 #endif
 
+#ifndef CILK_ENABLE_ASAN_HOOKS
+#define CILK_ENABLE_ASAN_HOOKS 0
+#endif
+
 #ifndef CILK_STATS
 #define CILK_STATS 0
 #endif
