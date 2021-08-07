@@ -1711,6 +1711,10 @@ void *scheduler_thread_proc(void *arg) {
     cilkrts_alert(BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
+    // Initialize the worker's fiber pool.  We have each worker do this itself
+    // to improve the locality of the initial fibers.
+    cilk_fiber_pool_per_worker_init(w);
+
     // Avoid redundant lookups of these commonly accessed worker fields.
     const worker_id self = w->self;
     global_state *rts = w->g;

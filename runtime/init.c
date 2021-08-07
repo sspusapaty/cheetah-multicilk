@@ -86,7 +86,6 @@ static void workers_init(global_state *g) {
         w->reducer_map = NULL;
         // initialize internal malloc first
         cilk_internal_malloc_per_worker_init(w);
-        cilk_fiber_pool_per_worker_init(w);
 
         // Initialize index-to-worker map entry for this worker.
         g->index_to_worker[i] = i;
