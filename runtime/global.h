@@ -59,6 +59,10 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
+    worker_id *index_to_worker;
+    worker_id *worker_to_index;
+    cilk_mutex index_lock;
+
     volatile bool workers_started;
     volatile bool terminate;
 
@@ -78,6 +82,13 @@ struct global_state {
     // cilkified field is helpful for debugging, and it seems unlikely that this
     // optimization would improve performance.
     _Atomic uint32_t cilkified_futex;
+    _Atomic uint32_t disengaged_thieves_futex;
+
+    // Count of number of disengaged and deprived workers.  Upper 32 bits count
+    // the disengaged workers.  Lower 32 bits count the deprived workers.  These
+    // two counts are stored in a single word to make it easier to update both
+    // counts atomically.
+    _Atomic uint64_t disengaged_deprived;
 
     pthread_mutex_t start_root_worker_lock;
     pthread_cond_t start_root_worker_cond_var;
@@ -85,6 +96,9 @@ struct global_state {
     pthread_cond_t start_thieves_cond_var;
     pthread_mutex_t cilkified_lock;
     pthread_cond_t cilkified_cond_var;
+
+    pthread_mutex_t disengaged_lock;
+    pthread_cond_t disengaged_cond_var;
 
     cilk_mutex print_lock; // global lock for printing messages
 

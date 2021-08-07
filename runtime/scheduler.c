@@ -4,6 +4,7 @@
 #include <sched.h>
 #endif
 #include <stdio.h>
+#include <string.h>
 #include <unwind.h>
 
 #include "cilk-internal.h"
@@ -1404,10 +1405,131 @@ void do_what_it_says_boss(__cilkrts_worker *w, Closure *t) {
     __builtin_longjmp(w->g->boss_ctx, 1);
 }
 
+// Update the index-to-worker map to swap self with the worker at the target
+// index.
+static void swap_worker_with_target(global_state *g, worker_id self,
+                                    worker_id target_index) {
+    worker_id self_index = g->worker_to_index[self];
+    worker_id target_worker = g->index_to_worker[target_index];
 
+    // Update the index-to-worker map.
+    g->index_to_worker[self_index] = target_worker;
+    g->index_to_worker[target_index] = self;
 
+    // Update the worker-to-index map.
+    g->worker_to_index[target_worker] = self_index;
+    g->worker_to_index[self] = target_index;
 }
 
+// Called by a thief thread.  Causes the thief thread to try to sleep, that is,
+// to wait for a signal to resume work-stealing.
+static bool try_to_disengage_thief(global_state *g, worker_id self,
+                                   uint64_t disengaged_deprived) {
+    // Try to grab the lock on the index structure.
+    if (!cilk_mutex_try(&g->index_lock)) {
+        return false;
+    }
+
+    // Increment the number of disengaged thieves and decrement number of deprived
+    // thieves.
+    const uint64_t disengaged_mask = ((uint64_t)-1) << 32;
+    uint64_t disengaged = disengaged_deprived & disengaged_mask;
+    uint64_t new_disengaged_deprived =
+            ((disengaged + (1UL << 32)) & disengaged_mask) |
+            ((disengaged_deprived - 1) & ~disengaged_mask);
+    // Try to update the number of disengaged workers.  This step synchronizes
+    // with parallel calls to reengage thieves, calls to reengage thieves, and
+    // updates to the number of deprived workers.
+    // First atomically update the number of disengaged workers.
+    if (atomic_compare_exchange_strong(&g->disengaged_deprived,
+                                       &disengaged_deprived,
+                                       new_disengaged_deprived)) {
+        // Update the index-to-worker map.
+        worker_id last_index = g->nworkers - (new_disengaged_deprived >> 32);
+        if (g->worker_to_index[self] < last_index) {
+            swap_worker_with_target(g, self, last_index);
+        }
+        // Release the lock on the index structure
+        cilk_mutex_unlock(&g->index_lock);
+
+        // Disengage this thread.
+        thief_disengage(g);
+
+        // The thread is now reengaged.  Grab the lock on the index structure.
+        cilk_mutex_lock(&g->index_lock);
+
+        // Decrement the number of disengaged workers.
+        while (true) {
+            // Atomically decrement the number of disengaged workers.
+            uint64_t disengaged_deprived = atomic_load_explicit(
+                &g->disengaged_deprived, memory_order_acquire);
+            disengaged = disengaged_deprived & disengaged_mask;
+            new_disengaged_deprived = ((disengaged - (1UL << 32)) & disengaged_mask) |
+                                    ((disengaged_deprived + 1) & ~disengaged_mask);
+            if (atomic_compare_exchange_strong(&g->disengaged_deprived,
+                                               &disengaged_deprived,
+                                               new_disengaged_deprived)) {
+                // Update the index structure.
+                last_index = g->nworkers - (disengaged_deprived >> 32);
+                if (g->worker_to_index[self] > last_index) {
+                    swap_worker_with_target(g, self, last_index);
+                }
+
+                // Release the lock on the index structure.
+                cilk_mutex_unlock(&g->index_lock);
+                return true;
+            }
+        }
+    } else {
+        // Release the lock on the index structure.
+        cilk_mutex_unlock(&g->index_lock);
+        return false;
+    }
+}
+
+// Attempt to disengage this thief thread.  The __cilkrts_worker parameter is only
+// used for debugging.
+static bool maybe_disengage_thief(global_state *g, worker_id self,
+                                unsigned int nworkers, __cilkrts_worker *w) {
+    // Check the number of active and deprived workers, and disengage this worker
+    // if there are too many deprived workers.
+    while (true) {
+        // Check if this deprived thread should sleep.
+        uint64_t disengaged_deprived =
+            atomic_load_explicit(&g->disengaged_deprived, memory_order_acquire);
+        const uint64_t disengaged_mask = ((uint64_t)-1) << 32;
+        uint32_t disengaged = (uint32_t)(disengaged_deprived >> 32);
+        uint32_t deprived = (uint32_t)(disengaged_deprived & ~disengaged_mask);
+
+        CILK_ASSERT(w, disengaged < nworkers);
+        CILK_ASSERT(w, deprived < nworkers);
+        int32_t active =
+            (int32_t)nworkers - (int32_t)disengaged - (int32_t)deprived;
+        CILK_ASSERT(w, active >= 1);
+        // TODO: Investigate whether it's better to keep the number of deprived
+        // workers less than the number of active workers.
+        if (active < (int32_t)deprived) {
+            // Too many deprived thieves.  Try to disengage this worker.  If it
+            // fails, repeat the loop.
+            if (try_to_disengage_thief(g, self, disengaged_deprived)) {
+                // The thief was successfully disengaged.  It has since been
+                // taken out of disengage.
+                return true;
+            }
+        } else {
+            // We have enough active workers to keep this worker out of disengage,
+            // but this worker was still unable to steal work.  Put this thief
+            // to sleep for a while using the conventional way.
+            // In testing, a nanosleep(0) takes approximately 50 us.
+            const struct timespec sleeptime = {.tv_sec = 0, .tv_nsec = 50000};
+            /* const struct timespec sleeptime = {.tv_sec = 0, .tv_nsec =
+             * 25000}; */
+            nanosleep(&sleeptime, NULL);
+            break;
+        }
+    }
+    return false;
+}
 
 void worker_scheduler(__cilkrts_worker *w) {
     Closure *t = NULL;
@@ -1423,6 +1545,23 @@ void worker_scheduler(__cilkrts_worker *w) {
     // Initialize count of consecutive failed steal attempts.  Effectively,
     // every worker is active upon entering this routine.
     unsigned int fails = 0;
+    // Get pointers to the local and global copies of the index-to-worker map.
+    worker_id *local_index_to_worker = w->l->index_to_worker;
+
+    // Threshold for number of consective failed steal attempts to declare a
+    // thief as deprived.  Must be a power of 2.
+    const unsigned int DEPRIVED_THRESHOLD = 2048;
+    // Threshold for number of consecutive failed steal attempts to try
+    // disengaging this worker.  Must be a multiple of DEPRIVED_THRESHOLD and a
+    // power of 2.
+    const unsigned int DISENGAGE_THRESHOLD = 4 * DEPRIVED_THRESHOLD;
+    // Threshold for number of failed steal attempts to put this thief to sleep
+    // for an extended amount of time.  Must be larger than DISENGAGE_THRESHOLD.
+    const unsigned int SLEEP_THRESHOLD = 32 * DEPRIVED_THRESHOLD;
+
+    // Number of attempted steals the thief should do each time it copies the
+    // worker state.  ATTEMPTS must divide DEPRIVED_THRESHOLD.
+    const int ATTEMPTS = 4;
 
     while (!atomic_load_explicit(&rts->done, memory_order_acquire)) {
         /* A worker entering the steal loop must have saved its reducer map into
@@ -1434,10 +1573,42 @@ void worker_scheduler(__cilkrts_worker *w) {
         while (!t && !atomic_load_explicit(&rts->done, memory_order_acquire)) {
             CILK_START_TIMING(w, INTERVAL_SCHED);
             CILK_START_TIMING(w, INTERVAL_IDLE);
-            unsigned int victim = rts_rand(w) % w->g->nworkers;
-            if (victim != w->self) {
+            // Get the set of workers we can steal from and a local copy of the
+            // index-to-worker map.  We'll attempt a few steals using these
+            // local copies to minimize memory traffic.
+            uint64_t disengaged_deprived = atomic_load_explicit(
+                &rts->disengaged_deprived, memory_order_relaxed);
+            uint32_t disengaged = (uint32_t)(disengaged_deprived >> 32);
+            uint32_t stealable = nworkers - disengaged;
+            // TODO: Technically, ATTEMPTS should scale with the number of
+            // workers, to amortize the memcpy, which takes O(P)-time.  However,
+            // in testing, ATTEMPTS = 4 works well even on large worker counts
+            // (e.g., 96) in a NUMA environment.  I suspect the total cost of
+            // the memcpy is too small for such worker counts to worry about.
+            memcpy(local_index_to_worker, rts->index_to_worker,
+                   sizeof(worker_id) * stealable);
+
+            int attempt = ATTEMPTS;
+            do {
+                // Choose a random victim not equal to self.
+                worker_id victim =
+                    local_index_to_worker[rts_rand(w) % stealable];
+                while (victim == self) {
+                    victim = local_index_to_worker[rts_rand(w) % stealable];
+                }
+                // Attempt to steal from that victim.
                 t = Closure_steal(w, victim);
-            }
+                if (!t) {
+                    // Pause inside this busy loop.
+#ifdef __SSE__
+                    __builtin_ia32_pause();
+#endif
+#ifdef __aarch64__
+                    __builtin_arm_yield();
+#endif
+                }
+            } while (!t && --attempt > 0);
+
 #if SCHED_STATS
             if (t) { // steal successful
                 CILK_STOP_TIMING(w, INTERVAL_SCHED);
@@ -1448,30 +1619,69 @@ void worker_scheduler(__cilkrts_worker *w) {
             }
 #endif
             if (t) {
+                if (fails >= DEPRIVED_THRESHOLD) {
+                    // This thief is no longer deprived.  Decrement the number
+                    // of deprived thieves.
+                    atomic_fetch_sub_explicit(&rts->disengaged_deprived, 1,
+                                              memory_order_release);
+
+                    // Request to reengage at most 2 thieves.
+                    // TODO: Investigate whether it's better to keep the number
+                    // less than the number of active workers.
+                    request_more_thieves(rts, 2);
+                }
                 fails = 0;
                 break;
             }
-            /* TODO: Use condition variables or a similar controlled
-               blocking mechanism.  When a thread finds something to steal
-               it should wake up another thread to enter the loop. */
-            ++fails;
-            if (fails > 100000) {
-                usleep(10);
-            } else if (fails > 10000) {
-                usleep(1);
-            } else if (fails > 1000) {
-#if defined __APPLE__ || defined __linux__
-                sched_yield();
-#else
-                pthread_yield();
-#endif
-            } else {
-#ifdef __SSE__
-                __builtin_ia32_pause();
-#endif
-#ifdef __aarch64__
-                __builtin_arm_yield();
-#endif
+            fails += ATTEMPTS;
+
+            // Every DEPRIVED_THRESHOLD consecutive failed steal attempts,
+            // update the set of deprived workers, and maybe disengage this
+            // worker if there are too many deprived workers.
+            if (fails % DEPRIVED_THRESHOLD == 0) {
+                if (fails > (1 << 25)) {
+                    // Prevent the fail count from exceeding this maximum, so we
+                    // don't have to worry about the fail count overflowing.
+                    //
+                    // This maximum bound is chosen based on the maximum sleep
+                    // time when fails > SLEEP_THRESHOLD, which specifies the
+                    // time to sleep in nanoseconds.  Because the specification
+                    // to nanosleep() disallows times with more than 1e9
+                    // nanoseconds, we set the maximum fails value here
+                    // accordinly and, in this case, simply sleep for 1 second.
+                    fails = (1 << 25);
+                    const struct timespec sleeptime = {.tv_sec = 1,
+                                                       .tv_nsec = 0};
+                    nanosleep(&sleeptime, NULL);
+                } else if (DEPRIVED_THRESHOLD == fails) {
+                    // This thief is now considered deprived.  Increment the
+                    // number of deprived workers.
+                    atomic_fetch_add_explicit(&rts->disengaged_deprived, 1,
+                                              memory_order_release);
+                } else if (fails % DISENGAGE_THRESHOLD == 0) {
+                    if (maybe_disengage_thief(rts, self, nworkers, w)) {
+                        // The semaphore for reserving workers may have been
+                        // non-zero due to past successful steals, rather than a
+                        // recent successful steal.  Decrement fails so we try
+                        // to disengage this again sooner, in case there is
+                        // still nothing to steal.
+                        fails -= (DISENGAGE_THRESHOLD / 2);
+                    }
+
+                } else if (fails > SLEEP_THRESHOLD) {
+                    // This thief has failed a lot of consecutive steal
+                    // attempts, but it's not disengaged.  Sleep for increasing
+                    // lengths of time.
+                    const struct timespec sleeptime = {.tv_sec = 0,
+                                                       .tv_nsec = 16 * fails};
+                    nanosleep(&sleeptime, NULL);
+                } else if (fails % DISENGAGE_THRESHOLD != 0) {
+                    // This thief has failed many consecutive steal attempts,
+                    // but it's not disengaged.  Sleep for a short time.
+                    const struct timespec sleeptime = {.tv_sec = 0,
+                                                       .tv_nsec = 50000};
+                    nanosleep(&sleeptime, NULL);
+                }
             }
         }
         CILK_START_TIMING(w, INTERVAL_SCHED);
@@ -1484,6 +1694,13 @@ void worker_scheduler(__cilkrts_worker *w) {
             do_what_it_says(w, t);
             t = NULL;
         }
+    }
+
+    if (fails >= DEPRIVED_THRESHOLD) {
+        // If this worker was deprived, decrement the number of deprived
+        // workers, essentially making this worker active.
+        atomic_fetch_sub_explicit(&rts->disengaged_deprived, 1,
+                                  memory_order_release);
     }
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
     worker_change_state(w, WORKER_IDLE);

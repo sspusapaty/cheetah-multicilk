@@ -49,6 +49,8 @@ static local_state *worker_local_init(global_state *g) {
     l->lock_wait = false;
     l->provably_good_steal = false;
     l->rand_next = 0; /* will be reset in scheduler loop */
+    l->index_to_worker =
+        (worker_id *)calloc(g->options.nproc, sizeof(worker_id));
     cilk_sched_stats_init(&(l->stats));
 
     return l;
@@ -86,6 +88,9 @@ static void workers_init(global_state *g) {
         cilk_internal_malloc_per_worker_init(w);
         cilk_fiber_pool_per_worker_init(w);
 
+        // Initialize index-to-worker map entry for this worker.
+        g->index_to_worker[i] = i;
+        g->worker_to_index[i] = i;
     }
 }
 
@@ -265,6 +270,7 @@ static void __cilkrts_stop_workers(global_state *g) {
 
     // Wake up all the workers.
     wake_thieves(g);
+    wake_all_disengaged(g);
     wake_root_worker(g, (uint32_t)(-1));
 
     // Join the worker pthreads
@@ -328,12 +334,20 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     // Now kick off execution of the Cilkified region by setting appropriate
     // flags.
 
+    reset_disengaged_var(g);
     set_cilkified(g);
 
     // Set g->done = 0, so Cilk workers will continue trying to steal.
     atomic_store_explicit(&g->done, 0, memory_order_release);
 
     // Wake up the thieves, to allow them to begin work stealing.
+    //
+    // NOTE: We might want to wake thieves gradually, rather than all at once.
+    // The logic for gradually waking thieves might be combined with the logic
+    // for disengaging workers.  But right now the logic for disengaging workers
+    // assumes that all thieves are started at this point, specifically, when it
+    // computes the number of active workers as nworkers - deprived -
+    // disengaged.
     wake_thieves(g);
 
     if (__builtin_setjmp(g->boss_ctx) == 0) {
@@ -386,6 +400,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // for the start of the next Cilkified region.
     sleep_thieves(g);
     atomic_store_explicit(&g->done, 1, memory_order_release);
+    wake_all_disengaged(g);
 
     if (!is_boss_thread && self != atomic_load_explicit(&g->start_root_worker,
                                                         memory_order_acquire)) {
@@ -444,6 +459,7 @@ static void global_state_deinit(global_state *g) {
     cilk_fiber_pool_global_destroy(g);
     cilk_internal_malloc_global_destroy(g); // internal malloc last
     cilk_mutex_destroy(&(g->print_lock));
+    cilk_mutex_destroy(&(g->index_lock));
     // TODO: Convert to cilk_* equivalents
     pthread_mutex_destroy(&g->cilkified_lock);
     pthread_cond_destroy(&g->cilkified_cond_var);
@@ -451,6 +467,8 @@ static void global_state_deinit(global_state *g) {
     pthread_cond_destroy(&g->start_thieves_cond_var);
     pthread_mutex_destroy(&g->start_root_worker_lock);
     pthread_cond_destroy(&g->start_root_worker_cond_var);
+    pthread_mutex_destroy(&g->disengaged_lock);
+    pthread_cond_destroy(&g->disengaged_cond_var);
     free(g->workers);
     g->workers = NULL;
     g->nworkers = 0;
@@ -458,6 +476,10 @@ static void global_state_deinit(global_state *g) {
     g->deques = NULL;
     free(g->threads);
     g->threads = NULL;
+    free(g->index_to_worker);
+    g->index_to_worker = NULL;
+    free(g->worker_to_index);
+    g->worker_to_index = NULL;
     free(g->id_manager); /* XXX Should export this back to global */
     g->id_manager = NULL;
     free(g);
@@ -518,6 +540,8 @@ static void workers_deinit(global_state *g) {
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
         w->l->shadow_stack = NULL;
+        free(w->l->index_to_worker);
+        w->l->index_to_worker = NULL;
         free(w->l);
         w->l = NULL;
         free(w);

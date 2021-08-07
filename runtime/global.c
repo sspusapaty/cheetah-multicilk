@@ -33,6 +33,7 @@ static global_state *global_state_allocate() {
     memset(g, 0, sizeof *g);
 
     cilk_mutex_init(&g->im_lock);
+    cilk_mutex_init(&g->index_lock);
     cilk_mutex_init(&g->print_lock);
 
     atomic_store_explicit(&g->start_thieves_futex, 0, memory_order_relaxed);
@@ -46,6 +47,9 @@ static global_state *global_state_allocate() {
     pthread_cond_init(&g->start_thieves_cond_var, NULL);
     pthread_mutex_init(&g->start_root_worker_lock, NULL);
     pthread_cond_init(&g->start_root_worker_cond_var, NULL);
+
+    pthread_mutex_init(&g->disengaged_lock, NULL);
+    pthread_cond_init(&g->disengaged_cond_var, NULL);
 
     return g;
 }
@@ -175,6 +179,7 @@ global_state *global_state_init(int argc, char *argv[]) {
     atomic_store_explicit(&g->start_thieves, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
     atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
+    atomic_store_explicit(&g->disengaged_deprived, 0, memory_order_relaxed);
 
     g->terminate = false;
     g->exiting_worker = 0;
@@ -184,6 +189,8 @@ global_state *global_state_init(int argc, char *argv[]) {
     g->deques = (ReadyDeque *)cilk_aligned_alloc(
         __alignof__(ReadyDeque), active_size * sizeof(ReadyDeque));
     g->threads = (pthread_t *)calloc(active_size, sizeof(pthread_t));
+    g->index_to_worker = (worker_id *)calloc(active_size, sizeof(worker_id));
+    g->worker_to_index = (worker_id *)calloc(active_size, sizeof(worker_id));
     cilk_internal_malloc_global_init(g); // initialize internal malloc first
     cilk_fiber_pool_global_init(g);
     cilk_global_sched_stats_init(&(g->stats));
