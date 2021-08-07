@@ -6,16 +6,13 @@ set(CHEETAH_SOURCES
   cilk2c.c
   cilk2c_inlined.c
   cilkred_map.c
-  closure.c
   debug.c
   fiber.c
   fiber-pool.c
   global.c
   init.c
   internal-malloc.c
-  mutex.c
   personality.c
-  readydeque.c
   reducer_impl.c
   sched_stats.c
   scheduler.c
