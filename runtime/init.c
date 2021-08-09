@@ -289,6 +289,43 @@ void wait_until_cilk_done(global_state *g) {
     wait_while_cilkified(g);
 }
 
+// Helper method to make the boss thread wait for the cilkified region
+// to complete.
+static inline __attribute__((noinline)) void boss_wait_helper(void) {
+    // The setjmp/longjmp to and from user code can invalidate the
+    // function arguments and local variables in this function.  Get
+    // fresh copies of these arguments from the runtime's global
+    // state.
+    global_state *g = tls_worker->g;
+    __cilkrts_stack_frame *sf = g->root_closure->frame;
+    CILK_BOSS_START_TIMING(g);
+
+    worker_id self = tls_worker->self;
+    tls_worker = NULL;
+
+    // Wake up the worker the boss was impersonating, to let it take
+    // over the computation.
+    try_wake_root_worker(g, &self, (uint32_t)(-1));
+
+    // Wait until the cilkified region is done executing.
+    wait_until_cilk_done(g);
+
+    // At this point, some Cilk worker must have completed the
+    // Cilkified region and executed uncilkify at the end of the Cilk
+    // function.  The longjmp will therefore jump to the end of the
+    // Cilk function.  We need only restore the stack pointer to its
+    // original value on the Cilkifying thread's stack.
+
+    CILK_BOSS_STOP_TIMING(g);
+
+    // Restore the boss's original rsp, so the boss completes the Cilk
+    // function on its original stack.
+    SP(sf) = g->orig_rsp;
+    sysdep_restore_fp_state(sf);
+    sanitizer_start_switch_fiber(NULL);
+    __builtin_longjmp(sf->ctx, 1);
+}
+
 // Setup runtime structures to start a new Cilkified region.  Executed by the
 // Cilkifying thread in cilkify().
 void __cilkrts_internal_invoke_cilkified_root(global_state *g,
@@ -354,36 +391,12 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
         CILK_SWITCH_TIMING(tls_worker, INTERVAL_CILKIFY, INTERVAL_SCHED);
         do_what_it_says_boss(tls_worker, g->root_closure);
     } else {
-        // The setjmp/longjmp to and from user code can invalidate the function
-        // arguments and local variables in this function.  Get fresh copies of
-        // these arguments from the runtime's global state.
-        global_state *g = tls_worker->g;
-        __cilkrts_stack_frame *sf = g->root_closure->frame;
-        CILK_BOSS_START_TIMING(g);
-
-        worker_id self = tls_worker->self;
-        tls_worker = NULL;
-        // Wake up the worker the boss was impersonating, to let it take over
-        // the computation.
-        try_wake_root_worker(g, &self, (uint32_t)(-1));
-
-        // Wait until the cilkified region is done executing.
-        wait_until_cilk_done(g);
-
-        // At this point, some Cilk worker must have completed the Cilkified
-        // region and executed uncilkify at the end of the Cilk function.  The
-        // longjmp will therefore jump to the end of the Cilk function.  We need
-        // only restore the stack pointer to its original value on the
-        // Cilkifying thread's stack.
-
-        CILK_BOSS_STOP_TIMING(g);
-
-        // Restore the boss's original rsp, so the boss completes the Cilk
-        // function on its original stack.
-        SP(sf) = g->orig_rsp;
-        sysdep_restore_fp_state(sf);
-        sanitizer_start_switch_fiber(NULL);
-        __builtin_longjmp(sf->ctx, 1);
+        // The stack on which
+        // __cilkrts_internal_invoke_cilkified_root() was called may
+        // be corrupted at this point, so we call this helper method,
+        // marked noinline, to ensure the compiler does not try to use
+        // any data from the stack.
+        boss_wait_helper();
     }
 }
 

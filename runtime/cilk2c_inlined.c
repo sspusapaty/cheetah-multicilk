@@ -183,11 +183,26 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
     return res;
 }
 
+static inline __cilkrts_worker *get_tls_worker(__cilkrts_stack_frame *sf) {
+#if defined __aarch64__
+    // ARM64 code generation seems to assume that the thread on which
+    // a function never changes.  As a result, it may cache the
+    // address returned by __cilkrts_get_tls_worker() during
+    // enter_frame and load the cached value in leave_frame, even
+    // though the actual result of __cilkrts_get_tls_worker() may
+    // change between those two points.  Therefore, we get the worker
+    // from sf for ARM64.
+    return atomic_load_explicit(&sf->worker, memory_order_relaxed);
+#else
+    return __cilkrts_get_tls_worker();
+#endif
+}
+
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
 // parent frame.
 __attribute__((always_inline)) void
 __cilkrts_detach(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    __cilkrts_worker *w = get_tls_worker(sf);
     cilkrts_alert(CFRAME, w, "__cilkrts_detach %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
@@ -234,7 +249,7 @@ __cilk_sync_nothrow(__cilkrts_stack_frame *sf) {
 
 __attribute__((always_inline)) void
 __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    __cilkrts_worker *w = get_tls_worker(sf);
     cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
@@ -277,7 +292,7 @@ __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
 
 __attribute__((always_inline)) void
 __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    __cilkrts_worker *w = get_tls_worker(sf);
     cilkrts_alert(CFRAME, w, "__cilkrts_leave_frame_helper %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
@@ -334,7 +349,7 @@ void __cilkrts_enter_landingpad(__cilkrts_stack_frame *sf, int32_t sel) {
 
 __attribute__((always_inline))
 void __cilkrts_pause_frame(__cilkrts_stack_frame *sf, char *exn) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
+    __cilkrts_worker *w = get_tls_worker(sf);
     cilkrts_alert(CFRAME, w, "__cilkrts_pause_frame %p", (void *)sf);
 
     CILK_ASSERT(w, CHECK_CILK_FRAME_MAGIC(w->g, sf));
