@@ -126,6 +126,9 @@ static void threads_init(global_state *g) {
        which is in a format compatible with cpulist_parse().
        FreeBSD exports sysctl kern.sched.topology_spec, an XML representation
        of the processor topology. */
+    /* TODO: Fix pinning strategy to better utilize cpu architecture.  For
+       example, we probably do not want to pin a worker to cpus on different
+       NUMA nodes. */
 #ifdef __FreeBSD__
     int pin_strategy = 1; /* (0, 1), (2, 3), ... */
 #else
@@ -169,7 +172,7 @@ static void threads_init(global_state *g) {
             step_out = group_size;
         } else {
             step_out = 1;
-            step_in = group_size;
+            step_in = n_threads;
         }
     }
 #endif
