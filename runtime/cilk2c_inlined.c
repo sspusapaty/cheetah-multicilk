@@ -184,16 +184,19 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
 }
 
 static inline __cilkrts_worker *get_tls_worker(__cilkrts_stack_frame *sf) {
-#if defined __aarch64__
-    // ARM64 code generation seems to assume that the thread on which
-    // a function never changes.  As a result, it may cache the
+#if defined(__APPLE__) && defined(__MACH__)
+    // TLS accesses on MacOSX always use an indirect function call.
+    // Code generation seems to assume that the thread on which a
+    // function runs never changes.  As a result, it may cache the
     // address returned by __cilkrts_get_tls_worker() during
-    // enter_frame and load the cached value in leave_frame, even
-    // though the actual result of __cilkrts_get_tls_worker() may
-    // change between those two points.  Therefore, we get the worker
-    // from sf for ARM64.
+    // enter_frame and load the cached value in later, even though the
+    // actual result of __cilkrts_get_tls_worker() may change between
+    // those two points.  Therefore, we get the worker from sf for
+    // MacOSX.
     return atomic_load_explicit(&sf->worker, memory_order_relaxed);
 #else
+    // On other systems, this TLS access will be compiled to an
+    // efficient move from memory.
     return __cilkrts_get_tls_worker();
 #endif
 }
