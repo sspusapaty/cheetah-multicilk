@@ -13,8 +13,9 @@ enum timing_type {
     INTERVAL_SCHED,    // scheduling time
     INTERVAL_IDLE,     // idle time
     INTERVAL_SLEEP,    // spleeing time in work-stealing loop
-    INTERVAL_SLEEP_UNCILK,    // spleeing time outside of work-stealing loop
-    INTERVAL_CILKIFY,  // time entering/exiting cilkified regions
+    INTERVAL_SLEEP_UNCILK,  // spleeing time outside of work-stealing loop
+    INTERVAL_CILKIFY_ENTER, // time entering cilkified regions
+    INTERVAL_CILKIFY_EXIT,  // time exiting cilkified regions
     NUMBER_OF_STATS    // must be the very last entry
 };
 

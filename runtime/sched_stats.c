@@ -21,8 +21,10 @@ static const char *enum_to_str(enum timing_type t) {
         return "sleep (sched)";
     case INTERVAL_SLEEP_UNCILK:
         return "sleep (uncilk)";
-    case INTERVAL_CILKIFY:
-        return "cilkify";
+    case INTERVAL_CILKIFY_ENTER:
+        return "cilkify (enter)";
+    case INTERVAL_CILKIFY_EXIT:
+        return "cilkify (exit)";
     default:
         return "unknown";
     }
