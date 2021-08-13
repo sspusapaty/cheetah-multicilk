@@ -263,8 +263,8 @@ static void __cilkrts_start_workers(global_state *g) {
 
 // Stop the Cilk workers in g, for example, by joining their underlying Pthreads.
 static void __cilkrts_stop_workers(global_state *g) {
-    CILK_ASSERT_G(
-        !atomic_load_explicit(&g->start_thieves, memory_order_acquire));
+    /* CILK_ASSERT_G( */
+    /*     !atomic_load_explicit(&g->start_thieves, memory_order_acquire)); */
 
     // Set g->start and g->terminate, to allow the workers to exit their
     // outermost scheduling loop.
@@ -272,7 +272,7 @@ static void __cilkrts_stop_workers(global_state *g) {
 
     // Wake up all the workers.
     wake_thieves(g);
-    wake_all_disengaged(g);
+    /* wake_all_disengaged(g); */
     wake_root_worker(g, (uint32_t)(-1));
 
     // Join the worker pthreads
@@ -334,10 +334,10 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
 void __cilkrts_internal_invoke_cilkified_root(global_state *g,
                                               __cilkrts_stack_frame *sf) {
     CILK_ASSERT_G(!__cilkrts_get_tls_worker());
-    CILK_ASSERT_G(
-        !atomic_load_explicit(&g->start_thieves, memory_order_acquire));
-    CILK_ASSERT_G(
-        !atomic_load_explicit(&g->start_thieves_futex, memory_order_acquire));
+    /* CILK_ASSERT_G( */
+    /*     !atomic_load_explicit(&g->start_thieves, memory_order_acquire)); */
+    /* CILK_ASSERT_G( */
+    /*     !atomic_load_explicit(&g->start_thieves_futex, memory_order_acquire)); */
 
     // Start the workers if necessary
     if (__builtin_expect(!g->workers_started, false)) {
@@ -374,7 +374,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     // Now kick off execution of the Cilkified region by setting appropriate
     // flags.
 
-    reset_disengaged_var(g);
+    /* reset_disengaged_var(g); */
     set_cilkified(g);
 
     // Set g->done = 0, so Cilk workers will continue trying to steal.
@@ -389,6 +389,7 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     // computes the number of active workers as nworkers - deprived -
     // disengaged.
     wake_thieves(g);
+    /* request_more_thieves(g, g->nworkers); */
 
     if (__builtin_setjmp(g->boss_ctx) == 0) {
         CILK_SWITCH_TIMING(tls_worker, INTERVAL_CILKIFY_ENTER, INTERVAL_SCHED);
@@ -422,7 +423,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // for the start of the next Cilkified region.
     sleep_thieves(g);
     atomic_store_explicit(&g->done, 1, memory_order_release);
-    wake_all_disengaged(g);
+    /* wake_all_disengaged(g); */
 
     if (!is_boss_thread && self != atomic_load_explicit(&g->start_root_worker,
                                                         memory_order_acquire)) {
@@ -488,8 +489,8 @@ static void global_state_deinit(global_state *g) {
     // TODO: Convert to cilk_* equivalents
     pthread_mutex_destroy(&g->cilkified_lock);
     pthread_cond_destroy(&g->cilkified_cond_var);
-    pthread_mutex_destroy(&g->start_thieves_lock);
-    pthread_cond_destroy(&g->start_thieves_cond_var);
+    /* pthread_mutex_destroy(&g->start_thieves_lock); */
+    /* pthread_cond_destroy(&g->start_thieves_cond_var); */
     pthread_mutex_destroy(&g->start_root_worker_lock);
     pthread_cond_destroy(&g->start_root_worker_cond_var);
     pthread_mutex_destroy(&g->disengaged_lock);

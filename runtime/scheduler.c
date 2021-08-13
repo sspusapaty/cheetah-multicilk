@@ -1633,6 +1633,9 @@ void worker_scheduler(__cilkrts_worker *w) {
                     // TODO: Investigate whether it's better to keep the number
                     // less than the number of active workers.
                     request_more_thieves(rts, 2);
+                /* } else if (atomic_load_explicit(&rts->uncilk_disengaged, */
+                /*                                 memory_order_acquire) > 0) { */
+                /*     request_more_thieves(rts, 2); */
                 }
                 fails = 0;
                 break;
@@ -1764,15 +1767,18 @@ void *scheduler_thread_proc(void *arg) {
             // Mark the computation as no longer cilkified, to signal the thread
             // that originally cilkified the execution.
             CILK_EXIT_WORKER_TIMING(rts);
-            signal_uncilkified(rts);
             CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
+            signal_uncilkified(rts);
         } else {
             CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
             // Busy-wait for a while to amortize the cost of syscalls to put
             // thief threads to sleep.
             unsigned int fail = 0;
+            /* while (fail++ < 2048 && */
+            /*        !atomic_load_explicit(&rts->start_thieves, */
+            /*                              memory_order_acquire)) { */
             while (fail++ < 2048 &&
-                   !atomic_load_explicit(&rts->start_thieves,
+                   !atomic_load_explicit(&rts->disengaged_thieves_futex,
                                          memory_order_acquire)) {
 #ifdef __SSE__
                 __builtin_ia32_pause();

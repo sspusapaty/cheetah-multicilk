@@ -76,13 +76,14 @@ struct global_state {
     jmpbuf boss_ctx;
     void *orig_rsp;
 
-    _Atomic uint32_t start_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
+    /* _Atomic uint32_t start_thieves_futex __attribute__((aligned(CILK_CACHE_LINE))); */
     // NOTE: We can probably update the runtime system so that, when it uses
     // cilkified_futex, it does not also use the cilkified field.  But the
     // cilkified field is helpful for debugging, and it seems unlikely that this
     // optimization would improve performance.
-    _Atomic uint32_t cilkified_futex;
+    _Atomic uint32_t cilkified_futex __attribute__((aligned(CILK_CACHE_LINE)));
     _Atomic uint32_t disengaged_thieves_futex;
+    /* _Atomic uint32_t uncilk_disengaged; */
 
     // Count of number of disengaged and deprived workers.  Upper 32 bits count
     // the disengaged workers.  Lower 32 bits count the deprived workers.  These
@@ -92,8 +93,8 @@ struct global_state {
 
     pthread_mutex_t start_root_worker_lock;
     pthread_cond_t start_root_worker_cond_var;
-    pthread_mutex_t start_thieves_lock;
-    pthread_cond_t start_thieves_cond_var;
+    /* pthread_mutex_t start_thieves_lock; */
+    /* pthread_cond_t start_thieves_cond_var; */
     pthread_mutex_t cilkified_lock;
     pthread_cond_t cilkified_cond_var;
 

@@ -134,22 +134,34 @@ static inline void worker_clear_start(volatile atomic_bool *start) {
 // Common internal interface for managing execution of workers.
 //=========================================================
 
-// Called by a thief thread.  Causes the thief thread to wait for a signal to
-// start work-stealing.
-static inline void thief_wait(global_state *g) {
-#if USE_FUTEX
-    worker_wait(&g->start_thieves, &g->start_thieves_futex);
-#else
-    worker_wait(&g->start_thieves, &g->start_thieves_lock,
-                &g->start_thieves_cond_var);
-#endif
-}
+/* // Called by a thief thread.  Causes the thief thread to wait for a signal to */
+/* // start work-stealing. */
+/* static inline void thief_wait(global_state *g) { */
+/* #if USE_FUTEX */
+/*     worker_wait(&g->start_thieves, &g->start_thieves_futex); */
+/* #else */
+/*     worker_wait(&g->start_thieves, &g->start_thieves_lock, */
+/*                 &g->start_thieves_cond_var); */
+/* #endif */
+/* } */
 
 // Called by a root-worker thread, that is, the worker w where w->self ==
 // g->exiting_worker.  Causes the root-worker thread to wait for a signal to
 // start work-stealing.
 static inline void root_worker_wait(global_state *g, const uint32_t id) {
     _Atomic uint32_t *root_worker_p = &g->start_root_worker;
+/*     unsigned int fail = 0; */
+/*     while (fail++ < 2048) { */
+/*         if (id != atomic_load_explicit(root_worker_p, memory_order_acquire)) { */
+/*             return; */
+/*         } */
+/* #ifdef __SSE__ */
+/*         __builtin_ia32_pause(); */
+/* #endif */
+/* #ifdef __aarch64__ */
+/*         __builtin_arm_yield(); */
+/* #endif */
+/*     } */
 #if USE_FUTEX
     while (id == atomic_load_explicit(root_worker_p, memory_order_acquire)) {
         long s = futex(root_worker_p, FUTEX_WAIT_PRIVATE, id, NULL, NULL, 0);
@@ -166,16 +178,16 @@ static inline void root_worker_wait(global_state *g, const uint32_t id) {
 #endif
 }
 
-// Signal the thief threads to start work-stealing (or terminate, if
-// g->terminate == 1).
-static inline void wake_thieves(global_state *g) {
-#if USE_FUTEX
-    worker_start_broadcast(&g->start_thieves, &g->start_thieves_futex);
-#else
-    worker_start_broadcast(&g->start_thieves, &g->start_thieves_lock,
-                           &g->start_thieves_cond_var);
-#endif
-}
+/* // Signal the thief threads to start work-stealing (or terminate, if */
+/* // g->terminate == 1). */
+/* static inline void wake_thieves(global_state *g) { */
+/* #if USE_FUTEX */
+/*     worker_start_broadcast(&g->start_thieves, &g->start_thieves_futex); */
+/* #else */
+/*     worker_start_broadcast(&g->start_thieves, &g->start_thieves_lock, */
+/*                            &g->start_thieves_cond_var); */
+/* #endif */
+/* } */
 
 // Signal the root-worker thread to start work-stealing (or terminate, if
 // g->terminate == 1).
@@ -224,15 +236,15 @@ static inline void try_wake_root_worker(global_state *g, uint32_t *old_val,
 // work-stealing loop, since its more efficient to allow that to happen
 // eventually.
 
-// Reset global state to make thief threads sleep for signal to start
-// work-stealing again.
-static inline void sleep_thieves(global_state *g) {
-#if USE_FUTEX
-    worker_clear_start(&g->start_thieves, &g->start_thieves_futex);
-#else
-    worker_clear_start(&g->start_thieves);
-#endif
-}
+/* // Reset global state to make thief threads sleep for signal to start */
+/* // work-stealing again. */
+/* static inline void sleep_thieves(global_state *g) { */
+/* #if USE_FUTEX */
+/*     worker_clear_start(&g->start_thieves, &g->start_thieves_futex); */
+/* #else */
+/*     worker_clear_start(&g->start_thieves); */
+/* #endif */
+/* } */
 
 // Routines to control the cilkified state.
 
@@ -261,6 +273,18 @@ static inline void signal_uncilkified(global_state *g) {
 // Wait on g->cilkified to be set to 0, indicating the end of the Cilkified
 // region.
 static inline void wait_while_cilkified(global_state *g) {
+    unsigned int fail = 0;
+    while (fail++ < 2048) {
+        if (!atomic_load_explicit(&g->cilkified, memory_order_acquire)) {
+            return;
+        }
+#ifdef __SSE__
+        __builtin_ia32_pause();
+#endif
+#ifdef __aarch64__
+        __builtin_arm_yield();
+#endif
+    }
 #if USE_FUTEX
     while (atomic_load_explicit(&g->cilkified, memory_order_acquire)) {
         fwait(&g->cilkified_futex);
@@ -412,6 +436,35 @@ static inline void wake_all_disengaged(global_state *g) {
 #else
     pthread_mutex_lock(&g->disengaged_lock);
     atomic_store_explicit(&g->disengaged_thieves_futex, INT_MAX,
+                          memory_order_release);
+    pthread_cond_broadcast(&g->disengaged_cond_var);
+    pthread_mutex_unlock(&g->disengaged_lock);
+#endif
+}
+
+static inline void sleep_thieves(global_state *g) {
+    reset_disengaged_var(g);
+}
+
+static inline void thief_wait(global_state *g) {
+    /* atomic_fetch_add_explicit(&g->uncilk_disengaged, 1, memory_order_release); */
+    thief_disengage(g);
+    /* atomic_fetch_sub_explicit(&g->uncilk_disengaged, 1, memory_order_release); */
+}
+
+// Signal the thief threads to start work-stealing (or terminate, if
+// g->terminate == 1).
+static inline void wake_thieves(global_state *g) {
+#if USE_FUTEX
+    atomic_store_explicit(&g->disengaged_thieves_futex, g->nworkers - 1,
+                          memory_order_release);
+    long s = futex(&g->disengaged_thieves_futex, FUTEX_WAKE_PRIVATE, INT_MAX,
+                   NULL, NULL, 0);
+    if (s == -1)
+        errExit("futex-FUTEX_WAKE");
+#else
+    pthread_mutex_lock(&g->disengaged_lock);
+    atomic_store_explicit(&g->disengaged_thieves_futex, g->nworkers - 1,
                           memory_order_release);
     pthread_cond_broadcast(&g->disengaged_cond_var);
     pthread_mutex_unlock(&g->disengaged_lock);
