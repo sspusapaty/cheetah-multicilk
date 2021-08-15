@@ -271,8 +271,10 @@ static void __cilkrts_stop_workers(global_state *g) {
     g->terminate = true;
 
     // Wake up all the workers.
-    wake_thieves(g);
-    /* wake_all_disengaged(g); */
+    // We call wake_all_disengaged, rather than wake_thieves, to properly
+    // terminate all thieves, whether they're disengaged inside or outside the
+    // work-stealing loop.
+    wake_all_disengaged(g);
     wake_root_worker(g, (uint32_t)(-1));
 
     // Join the worker pthreads
@@ -382,12 +384,10 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
 
     // Wake up the thieves, to allow them to begin work stealing.
     //
-    // NOTE: We might want to wake thieves gradually, rather than all at once.
-    // The logic for gradually waking thieves might be combined with the logic
-    // for disengaging workers.  But right now the logic for disengaging workers
-    // assumes that all thieves are started at this point, specifically, when it
-    // computes the number of active workers as nworkers - deprived -
-    // disengaged.
+    // NOTE: We might want to wake thieves gradually, as successful steals
+    // occur, rather than all at once.  Initial testing of this approach did not
+    // seem to perform well, however.  One possible reason why could be because
+    // of the extra kernel interactions involved in waking workers gradually.
     wake_thieves(g);
     /* request_more_thieves(g, g->nworkers); */
 
