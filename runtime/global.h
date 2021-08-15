@@ -65,36 +65,30 @@ struct global_state {
 
     volatile bool workers_started;
     volatile bool terminate;
-
-    volatile worker_id exiting_worker;
     volatile bool root_closure_initialized;
-    volatile atomic_bool start_thieves;
-    volatile atomic_bool done;
-    volatile atomic_bool cilkified;
 
     _Atomic uint32_t start_root_worker __attribute__((aligned(CILK_CACHE_LINE)));
-    jmpbuf boss_ctx;
-    void *orig_rsp;
-
-    /* _Atomic uint32_t start_thieves_futex __attribute__((aligned(CILK_CACHE_LINE))); */
     // NOTE: We can probably update the runtime system so that, when it uses
     // cilkified_futex, it does not also use the cilkified field.  But the
     // cilkified field is helpful for debugging, and it seems unlikely that this
     // optimization would improve performance.
-    _Atomic uint32_t cilkified_futex __attribute__((aligned(CILK_CACHE_LINE)));
-    _Atomic uint32_t disengaged_thieves_futex;
-    /* _Atomic uint32_t uncilk_disengaged; */
+    _Atomic uint32_t cilkified_futex;
+    volatile worker_id exiting_worker;
+    volatile atomic_bool done;
+    volatile atomic_bool cilkified;
+    jmpbuf boss_ctx;
+    void *orig_rsp;
+
+    _Atomic uint32_t disengaged_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
 
     // Count of number of disengaged and deprived workers.  Upper 32 bits count
     // the disengaged workers.  Lower 32 bits count the deprived workers.  These
     // two counts are stored in a single word to make it easier to update both
     // counts atomically.
-    _Atomic uint64_t disengaged_deprived;
+    _Atomic uint64_t disengaged_deprived __attribute__((aligned(CILK_CACHE_LINE)));
 
     pthread_mutex_t start_root_worker_lock;
     pthread_cond_t start_root_worker_cond_var;
-    /* pthread_mutex_t start_thieves_lock; */
-    /* pthread_cond_t start_thieves_cond_var; */
     pthread_mutex_t cilkified_lock;
     pthread_cond_t cilkified_cond_var;
 

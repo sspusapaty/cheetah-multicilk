@@ -36,16 +36,12 @@ static global_state *global_state_allocate() {
     cilk_mutex_init(&g->index_lock);
     cilk_mutex_init(&g->print_lock);
 
-    /* atomic_store_explicit(&g->start_thieves_futex, 0, memory_order_relaxed); */
     atomic_store_explicit(&g->start_root_worker, 0, memory_order_relaxed);
     atomic_store_explicit(&g->cilkified_futex, 0, memory_order_relaxed);
-    /* atomic_store_explicit(&g->uncilk_disengaged, 0, memory_order_relaxed); */
 
     // TODO: Convert to cilk_* equivalents
     pthread_mutex_init(&g->cilkified_lock, NULL);
     pthread_cond_init(&g->cilkified_cond_var, NULL);
-    /* pthread_mutex_init(&g->start_thieves_lock, NULL); */
-    /* pthread_cond_init(&g->start_thieves_cond_var, NULL); */
     pthread_mutex_init(&g->start_root_worker_lock, NULL);
     pthread_cond_init(&g->start_root_worker_cond_var, NULL);
 
@@ -177,7 +173,6 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     g->workers_started = false;
     g->root_closure_initialized = false;
-    atomic_store_explicit(&g->start_thieves, 0, memory_order_relaxed);
     atomic_store_explicit(&g->done, 0, memory_order_relaxed);
     atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
     atomic_store_explicit(&g->disengaged_deprived, 0, memory_order_relaxed);
