@@ -21,6 +21,7 @@ enum timing_type {
 
 struct sched_stats {
     uint64_t time[NUMBER_OF_STATS];  // Total time measured for all stats
+    uint64_t count[NUMBER_OF_STATS];
     uint64_t begin[NUMBER_OF_STATS]; // Begin time of current measurement
     uint64_t end[NUMBER_OF_STATS];   // End time of current measurement
 
@@ -29,13 +30,16 @@ struct sched_stats {
 };
 
 struct global_sched_stats {
+    // Stats for the boss thread
     uint64_t boss_waiting;
+    uint64_t boss_wait_count;
     uint64_t boss_begin;
     uint64_t exit_time;
     uint64_t boss_end;
     uint64_t steals;
     uint64_t repos;
     double time[NUMBER_OF_STATS]; // Total time measured for all stats
+    uint64_t count[NUMBER_OF_STATS];
 };
 
 #if SCHED_STATS
