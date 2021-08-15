@@ -22,7 +22,6 @@
 __thread __cilkrts_worker *tls_worker = NULL;
 __thread bool is_boss_thread = false;
 
-
 // ==============================================
 // Misc. helper functions
 // ==============================================
@@ -1405,7 +1404,11 @@ void do_what_it_says_boss(__cilkrts_worker *w, Closure *t) {
 
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
     worker_change_state(w, WORKER_IDLE);
+#if BOSS_THIEF
+    worker_scheduler(w);
+#else
     __builtin_longjmp(w->g->boss_ctx, 1);
+#endif
 }
 
 // Update the index-to-worker map to swap self with the worker at the target
@@ -1667,6 +1670,13 @@ void worker_scheduler(__cilkrts_worker *w) {
                     atomic_fetch_add_explicit(&rts->disengaged_deprived, 1,
                                               memory_order_release);
                 } else if (fails % DISENGAGE_THRESHOLD == 0) {
+#if BOSS_THIEF
+                    if (is_boss_thread) {
+                        // The boss thread should never disengage.  Sleep instead.
+                        const struct timespec sleeptime = {.tv_sec = 0, .tv_nsec = 50000};
+                        nanosleep(&sleeptime, NULL);
+                    } else
+#endif
                     if (maybe_disengage_thief(rts, self, nworkers, w)) {
                         // The semaphore for reserving workers may have been
                         // non-zero due to past successful steals, rather than a
@@ -1713,6 +1723,11 @@ void worker_scheduler(__cilkrts_worker *w) {
     }
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
     worker_change_state(w, WORKER_IDLE);
+#if BOSS_THIEF
+    if (is_boss_thread) {
+        __builtin_longjmp(w->g->boss_ctx, 1);
+    }
+#endif
 }
 
 void *scheduler_thread_proc(void *arg) {
@@ -1720,22 +1735,29 @@ void *scheduler_thread_proc(void *arg) {
     cilkrts_alert(BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
-    // Initialize the worker's fiber pool.  We have each worker do this itself
-    // to improve the locality of the initial fibers.
-    cilk_fiber_pool_per_worker_init(w);
-
+    if (w->self != 0) {
+        // Initialize the worker's fiber pool.  We have each worker do this itself
+        // to improve the locality of the initial fibers.
+        cilk_fiber_pool_per_worker_init(w);
+    }
     // Avoid redundant lookups of these commonly accessed worker fields.
     const worker_id self = w->self;
     global_state *rts = w->g;
-    // Initialize worker's random-number generator.
-    rts_srand(w, (self + 1) * 162347);
+    if (w->self != 0) {
+        // Initialize worker's random-number generator.
+        rts_srand(w, (self + 1) * 162347);
+    }
 
     CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
     do {
         // Wait for g->start == 1 to start executing the work-stealing loop.  We
         // use a condition variable to wait on g->start, because this approach
         // seems to result in better performance.
+#if BOSS_THIEF
+        if (self == 0) {
+#else
         if (self == rts->exiting_worker) {
+#endif
             root_worker_wait(rts, self);
         } else {
             thief_wait(rts);
@@ -1769,6 +1791,22 @@ void *scheduler_thread_proc(void *arg) {
             CILK_EXIT_WORKER_TIMING(rts);
             CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
             signal_uncilkified(rts);
+            unsigned int fail = 0;
+#if BOSS_THIEF
+            /* while (fail++ < 2048 && */
+            /*        !atomic_load_explicit(&rts->start_root_worker, */
+            /*                              memory_order_acquire)) { */
+            while (fail++ < 2048 &&
+                   !atomic_load_explicit(&rts->disengaged_thieves_futex,
+                                         memory_order_acquire)) {
+#ifdef __SSE__
+                __builtin_ia32_pause();
+#endif
+#ifdef __aarch64__
+                __builtin_arm_yield();
+#endif
+            }
+#endif // BOSS_THIEF
         } else {
             CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
             // Busy-wait for a while to amortize the cost of syscalls to put

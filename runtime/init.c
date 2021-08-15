@@ -86,6 +86,10 @@ static void workers_init(global_state *g) {
         w->reducer_map = NULL;
         // initialize internal malloc first
         cilk_internal_malloc_per_worker_init(w);
+        if (i == 0) {
+            cilk_fiber_pool_per_worker_init(w);
+            /* rts_srand(w, (i + 1) * 162347); */
+        }
 
         // Initialize index-to-worker map entry for this worker.
         g->index_to_worker[i] = i;
@@ -308,9 +312,11 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
     worker_id self = tls_worker->self;
     tls_worker = NULL;
 
+#if !BOSS_THIEF
     // Wake up the worker the boss was impersonating, to let it take
     // over the computation.
     try_wake_root_worker(g, &self, (uint32_t)(-1));
+#endif
 
     // Wait until the cilkified region is done executing.
     wait_until_cilk_done(g);
@@ -348,7 +354,11 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
 
     // The boss thread will impersonate the last exiting worker until it tries
     // to become a thief.
+#if BOSS_THIEF
+    tls_worker = g->workers[0];
+#else
     tls_worker = g->workers[g->exiting_worker];
+#endif
     CILK_START_TIMING(tls_worker, INTERVAL_CILKIFY_ENTER);
     is_boss_thread = true;
 
@@ -425,6 +435,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     atomic_store_explicit(&g->done, 1, memory_order_release);
     /* wake_all_disengaged(g); */
 
+#if !BOSS_THIEF
     if (!is_boss_thread && self != atomic_load_explicit(&g->start_root_worker,
                                                         memory_order_acquire)) {
         // If a thread other than the boss thread finishes the cilkified region,
@@ -432,6 +443,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         // become a thief and this worker can become the new root worker.
         wake_root_worker(g, self);
     }
+#endif
 
     // Clear this worker's deque.  Nobody can successfully steal from this deque
     // at this point, because head == tail, but we still want any subsequent
@@ -455,7 +467,11 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     if (is_boss_thread) {
         // We finished the computation on the boss thread.  No need to jump to
         // the runtime in this case; just return normally.
-        CILK_ASSERT(w, w->l->fiber_to_free == NULL);
+        /* CILK_ASSERT(w, w->l->fiber_to_free == NULL); */
+        if (w->l->fiber_to_free) {
+            cilk_fiber_deallocate_to_pool(w, w->l->fiber_to_free);
+        }
+        w->l->fiber_to_free = NULL;
         atomic_store_explicit(&g->cilkified, 0, memory_order_release);
         w->l->state = WORKER_IDLE;
         tls_worker = NULL;
