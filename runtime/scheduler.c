@@ -29,13 +29,13 @@ __thread bool is_boss_thread = false;
 /***********************************************************
  * Internal random number generator.
  ***********************************************************/
-static unsigned int rts_rand(__cilkrts_worker *const w) {
-    w->l->rand_next = w->l->rand_next * 1103515245 + 12345;
-    return (w->l->rand_next >> 16);
-}
-
 static void rts_srand(__cilkrts_worker *const w, unsigned int seed) {
     w->l->rand_next = seed;
+}
+
+static unsigned int rts_rand(local_state *l) {
+    l->rand_next = l->rand_next * 1103515245 + 12345;
+    return (l->rand_next >> 16);
 }
 
 static void worker_change_state(__cilkrts_worker *w,
@@ -1447,9 +1447,10 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
     // with parallel calls to reengage thieves, calls to reengage thieves, and
     // updates to the number of deprived workers.
     // First atomically update the number of disengaged workers.
-    if (atomic_compare_exchange_strong(&g->disengaged_deprived,
-                                       &disengaged_deprived,
-                                       new_disengaged_deprived)) {
+    if (atomic_compare_exchange_strong_explicit(
+            &g->disengaged_deprived, &disengaged_deprived,
+            new_disengaged_deprived, memory_order_release,
+            memory_order_acquire)) {
         // Update the index-to-worker map.
         worker_id last_index = g->nworkers - (new_disengaged_deprived >> 32);
         if (g->worker_to_index[self] < last_index) {
@@ -1472,9 +1473,10 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
             disengaged = disengaged_deprived & disengaged_mask;
             new_disengaged_deprived = ((disengaged - (1UL << 32)) & disengaged_mask) |
                                     ((disengaged_deprived + 1) & ~disengaged_mask);
-            if (atomic_compare_exchange_strong(&g->disengaged_deprived,
-                                               &disengaged_deprived,
-                                               new_disengaged_deprived)) {
+            if (atomic_compare_exchange_strong_explicit(
+                    &g->disengaged_deprived, &disengaged_deprived,
+                    new_disengaged_deprived, memory_order_release,
+                    memory_order_acquire)) {
                 // Update the index structure.
                 last_index = g->nworkers - (disengaged_deprived >> 32);
                 if (g->worker_to_index[self] > last_index) {
@@ -1545,6 +1547,10 @@ void worker_scheduler(__cilkrts_worker *w) {
     worker_change_state(w, WORKER_SCHED);
     global_state *rts = w->g;
     worker_id self = w->self;
+    // Get this worker's local_state pointer, to avoid rereading it
+    // unnecessarily during the work-stealing loop.  This optimization helps
+    // reduce sharing on the worker structure.
+    local_state *l = w->l;
     // Get the number of workers.  We don't currently support changing the
     // number of workers dynamically during execution of a Cilkified region.
     unsigned int nworkers = rts->nworkers;
@@ -1598,9 +1604,9 @@ void worker_scheduler(__cilkrts_worker *w) {
             do {
                 // Choose a random victim not equal to self.
                 worker_id victim =
-                    local_index_to_worker[rts_rand(w) % stealable];
+                    local_index_to_worker[rts_rand(l) % stealable];
                 while (victim == self) {
-                    victim = local_index_to_worker[rts_rand(w) % stealable];
+                    victim = local_index_to_worker[rts_rand(l) % stealable];
                 }
                 // Attempt to steal from that victim.
                 t = Closure_steal(w, victim);
