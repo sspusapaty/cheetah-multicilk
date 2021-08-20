@@ -185,9 +185,9 @@ static void sched_stats_reset_worker(__cilkrts_worker *w,
 }
 
 #define COL_DESC "%15s"
-#define HDR_DESC "%18s %4s"
+#define HDR_DESC "%18s %8s"
 #define WORKER_HDR_DESC "%10s %3u:"
-#define FIELD_DESC "%18.6f %4ld"
+#define FIELD_DESC "%18.6f %8ld"
 
 static void sched_stats_print_worker(__cilkrts_worker *w, void *data) {
     FILE *fp = (FILE *)data;
@@ -223,7 +223,7 @@ void cilk_sched_stats_print(struct global_state *g) {
     }
     fprintf(stderr, COL_DESC, "");
     for (int t = 0; t < NUMBER_OF_STATS; t++) {
-        fprintf(stderr, HDR_DESC, enum_to_str(t), "cnt");
+        fprintf(stderr, HDR_DESC, enum_to_str(t), "count");
     }
     fprintf(stderr, "\n");
 
