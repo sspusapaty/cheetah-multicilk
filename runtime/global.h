@@ -59,13 +59,13 @@ struct global_state {
     struct cilk_im_desc im_desc __attribute__((aligned(CILK_CACHE_LINE)));
     cilk_mutex im_lock; // lock for accessing global im_desc
 
-    worker_id *index_to_worker;
-    worker_id *worker_to_index;
-    cilk_mutex index_lock;
+    // These fields are accessed exclusively by the boss thread.
 
+    jmpbuf boss_ctx __attribute__((aligned(CILK_CACHE_LINE)));
+    void *orig_rsp;
     volatile bool workers_started;
-    volatile bool terminate;
-    volatile bool root_closure_initialized;
+
+    // These fields are shared between the boss thread and a couple workers.
 
     _Atomic uint32_t start_root_worker __attribute__((aligned(CILK_CACHE_LINE)));
     // NOTE: We can probably update the runtime system so that, when it uses
@@ -74,12 +74,22 @@ struct global_state {
     // optimization would improve performance.
     _Atomic uint32_t cilkified_futex;
     volatile worker_id exiting_worker;
-    volatile atomic_bool done;
     volatile atomic_bool cilkified;
-    jmpbuf boss_ctx;
-    void *orig_rsp;
 
-    _Atomic uint32_t disengaged_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
+    pthread_mutex_t start_root_worker_lock;
+    pthread_cond_t start_root_worker_cond_var;
+    pthread_mutex_t cilkified_lock;
+    pthread_cond_t cilkified_cond_var;
+
+    // These fields are shared among all workers in the work-stealing loop.
+
+    volatile atomic_bool done __attribute__((aligned(CILK_CACHE_LINE)));
+    volatile bool terminate;
+    volatile bool root_closure_initialized;
+
+    worker_id *index_to_worker __attribute__((aligned(CILK_CACHE_LINE)));
+    worker_id *worker_to_index;
+    cilk_mutex index_lock;
 
     // Count of number of disengaged and deprived workers.  Upper 32 bits count
     // the disengaged workers.  Lower 32 bits count the deprived workers.  These
@@ -87,10 +97,7 @@ struct global_state {
     // counts atomically.
     _Atomic uint64_t disengaged_deprived __attribute__((aligned(CILK_CACHE_LINE)));
 
-    pthread_mutex_t start_root_worker_lock;
-    pthread_cond_t start_root_worker_cond_var;
-    pthread_mutex_t cilkified_lock;
-    pthread_cond_t cilkified_cond_var;
+    _Atomic uint32_t disengaged_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
 
     pthread_mutex_t disengaged_lock;
     pthread_cond_t disengaged_cond_var;
