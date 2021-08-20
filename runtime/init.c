@@ -86,10 +86,6 @@ static void workers_init(global_state *g) {
         w->reducer_map = NULL;
         // initialize internal malloc first
         cilk_internal_malloc_per_worker_init(w);
-        if (i == 0) {
-            cilk_fiber_pool_per_worker_init(w);
-            /* rts_srand(w, (i + 1) * 162347); */
-        }
 
         // Initialize index-to-worker map entry for this worker.
         g->index_to_worker[i] = i;
@@ -180,7 +176,14 @@ static void threads_init(global_state *g) {
         }
     }
 #endif
-    for (int w = 0; w < n_threads; w++) {
+    int worker_start =
+#if BOSS_THIEF
+            1
+#else
+            0
+#endif
+            ;
+    for (int w = worker_start; w < n_threads; w++) {
         int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,
                                     g->workers[w]);
 
@@ -282,7 +285,14 @@ static void __cilkrts_stop_workers(global_state *g) {
     wake_root_worker(g, (uint32_t)(-1));
 
     // Join the worker pthreads
-    for (unsigned int i = 0; i < g->nworkers; i++) {
+    unsigned int worker_start =
+#if BOSS_THIEF
+            1
+#else
+            0
+#endif
+            ;
+    for (unsigned int i = worker_start; i < g->nworkers; i++) {
         int status = pthread_join(g->threads[i], NULL);
         if (status != 0)
             cilkrts_bug(NULL, "Cilk runtime error: thread join (%u) failed: %d",
@@ -309,7 +319,9 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
     __cilkrts_stack_frame *sf = g->root_closure->frame;
     CILK_BOSS_START_TIMING(g);
 
+#if !BOSS_THIEF
     worker_id self = tls_worker->self;
+#endif
     tls_worker = NULL;
 
 #if !BOSS_THIEF
@@ -320,6 +332,12 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
 
     // Wait until the cilkified region is done executing.
     wait_until_cilk_done(g);
+
+#if BOSS_THIEF
+    g->workers[0]->reducer_map = g->workers[g->exiting_worker]->reducer_map;
+    g->workers[g->exiting_worker]->reducer_map = NULL;
+    g->exiting_worker = 0;
+#endif
 
     // At this point, some Cilk worker must have completed the
     // Cilkified region and executed uncilkify at the end of the Cilk
@@ -352,6 +370,15 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
         __cilkrts_start_workers(g);
     }
 
+    if (!is_boss_thread) {
+#if BOSS_THIEF
+        cilk_fiber_pool_per_worker_init(g->workers[0]);
+        // rts_srand(g->workers[0], (0 + 1) * 162347);
+        g->workers[0]->l->rand_next = 162347;
+#endif
+        is_boss_thread = true;
+    }
+
     // The boss thread will impersonate the last exiting worker until it tries
     // to become a thief.
 #if BOSS_THIEF
@@ -360,7 +387,6 @@ void __cilkrts_internal_invoke_cilkified_root(global_state *g,
     tls_worker = g->workers[g->exiting_worker];
 #endif
     CILK_START_TIMING(tls_worker, INTERVAL_CILKIFY_ENTER);
-    is_boss_thread = true;
 
     // Mark the root closure as not initialized
     g->root_closure_initialized = false;

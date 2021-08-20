@@ -1636,9 +1636,6 @@ void worker_scheduler(__cilkrts_worker *w) {
                     // TODO: Investigate whether it's better to keep the number
                     // less than the number of active workers.
                     request_more_thieves(rts, 2);
-                /* } else if (atomic_load_explicit(&rts->uncilk_disengaged, */
-                /*                                 memory_order_acquire) > 0) { */
-                /*     request_more_thieves(rts, 2); */
                 }
                 fails = 0;
                 break;
@@ -1735,33 +1732,34 @@ void *scheduler_thread_proc(void *arg) {
     cilkrts_alert(BOOT, w, "scheduler_thread_proc");
     __cilkrts_set_tls_worker(w);
 
-    if (w->self != 0) {
-        // Initialize the worker's fiber pool.  We have each worker do this itself
-        // to improve the locality of the initial fibers.
-        cilk_fiber_pool_per_worker_init(w);
-    }
+#if BOSS_THIEF
+    CILK_ASSERT(w, w->self != 0);
+#endif
+    // Initialize the worker's fiber pool.  We have each worker do this itself
+    // to improve the locality of the initial fibers.
+    cilk_fiber_pool_per_worker_init(w);
+
     // Avoid redundant lookups of these commonly accessed worker fields.
     const worker_id self = w->self;
     global_state *rts = w->g;
-    if (w->self != 0) {
-        // Initialize worker's random-number generator.
-        rts_srand(w, (self + 1) * 162347);
-    }
+
+    // Initialize worker's random-number generator.
+    rts_srand(w, (self + 1) * 162347);
 
     CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
     do {
         // Wait for g->start == 1 to start executing the work-stealing loop.  We
         // use a condition variable to wait on g->start, because this approach
         // seems to result in better performance.
-#if BOSS_THIEF
-        if (self == 0) {
-#else
+#if !BOSS_THIEF
         if (self == rts->exiting_worker) {
-#endif
             root_worker_wait(rts, self);
         } else {
+#endif
             thief_wait(rts);
+#if !BOSS_THIEF
         }
+#endif
         CILK_STOP_TIMING(w, INTERVAL_SLEEP_UNCILK);
 
         // Check if we should exit this scheduling function.
@@ -1791,11 +1789,8 @@ void *scheduler_thread_proc(void *arg) {
             CILK_EXIT_WORKER_TIMING(rts);
             CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
             signal_uncilkified(rts);
-            unsigned int fail = 0;
 #if BOSS_THIEF
-            /* while (fail++ < 2048 && */
-            /*        !atomic_load_explicit(&rts->start_root_worker, */
-            /*                              memory_order_acquire)) { */
+            unsigned int fail = 0;
             while (fail++ < 2048 &&
                    !atomic_load_explicit(&rts->disengaged_thieves_futex,
                                          memory_order_acquire)) {
@@ -1812,9 +1807,6 @@ void *scheduler_thread_proc(void *arg) {
             // Busy-wait for a while to amortize the cost of syscalls to put
             // thief threads to sleep.
             unsigned int fail = 0;
-            /* while (fail++ < 2048 && */
-            /*        !atomic_load_explicit(&rts->start_thieves, */
-            /*                              memory_order_acquire)) { */
             while (fail++ < 2048 &&
                    !atomic_load_explicit(&rts->disengaged_thieves_futex,
                                          memory_order_acquire)) {
