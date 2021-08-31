@@ -24,6 +24,10 @@ check_c_compiler_flag(-fomit-frame-pointer CHEETAH_HAS_FOMIT_FRAME_POINTER_FLAG)
 check_c_compiler_flag(-mavx -Werror CHEETAH_HAS_MAVX_FLAG)
 check_c_compiler_flag(-march=sandybridge -Werror CHEETAH_HAS_MARCH_SANDYBRIDGE_FLAG)
 
+set(CMAKE_REQUIRED_FLAGS -fsanitize=address)
+check_c_compiler_flag(-fsanitize=address CHEETAH_HAS_ASAN)
+unset(CMAKE_REQUIRED_FLAGS)
+
 # Architectures.
 
 # List of all architectures we can target.
