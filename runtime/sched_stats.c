@@ -63,13 +63,13 @@ static inline double nsec_to_sec(uint64_t nsec) { return nsec / 1.0e9; }
 
 static inline uint64_t begin_time() {
     struct timespec res;
-    clock_gettime(CLOCK_REALTIME, &res);
+    clock_gettime(CLOCK_MONOTONIC, &res);
     return (res.tv_sec * 1e9) + (res.tv_nsec);
 }
 
 static inline uint64_t end_time() {
     struct timespec res;
-    clock_gettime(CLOCK_REALTIME, &res);
+    clock_gettime(CLOCK_MONOTONIC, &res);
     return (res.tv_sec * 1e9) + (res.tv_nsec);
 }
 
