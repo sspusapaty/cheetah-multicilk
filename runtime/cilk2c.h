@@ -91,10 +91,10 @@ CHEETAH_INTERNAL void __cilk_pause_frame(__cilkrts_stack_frame *sf, char *exn);
 
 // Compute the grainsize for a cilk_for loop at runtime, based on the number n
 // of loop iterations.
-CHEETAH_INTERNAL int8_t __cilkrts_cilk_for_grainsize_8(int8_t n);
-CHEETAH_INTERNAL int16_t __cilkrts_cilk_for_grainsize_16(int16_t n);
-CHEETAH_INTERNAL int32_t __cilkrts_cilk_for_grainsize_32(int32_t n);
-CHEETAH_INTERNAL int64_t __cilkrts_cilk_for_grainsize_64(int64_t n);
+CHEETAH_INTERNAL uint8_t __cilkrts_cilk_for_grainsize_8(uint8_t n);
+CHEETAH_INTERNAL uint16_t __cilkrts_cilk_for_grainsize_16(uint16_t n);
+CHEETAH_INTERNAL uint32_t __cilkrts_cilk_for_grainsize_32(uint32_t n);
+CHEETAH_INTERNAL uint64_t __cilkrts_cilk_for_grainsize_64(uint64_t n);
 
 // Not marked as CHEETAH_API as it may be deprecated soon
 unsigned __cilkrts_get_nworkers(void);

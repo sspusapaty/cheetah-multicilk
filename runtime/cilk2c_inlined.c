@@ -406,15 +406,14 @@ __cilk_helper_epilogue_exn(__cilkrts_stack_frame *sf, char *exn) {
                    : small_loop_grainsize;                                     \
     }
 #define __cilkrts_grainsize_fn(SZ)                                             \
-    __cilkrts_grainsize_fn_impl(__cilkrts_cilk_for_grainsize_##SZ, int##SZ##_t)
+    __cilkrts_grainsize_fn_impl(__cilkrts_cilk_for_grainsize_##SZ, uint##SZ##_t)
 
-__attribute__((always_inline)) int8_t __cilkrts_cilk_for_grainsize_8(int8_t n) {
-    int8_t small_loop_grainsize = n / (8 * cilkg_nproc);
+__attribute__((always_inline)) uint8_t
+__cilkrts_cilk_for_grainsize_8(uint8_t n) {
+    uint8_t small_loop_grainsize = n / (8 * cilkg_nproc);
     if (small_loop_grainsize <= 1)
         return 1;
     return small_loop_grainsize;
 }
 
-__cilkrts_grainsize_fn(16)
-__cilkrts_grainsize_fn(32)
-__cilkrts_grainsize_fn(64)
+__cilkrts_grainsize_fn(16) __cilkrts_grainsize_fn(32) __cilkrts_grainsize_fn(64)
