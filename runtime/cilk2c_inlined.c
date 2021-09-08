@@ -184,20 +184,16 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
 }
 
 static inline __cilkrts_worker *get_tls_worker(__cilkrts_stack_frame *sf) {
-#if defined(__aarch64__) || (defined(__APPLE__) && defined(__MACH__))
-    // Code-generation on these systems assumes that the thread on which a
-    // function runs never changes.  As a result, it may cache the address
-    // returned by __cilkrts_get_tls_worker() during enter_frame and load the
-    // cached value in later, even though the actual result of
-    // __cilkrts_get_tls_worker() may change between those two points.
-    // Therefore, we get the worker from sf for these systems.
+    // In principle, we should be able to get the worker efficiently by calling
+    // __cilkrts_get_tls_worker().  But code-generation on many systems assumes
+    // that the thread on which a function runs never changes.  As a result, it
+    // may cache the address returned by __cilkrts_get_tls_worker() during
+    // enter_frame and load the cached value in later, even though the actual
+    // result of __cilkrts_get_tls_worker() may change between those two points.
+    // To avoid this buggy behavior, we therefore get the worker from sf.
+    //
     // TODO: Fix code-generation of TLS lookups on these systems.
     return atomic_load_explicit(&sf->worker, memory_order_relaxed);
-#else
-    // On other systems, this TLS access will be compiled to an
-    // efficient move from memory.
-    return __cilkrts_get_tls_worker();
-#endif
 }
 
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
