@@ -187,8 +187,8 @@ static Closure *setup_call_parent_resumption(__cilkrts_worker *const w,
     Closure_assert_ownership(w, t);
 
     CILK_ASSERT_POINTER_EQUAL(w, w, __cilkrts_get_tls_worker());
-    CILK_ASSERT(w, __cilkrts_stolen(t->frame) != 0);
     CILK_ASSERT(w, t->frame != NULL);
+    CILK_ASSERT(w, __cilkrts_stolen(t->frame) != 0);
     CILK_ASSERT(w, ((intptr_t)t->frame->worker) & 1);
     CILK_ASSERT_POINTER_EQUAL(w, w->head, w->tail);
     CILK_ASSERT_POINTER_EQUAL(w, w->current_stack_frame, t->frame);
@@ -652,7 +652,7 @@ oldest_non_stolen_frame_in_stacklet(__cilkrts_stack_frame *head) {
 
     __cilkrts_stack_frame *cur = head;
     while (cur && (cur->flags & CILK_FRAME_DETACHED) == 0 && cur->call_parent &&
-           __cilkrts_stolen(cur->call_parent) == 0) {
+           __cilkrts_not_stolen(cur->call_parent)) {
         cur = cur->call_parent;
     }
 
@@ -1040,7 +1040,7 @@ static Closure *Closure_steal(__cilkrts_worker *const w, int victim) {
                 res = extract_top_spawning_closure(w, victim_w, cl);
 
                 // at this point, more steals can happen from the victim.
-                deque_unlock(w, victim_w->self);
+                deque_unlock(w, victim);
 
                 CILK_ASSERT(w, res->fiber);
                 CILK_ASSERT(w, res->frame->worker == victim_w);
