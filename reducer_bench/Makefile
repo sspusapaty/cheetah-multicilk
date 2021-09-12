@@ -14,10 +14,11 @@ TESTS    = $(CTESTS) $(CXXTESTS) $(DIRTESTS)
 WARN     = -W -Wno-mismatched-tags -Wno-unused-parameter -Werror
 OPTIONS  = $(OPT) $(SAN) $(ARCH) $(DBG) $(RTS_OPT) $(WARN) # -fno-omit-frame-pointer
 
-$(CTESTS): RTS_PERSONALITY_LIB = $(RTS_DIR)/$(RTS_C_PERSONALITY_LIB).a
-$(CXXTESTS): RTS_PERSONALITY_LIB = $(RTS_DIR)/$(RTS_CXX_PERSONALITY_LIB).a
+# $(CTESTS): RTS_PERSONALITY_LIB = $(RTS_LIBDIR)/$(RTS_C_PERSONALITY_LIB).a
+# $(CXXTESTS): RTS_PERSONALITY_LIB = $(RTS_LIBDIR)/$(RTS_CXX_PERSONALITY_LIB).a
 
-RTS_LIBS = $(RTS_PERSONALITY_LIB) $(RTS_DIR)/$(RTS_LIB).a $(patsubst %,../runtime/%/module.a,$(MODS))
+# RTS_LIBS = $(RTS_PERSONALITY_LIB) $(RTS_DIR)/$(RTS_LIB).a $(patsubst %,../runtime/%/module.a,$(MODS))
+RTS_LIBS = -fopencilk --opencilk-resource-dir=$(RESOURCE_DIR) $(patsubst %,../runtime/%/module.a,$(MODS))
 
 TIMING_COUNT := 1
 
@@ -26,10 +27,10 @@ TIMING_COUNT := 1
 all: $(TESTS)
 
 $(CTESTS): %: %.o ktiming.o getoptions.o
-	$(CC) $^ -o $@ $(RTS_LIBS) $(RTS_LIB_FLAG) $(SAN) -lrt -lpthread -lm
+	$(CC) $^ -o $@ $(RTS_LIBS) $(RTS_LIB_FLAG) $(SAN) -lrt -lm
 
 $(CXXTESTS): %: %.o ktiming.o getoptions.o
-	$(CXX) $^ -o $@ $(RTS_LIBS) $(RTS_LIB_FLAG) $(SAN) -lrt -lpthread -lm
+	$(CXX) $^ -o $@ $(RTS_LIBS) $(RTS_LIB_FLAG) $(SAN) -lrt -lm
 
 $(DIRTESTS):
 	$(MAKE) -C $@ $(TOPASS)

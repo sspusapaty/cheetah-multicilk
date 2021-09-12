@@ -8,13 +8,11 @@ HDRS = $(wildcard *.h)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
 TESTS   = cholesky fib fft mm_dac matmul_4_way_z cilksort heat lu nqueens strassen
-OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W # -fno-omit-frame-pointer
+OPTIONS = $(OPT) $(ARCH) $(SAN) $(DBG) $(RTS_OPT) -fno-exceptions -Werror -W
 # dynamic linking
-RTS_DLIBS += -L$(RTS_DIR) -Wl,-rpath -Wl,$(RTS_DIR) $(RTS_LIB_FLAG)
-LD_FLAGS = $(RTS_OPT) $(RTS_DLIBS) $(SAN)
+LD_FLAGS = $(RTS_OPT) $(SAN)
 # static linking
-# RTS_SLIBS = $(RTS_DIR)/$(RTS_LIB).a
-# LD_FLAGS = $(RTS_SLIBS)
+# LD_FLAGS = $(RTS_OPTS) -static-libopencilk $(SAN)
 TIMING_COUNT := 3
 
 all: $(TESTS)
@@ -22,8 +20,6 @@ all: $(TESTS)
 $(TESTS): %: %.o getoptions.o ktiming.o
 	$(LINK_CC) $^ -o $@ $(LD_FLAGS) -lm
 
-# Add these flag to use the runtime-defined ABI functions
-# -mllvm -use-external-abi-functions
 %.o: %.c
 	$(CC) -c $(OPTIONS) -DTIMING_COUNT=$(TIMING_COUNT) -o $@ $<
 
@@ -34,10 +30,7 @@ $(TESTS): %: %.o getoptions.o ktiming.o
 clean:
 	rm -f *.o *~ $(TESTS) core.* *.ll
 
-.PHONY: test abi
-
-abi::
-	cp -f ../runtime/libopencilk-abi.bc $(COMPILER_BUILD_ABI_DIR) 
+.PHONY: test
 
 test:: cholesky
 	CILK_NWORKERS=$(TEST_WORKERS) ./cholesky -c

@@ -1,8 +1,9 @@
 include ../../config.mk
 
-OPTIONS  = -g -Wall $(OPT) -fno-omit-frame-pointer -fopencilk
+OPTIONS  = -g -Wall $(OPT) $(RTS_OPT)
 
-RTS_LIBS = ../../runtime/$(RTS_LIB).a $(patsubst %,../../runtime/%/module.a,$(MODS))
+# RTS_LIBS = ../../runtime/$(RTS_LIB).a $(patsubst %,../../runtime/%/module.a,$(MODS))
+RTS_LIBS = $(RTS_OPT) $(patsubst %,../../runtime/%/module.a,$(MODS))
 
 # The sources we're building
 HDRS = $(wildcard *.h)
@@ -13,7 +14,7 @@ OBJS = $(SRCS:.c=.o)
 
 # What we're building with
 CXX = $(CC)
-CXXFLAGS = -std=gnu99 -Wall -ftapir=cilkr
+CXXFLAGS = -std=gnu99 -Wall
 LDFLAGS = -lrt -lm $(RTS_LIBS) -lpthread
 
 
@@ -53,7 +54,7 @@ all: screensaver
 
 #$(PRODUCT): LDFLAGS += -lX11
 screensaver: $(OBJS) graphic_stuff.o
-	$(CC) $^ -o $@ $(RTS_LIBS) -lrt -lpthread -lm -lX11
+	$(CC) $^ -o $@ $(RTS_LIBS) -lrt -lm -lX11
 #	$(CXX) $(LDFLAGS) $(EXTRA_LDFLAGS) -o $@ $(OBJS) graphic_stuff.o
 
 %.o: %.c $(HDRS)
@@ -61,7 +62,7 @@ screensaver: $(OBJS) graphic_stuff.o
 #	$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) -o $@ -c $<
 
 check: screensaver
-	./screensaver --cheetah-nproc 2 1000
+	CILK_NWORKERS=2 ./screensaver 1000
 
 clean:
 	rm -f screensaver *.o *.out *~ core.*

@@ -10,7 +10,7 @@ ifneq ($(DEBUG),1)
 	OPTIONS += -DNDEBUG
 endif
 
-CFLAGS := -std=gnu99 -fopencilk $(OPTIONS)
+CFLAGS := -std=gnu99 $(RTS_OPT) $(OPTIONS)
 
 LDFLAGS := -lrt -lm
 
