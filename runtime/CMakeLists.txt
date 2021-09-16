@@ -84,6 +84,11 @@ set(CHEETAH_BITCODE_PEDIGREE_ABI_ASAN_COMPILE_DEFS
   ${CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS}
   "CILK_ENABLE_ASAN_HOOKS=1")
 
+set(CHEETAH_BUILD_ASAN_VER OFF)
+if (CHEETAH_ENABLE_ASAN AND (CHEETAH_HAS_ASAN OR TARGET asan))
+  set(CHEETAH_BUILD_ASAN_VER ON)
+endif()
+
 # Add compile flags for Cheetah-runtime compilation that should be
 # excluded from bitcode compilation
 if (CHEETAH_HAS_MAVX_FLAG)
@@ -107,7 +112,7 @@ if (APPLE)
     DEFS ${CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS}
     PARENT_TARGET cheetah)
 
-  if (CHEETAH_HAS_ASAN OR TARGET asan)
+  if (CHEETAH_BUILD_ASAN_VER)
     add_cheetah_bitcode(opencilk-asan-abi
       OS ${CHEETAH_SUPPORTED_OS}
       ARCHS ${CHEETAH_SUPPORTED_ARCH}
@@ -177,7 +182,7 @@ if (APPLE)
       VERSION "${CHEETAH_ABI_VERSION}.0"
       SOVERSION ${CHEETAH_ABI_VERSION}
       PARENT_TARGET cheetah)
-    if (CHEETAH_HAS_ASAN OR TARGET asan)
+    if (CHEETAH_BUILD_ASAN_VER)
       add_cheetah_runtime(opencilk-asan
 	SHARED
 	OS ${CHEETAH_SUPPORTED_OS}
@@ -277,7 +282,7 @@ if (APPLE)
       DEFS ${CHEETAH_COMPILE_DEFS}
       PARENT_TARGET cheetah)
 
-    if (CHEETAH_HAS_ASAN OR TARGET asan)
+    if (CHEETAH_BUILD_ASAN_VER)
       add_cheetah_runtime(opencilk-asan
 	STATIC
 	OS ${CHEETAH_SUPPORTED_OS}
@@ -339,7 +344,7 @@ else() # Not APPLE
       DEFS ${CHEETAH_BITCODE_PEDIGREE_ABI_COMPILE_DEFS}
       PARENT_TARGET cheetah)
 
-    if (CHEETAH_HAS_ASAN OR TARGET asan)
+    if (CHEETAH_BUILD_ASAN_VER)
       add_cheetah_bitcode(opencilk-asan-abi
 	ARCHS ${arch}
 	SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${CHEETAH_ABI_SOURCE}
@@ -404,7 +409,7 @@ else() # Not APPLE
 	SOVERSION ${CHEETAH_ABI_VERSION}
 	PARENT_TARGET cheetah)
 
-      if (CHEETAH_HAS_ASAN OR TARGET asan)
+      if (CHEETAH_BUILD_ASAN_VER)
 	add_cheetah_runtime(opencilk-asan
 	  SHARED
 	  ARCHS ${arch}
@@ -495,7 +500,7 @@ else() # Not APPLE
 	DEFS ${CHEETAH_COMPILE_DEFS}
 	PARENT_TARGET cheetah)
 
-      if (CHEETAH_HAS_ASAN OR TARGET asan)
+      if (CHEETAH_BUILD_ASAN_VER)
         add_cheetah_runtime(opencilk-asan
           STATIC
           ARCHS ${arch}

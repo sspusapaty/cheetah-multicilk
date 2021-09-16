@@ -56,6 +56,7 @@ option(CHEETAH_INSTALL_LIBRARY "Install the cheetah library." ON)
 
 option(CHEETAH_ENABLE_SHARED "Build cheetah as a shared library." ON)
 option(CHEETAH_ENABLE_STATIC "Build cheetah as a static library." ON)
+option(CHEETAH_ENABLE_ASAN "Build cheetah with ASan support." ON)
 
 set(CHEETAH_ABI_VERSION "1" CACHE STRING "ABI version of cheetah. Defaults to 1.")
 
